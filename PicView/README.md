@@ -1,4 +1,68 @@
-# PicView - 高级图片预览器
+# PicView - Advanced Image Viewer
+
+## 新增功能 (最新版本)
+
+### 1. 命令行参数支持
+现在可以通过命令行直接打开图片文件：
+
+```bash
+# 方式1：使用dotnet run
+dotnet run -- "图片文件路径"
+
+# 方式2：直接运行可执行文件
+PicView.exe "图片文件路径"
+```
+
+支持的图片格式：
+- 静态图片：.jpg, .jpeg, .png, .bmp, .tiff, .tif, .ico, .webp, .tga, .dds, .psd
+- 动画图片：.gif (支持动画播放)
+
+### 2. GIF动画播放支持
+- 自动识别GIF文件并播放动画
+- 支持所有标准的GIF功能（循环播放、帧速率等）
+- 如果GIF加载失败会自动降级为静态显示
+
+### 3. 使用示例
+
+```bash
+# 打开一张JPG图片
+dotnet run -- "C:\Pictures\photo.jpg"
+
+# 打开一个GIF动画
+dotnet run -- "C:\Pictures\animation.gif"
+
+# 打开PNG图片
+dotnet run -- "C:\Pictures\logo.png"
+```
+
+### 4. 文件关联
+建议将PicView设置为默认图片查看器，这样双击图片文件就会自动用PicView打开。
+
+## 核心功能
+
+### 图片查看
+- 支持多种图片格式
+- 鼠标拖拽移动图片
+- 鼠标滚轮缩放（以鼠标位置为中心）
+- 键盘快捷键导航
+
+### 背景设置
+- 透明方格背景
+- 纯色背景（支持HSV色彩调节）
+- 自定义背景图片
+- 窗口透明模式
+
+### 文件操作
+- 旋转图片
+- 另存为多种格式
+- 快速打开方式
+- 在资源管理器中显示文件
+
+### 高级功能
+- 通道预览（RGB、Alpha等）
+- Everything搜索集成
+- 智能窗口缩放
+- 自定义打开方式管理
 
 ## 项目介绍
 

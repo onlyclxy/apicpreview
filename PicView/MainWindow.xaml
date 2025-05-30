@@ -9,7 +9,11 @@
         Title="PicView - Advanced Image Viewer" Height="800" Width="1200"
         KeyDown="MainWindow_KeyDown"
         Drop="MainWindow_Drop"
-        AllowDrop="True">
+        AllowDrop="True"
+        AllowsTransparency="True"
+        WindowStyle="None"
+        Background="White"
+        ResizeMode="CanResizeWithGrip">
     
     <Window.Resources>
         <!-- 透明方格画笔 -->
@@ -27,6 +31,7 @@
     
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="30"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -34,8 +39,28 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         
+        <!-- 自定义标题栏 -->
+        <Border Grid.Row="0" Background="#F0F0F0" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="PicView - Advanced Image Viewer" 
+                           VerticalAlignment="Center" Margin="10,0" FontWeight="Bold"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="btnMinimize" Content="🗕" Click="BtnMinimize_Click" 
+                            Width="30" Height="30" Background="Transparent" BorderThickness="0"/>
+                    <Button x:Name="btnMaximize" Content="🗖" Click="BtnMaximize_Click" 
+                            Width="30" Height="30" Background="Transparent" BorderThickness="0"/>
+                    <Button x:Name="btnClose" Content="✕" Click="BtnClose_Click" 
+                            Width="30" Height="30" Background="Transparent" BorderThickness="0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+        
         <!-- 主工具栏 -->
-        <ToolBar Grid.Row="0" Height="40">
+        <ToolBar Grid.Row="1" Height="40">
             <Button x:Name="btnOpen" Content="打开" Click="BtnOpen_Click" Padding="10,5"/>
             <Separator/>
             <Button x:Name="btnPrevious" Content="◀" Click="BtnPrevious_Click" Padding="10,5" ToolTip="上一张 (Left)"/>
@@ -44,14 +69,38 @@
             <Button x:Name="btnRotateLeft" Content="↺" Click="BtnRotateLeft_Click" Padding="10,5" ToolTip="左旋转"/>
             <Button x:Name="btnRotateRight" Content="↻" Click="BtnRotateRight_Click" Padding="10,5" ToolTip="右旋转"/>
             <Separator/>
+            <!-- 缩放控制 -->
+            <Button x:Name="btnZoomIn" Content="🔍+" Click="BtnZoomIn_Click" Padding="10,5" ToolTip="放大"/>
+            <Button x:Name="btnZoomOut" Content="🔍-" Click="BtnZoomOut_Click" Padding="10,5" ToolTip="缩小"/>
+            <TextBlock x:Name="zoomPercentage" Text="100%" VerticalAlignment="Center" Margin="5,0" MinWidth="40"/>
+            <Separator/>
+            <!-- 视图控制 -->
+            <Button x:Name="btnFitWindow" Content="适应窗口" Click="BtnFitWindow_Click" Padding="10,5" ToolTip="适应窗口大小"/>
+            <Button x:Name="btnActualSize" Content="实际大小" Click="BtnActualSize_Click" Padding="10,5" ToolTip="1:1显示"/>
+            <Button x:Name="btnCenterImage" Content="居中显示" Click="BtnCenterImage_Click" Padding="10,5" ToolTip="居中图片"/>
+            <Separator/>
             <Button x:Name="btnSaveAs" Content="另存为" Click="BtnSaveAs_Click" Padding="10,5"/>
+            <Separator/>
+            <!-- 文件操作 -->
+            <Button x:Name="btnOpenWith1" Content="打开方式1" Click="BtnOpenWith1_Click" Padding="10,5" Visibility="Collapsed"/>
+            <Button x:Name="btnOpenWith2" Content="打开方式2" Click="BtnOpenWith2_Click" Padding="10,5" Visibility="Collapsed"/>
+            <Button x:Name="btnOpenWith3" Content="打开方式3" Click="BtnOpenWith3_Click" Padding="10,5" Visibility="Collapsed"/>
+            <Button x:Name="btnOpenWithMenu" Content="打开方式..." Click="BtnOpenWithMenu_Click" Padding="10,5">
+                <Button.ContextMenu>
+                    <ContextMenu x:Name="openWithContextMenu">
+                        <MenuItem Header="添加打开方式..." Click="AddOpenWithApp_Click"/>
+                        <Separator x:Name="openWithSeparator" Visibility="Collapsed"/>
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
+            <Button x:Name="btnOpenLocation" Content="打开位置" Click="BtnOpenLocation_Click" Padding="10,5" ToolTip="在资源管理器中显示"/>
             <Separator/>
             <Button x:Name="btnSearch" Content="搜索" Click="BtnSearch_Click" Padding="10,5" ToolTip="Everything搜索"/>
             <CheckBox x:Name="chkShowChannels" Content="显示通道" Checked="ChkShowChannels_Checked" Unchecked="ChkShowChannels_Unchecked" Margin="10,0"/>
         </ToolBar>
         
         <!-- Everything 搜索栏 -->
-        <Grid Grid.Row="1" x:Name="searchPanel" Visibility="Collapsed" Background="#F0F0F0" Height="40">
+        <Grid Grid.Row="2" x:Name="searchPanel" Visibility="Collapsed" Background="#F0F0F0" Height="40">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
@@ -63,7 +112,7 @@
         </Grid>
         
         <!-- 背景控制工具栏 -->
-        <Expander Grid.Row="2" Header="背景设置" IsExpanded="True">
+        <Expander Grid.Row="3" Header="背景设置" IsExpanded="True">
             <StackPanel Orientation="Horizontal" Height="86" Background="#F8F8F8">
                 <!-- 背景类型选择 -->
                 <GroupBox Header="背景类型" Margin="5">
@@ -90,8 +139,28 @@
                 <GroupBox Header="颜色调节" Margin="5">
                     <StackPanel Orientation="Horizontal">
                         <StackPanel Margin="5">
+                            <TextBlock Text="快速选色" HorizontalAlignment="Center"/>
+                            <Slider x:Name="sliderColorSpectrum" Width="120" Minimum="0" Maximum="360" ValueChanged="ColorSpectrum_ValueChanged">
+                                <Slider.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#FF0000" Offset="0.0"/>
+                                        <GradientStop Color="#FFFF00" Offset="0.17"/>
+                                        <GradientStop Color="#00FF00" Offset="0.33"/>
+                                        <GradientStop Color="#00FFFF" Offset="0.5"/>
+                                        <GradientStop Color="#0000FF" Offset="0.67"/>
+                                        <GradientStop Color="#FF00FF" Offset="0.83"/>
+                                        <GradientStop Color="#FF0000" Offset="1.0"/>
+                                    </LinearGradientBrush>
+                                </Slider.Background>
+                            </Slider>
+                        </StackPanel>
+                        <StackPanel Margin="5">
                             <TextBlock Text="色相" HorizontalAlignment="Center"/>
                             <Slider x:Name="sliderHue" Width="100" Minimum="0" Maximum="360" ValueChanged="ColorSlider_ValueChanged"/>
+                        </StackPanel>
+                        <StackPanel Margin="5">
+                            <TextBlock Text="饱和度" HorizontalAlignment="Center"/>
+                            <Slider x:Name="sliderSaturation" Width="100" Minimum="0" Maximum="100" Value="100" ValueChanged="ColorSlider_ValueChanged"/>
                         </StackPanel>
                         <StackPanel Margin="5">
                             <TextBlock Text="明度" HorizontalAlignment="Center"/>
@@ -111,22 +180,23 @@
         </Expander>
         
         <!-- 主显示区域 -->
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto" x:Name="channelColumn"/>
             </Grid.ColumnDefinitions>
             
             <!-- 主图显示区域 -->
-            <Border x:Name="imageContainer" Grid.Column="0" Background="{StaticResource CheckerboardBrush}">
-                <ScrollViewer x:Name="imageScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                    <Canvas x:Name="imageCanvas">
-                        <Image x:Name="mainImage" 
-                               RenderOptions.BitmapScalingMode="HighQuality"
-                               Stretch="Uniform"
-                               MouseWheel="MainImage_MouseWheel"/>
-                    </Canvas>
-                </ScrollViewer>
+            <Border x:Name="imageContainer" Grid.Column="0" Background="{StaticResource CheckerboardBrush}"
+                    MouseWheel="ImageContainer_MouseWheel">
+                <Canvas x:Name="imageCanvas">
+                    <Image x:Name="mainImage" 
+                           RenderOptions.BitmapScalingMode="HighQuality"
+                           Stretch="None"
+                           MouseLeftButtonDown="MainImage_MouseLeftButtonDown"
+                           MouseLeftButtonUp="MainImage_MouseLeftButtonUp"
+                           MouseMove="MainImage_MouseMove"/>
+                </Canvas>
             </Border>
             
             <!-- 通道显示区域 -->
@@ -144,17 +214,13 @@
         </Grid>
         
         <!-- 状态栏 -->
-        <StatusBar Grid.Row="4">
+        <StatusBar Grid.Row="5">
             <StatusBarItem>
                 <TextBlock x:Name="statusText" Text="就绪"/>
             </StatusBarItem>
             <Separator/>
             <StatusBarItem>
                 <TextBlock x:Name="imageInfoText"/>
-            </StatusBarItem>
-            <Separator/>
-            <StatusBarItem>
-                <TextBlock x:Name="zoomText" Text="100%"/>
             </StatusBarItem>
         </StatusBar>
     </Grid>

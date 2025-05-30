@@ -6,7 +6,15 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>ico.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="ico.ico" />
+    <Content Include="res\01.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
   <ItemGroup>
     <!-- 图片格式支持 -->
@@ -17,6 +25,10 @@
     <PackageReference Include="Extended.Wpf.Toolkit" Version="4.6.1" />
     <!-- System.Drawing for some legacy support -->
     <PackageReference Include="System.Drawing.Common" Version="8.0.8" />
+    <!-- Microsoft VisualBasic for InputBox -->
+    <PackageReference Include="Microsoft.VisualBasic" Version="10.3.0" />
+    <!-- GIF动画支持 -->
+    <PackageReference Include="WpfAnimatedGif" Version="2.0.2" />
   </ItemGroup>
 
 </Project>
