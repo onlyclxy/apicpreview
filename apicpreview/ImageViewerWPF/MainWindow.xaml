@@ -1,0 +1,221 @@
+<Window x:Class="ImageViewerWPF.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        Title="高级图片预览器" Height="800" Width="1200"
+        WindowState="Maximized"
+        AllowDrop="True" Drop="Window_Drop" DragOver="Window_DragOver">
+    
+    <Window.Resources>
+        <!-- 透明方格背景画刷 -->
+        <DrawingBrush x:Key="CheckerboardBrush" ViewportUnits="Absolute" Viewport="0,0,20,20" TileMode="Tile">
+            <DrawingBrush.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Brush="LightGray">
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="0,0,10,10"/>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="White">
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="10,10,10,10"/>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="White">
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="0,0,10,10"/>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="LightGray">
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="10,10,10,10"/>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingBrush.Drawing>
+        </DrawingBrush>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 菜单栏 -->
+        <Menu Grid.Row="0">
+            <MenuItem Header="文件(_F)">
+                <MenuItem Header="打开(_O)..." Click="OpenFile_Click" InputGestureText="Ctrl+O"/>
+                <MenuItem Header="另存为(_S)..." Click="SaveAsFile_Click" InputGestureText="Ctrl+S"/>
+                <Separator/>
+                <MenuItem Header="退出(_X)" Click="Exit_Click" InputGestureText="Alt+F4"/>
+            </MenuItem>
+            <MenuItem Header="视图(_V)">
+                <MenuItem Header="放大(_I)" Click="ZoomIn_Click" InputGestureText="Ctrl++"/>
+                <MenuItem Header="缩小(_O)" Click="ZoomOut_Click" InputGestureText="Ctrl+-"/>
+                <MenuItem Header="适应窗口(_F)" Click="FitToWindow_Click" InputGestureText="Ctrl+0"/>
+                <MenuItem Header="实际大小(_A)" Click="ActualSize_Click" InputGestureText="Ctrl+1"/>
+                <Separator/>
+                <MenuItem Header="全屏(_U)" Click="ToggleFullScreen_Click" InputGestureText="F11"/>
+            </MenuItem>
+            <MenuItem Header="工具(_T)">
+                <MenuItem Header="旋转90°(_R)" Click="RotateRight_Click" InputGestureText="Ctrl+R"/>
+                <MenuItem Header="旋转-90°(_L)" Click="RotateLeft_Click" InputGestureText="Ctrl+L"/>
+                <Separator/>
+                <MenuItem Header="显示通道(_C)" IsCheckable="True" x:Name="ShowChannelsMenuItem" 
+                         Checked="ShowChannels_Checked" Unchecked="ShowChannels_Unchecked"/>
+            </MenuItem>
+            <MenuItem Header="帮助(_H)">
+                <MenuItem Header="关于(_A)..." Click="About_Click"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- 主工具栏 -->
+        <ToolBar Grid.Row="1" ToolBarTray.IsLocked="True">
+            <Button Click="OpenFile_Click" ToolTip="打开文件 (Ctrl+O)" Style="{StaticResource ToolBarButtonStyle}">📁</Button>
+            <Button Click="SaveAsFile_Click" ToolTip="另存为 (Ctrl+S)" Style="{StaticResource ToolBarButtonStyle}">💾</Button>
+            <Separator/>
+            <Button Click="PreviousImage_Click" ToolTip="上一张 (←)" Style="{StaticResource ToolBarButtonStyle}">⬅</Button>
+            <Button Click="NextImage_Click" ToolTip="下一张 (→)" Style="{StaticResource ToolBarButtonStyle}">➡</Button>
+            <Separator/>
+            <Button Click="ZoomOut_Click" ToolTip="缩小 (Ctrl+-)" Style="{StaticResource ToolBarButtonStyle}">🔍-</Button>
+            <TextBox x:Name="ZoomTextBox" Width="50" Text="100%" IsReadOnly="True" VerticalAlignment="Center"/>
+            <Button Click="ZoomIn_Click" ToolTip="放大 (Ctrl++)" Style="{StaticResource ToolBarButtonStyle}">🔍+</Button>
+            <Separator/>
+            <Button Click="RotateLeft_Click" ToolTip="逆时针旋转 (Ctrl+L)" Style="{StaticResource ToolBarButtonStyle}">↶</Button>
+            <Button Click="RotateRight_Click" ToolTip="顺时针旋转 (Ctrl+R)" Style="{StaticResource ToolBarButtonStyle}">↷</Button>
+        </ToolBar>
+
+        <!-- 背景控制工具栏 -->
+        <ToolBar Grid.Row="2" ToolBarTray.IsLocked="True">
+            <TextBlock Text="背景:" VerticalAlignment="Center" Margin="5,0"/>
+            
+            <!-- 透明方格背景 -->
+            <Button x:Name="CheckerboardButton" Click="SetCheckerboardBackground_Click" 
+                    ToolTip="透明方格背景" Style="{StaticResource ColorButtonStyle}">
+                <Rectangle Fill="{StaticResource CheckerboardBrush}" Width="20" Height="20"/>
+            </Button>
+            
+            <!-- 纯色背景按钮 -->
+            <Button Click="SetSolidBackground_Click" Tag="White" ToolTip="白色背景" 
+                    Style="{StaticResource ColorButtonStyle}" Background="White"/>
+            <Button Click="SetSolidBackground_Click" Tag="Black" ToolTip="黑色背景" 
+                    Style="{StaticResource ColorButtonStyle}" Background="Black"/>
+            <Button Click="SetSolidBackground_Click" Tag="Gray" ToolTip="中性灰背景" 
+                    Style="{StaticResource ColorButtonStyle}" Background="Gray"/>
+            <Button Click="SetSolidBackground_Click" Tag="LightGray" ToolTip="浅灰背景" 
+                    Style="{StaticResource ColorButtonStyle}" Background="LightGray"/>
+            <Button Click="SetSolidBackground_Click" Tag="DarkGray" ToolTip="深灰背景" 
+                    Style="{StaticResource ColorButtonStyle}" Background="DarkGray"/>
+            
+            <Separator/>
+            
+            <!-- 色相滑块 -->
+            <TextBlock Text="色相:" VerticalAlignment="Center" Margin="5,0,2,0"/>
+            <Slider x:Name="HueSlider" Width="100" Minimum="0" Maximum="360" Value="0" 
+                    ValueChanged="HueSlider_ValueChanged" ToolTip="调整背景色相"/>
+            
+            <!-- 明度滑块 -->
+            <TextBlock Text="明度:" VerticalAlignment="Center" Margin="5,0,2,0"/>
+            <Slider x:Name="LightnessSlider" Width="100" Minimum="0" Maximum="100" Value="50" 
+                    ValueChanged="LightnessSlider_ValueChanged" ToolTip="调整背景明度"/>
+            
+            <Separator/>
+            
+            <!-- 颜色选择器 -->
+            <xctk:ColorPicker x:Name="BackgroundColorPicker" Width="50" 
+                             SelectedColorChanged="BackgroundColorPicker_SelectedColorChanged"
+                             ToolTip="选择自定义背景颜色"/>
+            
+            <!-- 图片背景 -->
+            <Button Click="SelectImageBackground_Click" ToolTip="选择图片背景" 
+                    Style="{StaticResource ToolBarButtonStyle}">🖼</Button>
+            <Button Click="UseDefaultImageBackground_Click" ToolTip="使用默认bg.png" 
+                    Style="{StaticResource ToolBarButtonStyle}">📷</Button>
+            
+            <Separator/>
+            
+            <!-- 透明背景 -->
+            <Button Click="SetTransparentBackground_Click" ToolTip="透明背景" 
+                    Style="{StaticResource ToolBarButtonStyle}">⚪</Button>
+        </ToolBar>
+
+        <!-- 主要显示区域 -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*" x:Name="ChannelColumn"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 主图片显示区域 -->
+            <Border x:Name="ImageBorder" Grid.Column="0" Background="Gray">
+                <ScrollViewer x:Name="ImageScrollViewer" 
+                             HorizontalScrollBarVisibility="Auto" 
+                             VerticalScrollBarVisibility="Auto"
+                             CanContentScroll="True"
+                             PanningMode="Both">
+                    <Canvas x:Name="ImageCanvas">
+                        <Image x:Name="MainImage" Stretch="None" 
+                               MouseLeftButtonDown="Image_MouseLeftButtonDown"
+                               MouseMove="Image_MouseMove"
+                               MouseLeftButtonUp="Image_MouseLeftButtonUp"
+                               MouseWheel="Image_MouseWheel"/>
+                    </Canvas>
+                </ScrollViewer>
+            </Border>
+
+            <!-- 分隔器 -->
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" 
+                         VerticalAlignment="Stretch" Background="DarkGray" 
+                         x:Name="ChannelSplitter" Visibility="Collapsed"/>
+
+            <!-- 通道显示区域 -->
+            <Grid Grid.Column="2" x:Name="ChannelPanel" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <!-- 通道选择 -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5">
+                    <CheckBox x:Name="ShowRedChannel" Content="红色(R)" IsChecked="True" 
+                             Checked="ChannelSelection_Changed" Unchecked="ChannelSelection_Changed"/>
+                    <CheckBox x:Name="ShowGreenChannel" Content="绿色(G)" IsChecked="True" Margin="10,0,0,0"
+                             Checked="ChannelSelection_Changed" Unchecked="ChannelSelection_Changed"/>
+                    <CheckBox x:Name="ShowBlueChannel" Content="蓝色(B)" IsChecked="True" Margin="10,0,0,0"
+                             Checked="ChannelSelection_Changed" Unchecked="ChannelSelection_Changed"/>
+                    <CheckBox x:Name="ShowAlphaChannel" Content="透明(A)" IsChecked="True" Margin="10,0,0,0"
+                             Checked="ChannelSelection_Changed" Unchecked="ChannelSelection_Changed"/>
+                </StackPanel>
+                
+                <!-- 通道图片网格 -->
+                <UniformGrid x:Name="ChannelGrid" Grid.Row="1" Columns="2" Rows="2" Margin="5">
+                    <!-- 这里会动态添加通道图片 -->
+                </UniformGrid>
+            </Grid>
+        </Grid>
+
+        <!-- 状态栏 -->
+        <StatusBar Grid.Row="4">
+            <StatusBarItem>
+                <TextBlock x:Name="StatusText" Text="就绪"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock x:Name="FileInfoText" Text=""/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock x:Name="ImageInfoText" Text=""/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock x:Name="ZoomInfoText" Text="100%"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window> 
