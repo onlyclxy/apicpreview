@@ -35,6 +35,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -59,8 +60,57 @@
             </Grid>
         </Border>
         
+        <!-- 菜单栏 -->
+        <Menu Grid.Row="1" Background="#F8F8F8">
+            <MenuItem Header="文件(_F)">
+                <MenuItem Header="打开(_O)" Click="MenuOpen_Click" InputGestureText="Ctrl+O"/>
+                <MenuItem Header="另存为(_S)" Click="MenuSaveAs_Click" InputGestureText="Ctrl+S"/>
+                <Separator/>
+                <MenuItem Header="打开位置(_L)" Click="MenuOpenLocation_Click"/>
+                <MenuItem Header="搜索图片(_R)" Click="MenuSearch_Click" InputGestureText="Ctrl+F"/>
+                <Separator/>
+                <MenuItem Header="退出(_X)" Click="MenuExit_Click" InputGestureText="Alt+F4"/>
+            </MenuItem>
+            <MenuItem Header="查看(_V)">
+                <MenuItem Header="适应窗口(_F)" Click="MenuFitWindow_Click" InputGestureText="F"/>
+                <MenuItem Header="实际大小(_A)" Click="MenuActualSize_Click" InputGestureText="1"/>
+                <MenuItem Header="居中显示(_C)" Click="MenuCenterImage_Click" InputGestureText="Space"/>
+                <Separator/>
+                <MenuItem Header="全屏(_F)" Click="MenuFullScreen_Click" InputGestureText="F11"/>
+                <MenuItem Header="显示通道(_H)" x:Name="menuShowChannels" IsCheckable="True" Click="MenuShowChannels_Click"/>
+                <Separator/>
+                <MenuItem Header="上一张(_P)" Click="MenuPrevious_Click" InputGestureText="Left"/>
+                <MenuItem Header="下一张(_N)" Click="MenuNext_Click" InputGestureText="Right"/>
+            </MenuItem>
+            <MenuItem Header="图像(_I)">
+                <MenuItem Header="左旋转(_L)" Click="MenuRotateLeft_Click" InputGestureText="Ctrl+L"/>
+                <MenuItem Header="右旋转(_R)" Click="MenuRotateRight_Click" InputGestureText="Ctrl+R"/>
+                <Separator/>
+                <MenuItem Header="放大(_I)" Click="MenuZoomIn_Click" InputGestureText="Ctrl++"/>
+                <MenuItem Header="缩小(_O)" Click="MenuZoomOut_Click" InputGestureText="Ctrl+-"/>
+            </MenuItem>
+            <MenuItem Header="背景(_B)">
+                <MenuItem Header="透明方格(_T)" x:Name="menuBgTransparent" IsCheckable="True" Click="MenuBgTransparent_Click"/>
+                <MenuItem Header="纯色背景(_S)" x:Name="menuBgSolid" IsCheckable="True" Click="MenuBgSolid_Click"/>
+                <MenuItem Header="图片背景(_I)" x:Name="menuBgImage" IsCheckable="True" Click="MenuBgImage_Click"/>
+                <MenuItem Header="窗口透明(_W)" x:Name="menuBgWindowTransparent" IsCheckable="True" Click="MenuBgWindowTransparent_Click"/>
+                <Separator/>
+                <MenuItem Header="选择背景图片(_P)" Click="MenuSelectBgImage_Click"/>
+            </MenuItem>
+            <MenuItem Header="设置(_S)">
+                <MenuItem Header="保存设置(_S)" Click="MenuSaveSettings_Click" InputGestureText="Ctrl+Shift+S"/>
+                <MenuItem Header="还原默认设置(_R)" Click="MenuResetSettings_Click"/>
+                <Separator/>
+                <MenuItem Header="展开背景设置面板(_E)" x:Name="menuExpandBgPanel" IsCheckable="True" Click="MenuExpandBgPanel_Click"/>
+            </MenuItem>
+            <MenuItem Header="帮助(_H)">
+                <MenuItem Header="关于PicView(_A)" Click="MenuAbout_Click"/>
+                <MenuItem Header="快捷键帮助(_K)" Click="MenuKeyboardHelp_Click"/>
+            </MenuItem>
+        </Menu>
+        
         <!-- 主工具栏 -->
-        <ToolBar Grid.Row="1" Height="40">
+        <ToolBar Grid.Row="2" Height="40">
             <Button x:Name="btnOpen" Content="打开" Click="BtnOpen_Click" Padding="10,5"/>
             <Separator/>
             <Button x:Name="btnPrevious" Content="◀" Click="BtnPrevious_Click" Padding="10,5" ToolTip="上一张 (Left)"/>
@@ -100,7 +150,7 @@
         </ToolBar>
         
         <!-- Everything 搜索栏 -->
-        <Grid Grid.Row="2" x:Name="searchPanel" Visibility="Collapsed" Background="#F0F0F0" Height="40">
+        <Grid Grid.Row="3" x:Name="searchPanel" Visibility="Collapsed" Background="#F0F0F0" Height="40">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
@@ -112,7 +162,7 @@
         </Grid>
         
         <!-- 背景控制工具栏 -->
-        <Expander Grid.Row="3" Header="背景设置" IsExpanded="True">
+        <Expander Grid.Row="4" Header="背景设置" IsExpanded="True" x:Name="backgroundExpander">
             <StackPanel Orientation="Horizontal" Height="86" Background="#F8F8F8">
                 <!-- 背景类型选择 -->
                 <GroupBox Header="背景类型" Margin="5">
@@ -180,7 +230,7 @@
         </Expander>
         
         <!-- 主显示区域 -->
-        <Grid Grid.Row="4">
+        <Grid Grid.Row="5">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto" x:Name="channelColumn"/>
@@ -214,7 +264,7 @@
         </Grid>
         
         <!-- 状态栏 -->
-        <StatusBar Grid.Row="5">
+        <StatusBar Grid.Row="6">
             <StatusBarItem>
                 <TextBlock x:Name="statusText" Text="就绪"/>
             </StatusBarItem>

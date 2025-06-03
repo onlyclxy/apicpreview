@@ -35,7 +35,7 @@ namespace PicView
         private double currentZoom = 1.0;
         private Transform currentTransform = Transform.Identity;
         private bool showChannels = false;
-        private SolidColorBrush currentBackgroundBrush = new SolidColorBrush(Colors.White);
+        private SolidColorBrush currentBackgroundBrush = new SolidColorBrush(Colors.Gray); // 默认中性灰
         private ImageBrush? backgroundImageBrush;
         private EverythingSearch? everythingSearch;
 
@@ -51,15 +51,24 @@ namespace PicView
         private bool isWindowInitialized = false;
         private Size lastWindowSize;
 
+        // 设置管理
+        private AppSettings appSettings;
+        private bool isLoadingSettings = false;
+
         public MainWindow()
         {
             InitializeComponent();
+            
+            // 加载设置
+            LoadAppSettings();
+            
             InitializeBackgroundSettings();
             UpdateZoomText();
             
             // 监听窗口大小变化
             this.SizeChanged += MainWindow_SizeChanged;
             this.Loaded += MainWindow_Loaded;
+            this.Closing += MainWindow_Closing;
             
             // 初始化Everything搜索（如果失败也不影响其他功能）
             try
@@ -81,8 +90,21 @@ namespace PicView
 
         private void InitializeBackgroundSettings()
         {
+            // 设置默认纯色为中性灰
+            currentBackgroundBrush = new SolidColorBrush(Color.FromRgb(128, 128, 128)); // #808080
+            
+            // 设置默认背景类型为透明方格
             if (rbTransparent != null)
                 rbTransparent.IsChecked = true;
+                
+            // 设置颜色滑块默认值（中性灰）
+            if (sliderHue != null)
+                sliderHue.Value = 0;
+            if (sliderSaturation != null)
+                sliderSaturation.Value = 0;
+            if (sliderBrightness != null)
+                sliderBrightness.Value = 50;
+            
             UpdateBackground();
         }
 
@@ -262,11 +284,53 @@ namespace PicView
                     NavigateNext();
                     break;
                 case Key.F:
-                    WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+                    if (e.KeyboardDevice.Modifiers == ModifierKeys.None)
+                        FitToWindow();
+                    else if (e.KeyboardDevice.Modifiers == ModifierKeys.Control)
+                        BtnSearch_Click(sender, e);
+                    break;
+                case Key.D1:
+                    if (e.KeyboardDevice.Modifiers == ModifierKeys.None)
+                        SetActualSize();
+                    break;
+                case Key.Space:
+                    if (e.KeyboardDevice.Modifiers == ModifierKeys.None)
+                        CenterImage();
+                    break;
+                case Key.F11:
+                    MenuFullScreen_Click(sender, e);
                     break;
                 case Key.Escape:
                     if (WindowState == WindowState.Maximized)
                         WindowState = WindowState.Normal;
+                    break;
+                case Key.O:
+                    if (e.KeyboardDevice.Modifiers == ModifierKeys.Control)
+                        BtnOpen_Click(sender, e);
+                    break;
+                case Key.S:
+                    if (e.KeyboardDevice.Modifiers == ModifierKeys.Control)
+                        BtnSaveAs_Click(sender, e);
+                    else if (e.KeyboardDevice.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
+                        SaveAppSettings();
+                    break;
+                case Key.L:
+                    if (e.KeyboardDevice.Modifiers == ModifierKeys.Control)
+                        RotateImage(-90);
+                    break;
+                case Key.R:
+                    if (e.KeyboardDevice.Modifiers == ModifierKeys.Control)
+                        RotateImage(90);
+                    break;
+                case Key.OemPlus:
+                case Key.Add:
+                    if (e.KeyboardDevice.Modifiers == ModifierKeys.Control)
+                        ZoomImage(1.2);
+                    break;
+                case Key.OemMinus:
+                case Key.Subtract:
+                    if (e.KeyboardDevice.Modifiers == ModifierKeys.Control)
+                        ZoomImage(0.8);
                     break;
             }
         }
@@ -316,21 +380,25 @@ namespace PicView
 
         private void BtnPrevious_Click(object sender, RoutedEventArgs e)
         {
+            RecordToolUsage("Previous");
             NavigatePrevious();
         }
 
         private void BtnNext_Click(object sender, RoutedEventArgs e)
         {
+            RecordToolUsage("Next");
             NavigateNext();
         }
 
         private void BtnRotateLeft_Click(object sender, RoutedEventArgs e)
         {
+            RecordToolUsage("RotateLeft");
             RotateImage(-90);
         }
 
         private void BtnRotateRight_Click(object sender, RoutedEventArgs e)
         {
+            RecordToolUsage("RotateRight");
             RotateImage(90);
         }
 
@@ -354,6 +422,7 @@ namespace PicView
 
         private void BtnSearch_Click(object sender, RoutedEventArgs e)
         {
+            RecordToolUsage("Search");
             if (searchPanel != null && txtSearch != null)
             {
                 searchPanel.Visibility = searchPanel.Visibility == Visibility.Visible ? 
@@ -382,6 +451,7 @@ namespace PicView
 
         private void ChkShowChannels_Checked(object sender, RoutedEventArgs e)
         {
+            RecordToolUsage("ShowChannels");
             showChannels = true;
             if (channelPanel != null && channelSplitter != null && channelColumn != null)
             {
@@ -394,10 +464,15 @@ namespace PicView
             {
                 LoadImageChannels(currentImagePath);
             }
+            
+            // 同步菜单状态
+            if (menuShowChannels != null)
+                menuShowChannels.IsChecked = true;
         }
 
         private void ChkShowChannels_Unchecked(object sender, RoutedEventArgs e)
         {
+            RecordToolUsage("HideChannels");
             showChannels = false;
             if (channelPanel != null && channelSplitter != null && channelColumn != null && channelStackPanel != null)
             {
@@ -406,10 +481,28 @@ namespace PicView
                 channelColumn.Width = new GridLength(0);
                 channelStackPanel.Children.Clear();
             }
+            
+            // 同步菜单状态
+            if (menuShowChannels != null)
+                menuShowChannels.IsChecked = false;
         }
 
         private void BackgroundType_Changed(object sender, RoutedEventArgs e)
         {
+            if (sender is RadioButton rb)
+            {
+                string backgroundType = "";
+                if (rb == rbTransparent) backgroundType = "Transparent";
+                else if (rb == rbSolidColor) backgroundType = "SolidColor";
+                else if (rb == rbImageBackground) backgroundType = "ImageBackground";
+                else if (rb == rbWindowTransparent) backgroundType = "WindowTransparent";
+                
+                if (!string.IsNullOrEmpty(backgroundType))
+                {
+                    RecordToolUsage($"Background{backgroundType}");
+                }
+            }
+            
             // 如果切换到图片背景，但还没有设置背景图片，则加载默认图片
             if (rbImageBackground?.IsChecked == true && backgroundImageBrush == null)
             {
@@ -497,6 +590,8 @@ namespace PicView
         {
             if (sender is Button button && button.Tag is string colorString)
             {
+                RecordToolUsage("PresetColor");
+                
                 if (rbSolidColor != null)
                     rbSolidColor.IsChecked = true;
                 
@@ -1457,26 +1552,31 @@ namespace PicView
 
         private void BtnZoomIn_Click(object sender, RoutedEventArgs e)
         {
+            RecordToolUsage("ZoomIn");
             ZoomImage(1.2);
         }
 
         private void BtnZoomOut_Click(object sender, RoutedEventArgs e)
         {
+            RecordToolUsage("ZoomOut");
             ZoomImage(0.8);
         }
 
         private void BtnFitWindow_Click(object sender, RoutedEventArgs e)
         {
+            RecordToolUsage("FitWindow");
             FitToWindow();
         }
 
         private void BtnActualSize_Click(object sender, RoutedEventArgs e)
         {
+            RecordToolUsage("ActualSize");
             SetActualSize();
         }
 
         private void BtnCenterImage_Click(object sender, RoutedEventArgs e)
         {
+            RecordToolUsage("CenterImage");
             CenterImage();
         }
 
@@ -1853,5 +1953,716 @@ namespace PicView
         }
 
         #endregion
+
+        private void LoadAppSettings()
+        {
+            try
+            {
+                isLoadingSettings = true;
+                appSettings = SettingsManager.LoadSettings();
+                
+                // 应用窗口设置
+                if (appSettings.WindowWidth > 0 && appSettings.WindowHeight > 0)
+                {
+                    this.Width = appSettings.WindowWidth;
+                    this.Height = appSettings.WindowHeight;
+                }
+                
+                if (appSettings.WindowLeft > 0 && appSettings.WindowTop > 0)
+                {
+                    this.Left = appSettings.WindowLeft;
+                    this.Top = appSettings.WindowTop;
+                }
+                
+                if (appSettings.IsMaximized)
+                    this.WindowState = WindowState.Maximized;
+                
+                // 延迟恢复控件状态，确保所有控件都已初始化
+                this.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    // 先恢复非背景控件状态
+                    SettingsManager.RestoreControlStates(this, appSettings);
+                    
+                    // 特殊处理背景设置 - 按正确的优先级顺序
+                    RestoreBackgroundSettingsWithPriority();
+                    
+                    // 恢复图像查看状态
+                    if (appSettings.LastZoomLevel > 0)
+                    {
+                        currentZoom = appSettings.LastZoomLevel;
+                        UpdateZoomText();
+                    }
+                    
+                    if (appSettings.RememberImagePosition)
+                    {
+                        imagePosition.X = appSettings.LastImageX;
+                        imagePosition.Y = appSettings.LastImageY;
+                    }
+                    
+                    // 恢复打开方式应用
+                    openWithApps.Clear();
+                    foreach (var appData in appSettings.OpenWithApps)
+                    {
+                        openWithApps.Add(new OpenWithApp
+                        {
+                            Name = appData.Name,
+                            ExecutablePath = appData.ExecutablePath,
+                            Arguments = appData.Arguments
+                        });
+                    }
+                    UpdateOpenWithButtons();
+                    UpdateOpenWithMenu();
+                    
+                    isLoadingSettings = false;
+                    
+                    if (statusText != null)
+                        statusText.Text = $"设置已加载 - 控件状态: {appSettings.ControlStates.Count} 项";
+                        
+                }), System.Windows.Threading.DispatcherPriority.Loaded);
+            }
+            catch (Exception ex)
+            {
+                isLoadingSettings = false;
+                appSettings = new AppSettings();
+                if (statusText != null)
+                    statusText.Text = $"加载设置失败，使用默认设置: {ex.Message}";
+            }
+        }
+
+        // 按正确优先级恢复背景设置
+        private void RestoreBackgroundSettingsWithPriority()
+        {
+            try
+            {
+                // 第一步：恢复背景图片路径（如果有的话）
+                if (!string.IsNullOrEmpty(appSettings.BackgroundImagePath) && File.Exists(appSettings.BackgroundImagePath))
+                {
+                    LoadBackgroundImageFromPath(appSettings.BackgroundImagePath);
+                }
+
+                // 第二步：恢复颜色值（禁用事件处理器以防止自动切换背景类型）
+                RestoreColorValues();
+
+                // 第三步：根据颜色值更新派生控件
+                UpdateDerivedColorControls();
+
+                // 第四步：最后恢复背景类型选择（这是最高优先级）
+                RestoreBackgroundType();
+
+                // 第五步：应用最终的背景设置
+                UpdateBackground();
+            }
+            catch (Exception ex)
+            {
+                if (statusText != null)
+                    statusText.Text = $"恢复背景设置失败: {ex.Message}";
+            }
+        }
+
+        // 恢复颜色值（不触发事件）
+        private void RestoreColorValues()
+        {
+            // 临时移除事件处理器
+            if (sliderHue != null)
+            {
+                sliderHue.ValueChanged -= ColorSlider_ValueChanged;
+                if (appSettings.ControlStates.ContainsKey("sliderHue") && 
+                    appSettings.ControlStates["sliderHue"].ContainsKey("Value"))
+                {
+                    var value = Convert.ToDouble(appSettings.ControlStates["sliderHue"]["Value"]);
+                    sliderHue.Value = value;
+                }
+                sliderHue.ValueChanged += ColorSlider_ValueChanged;
+            }
+
+            if (sliderSaturation != null)
+            {
+                sliderSaturation.ValueChanged -= ColorSlider_ValueChanged;
+                if (appSettings.ControlStates.ContainsKey("sliderSaturation") && 
+                    appSettings.ControlStates["sliderSaturation"].ContainsKey("Value"))
+                {
+                    var value = Convert.ToDouble(appSettings.ControlStates["sliderSaturation"]["Value"]);
+                    sliderSaturation.Value = value;
+                }
+                sliderSaturation.ValueChanged += ColorSlider_ValueChanged;
+            }
+
+            if (sliderBrightness != null)
+            {
+                sliderBrightness.ValueChanged -= ColorSlider_ValueChanged;
+                if (appSettings.ControlStates.ContainsKey("sliderBrightness") && 
+                    appSettings.ControlStates["sliderBrightness"].ContainsKey("Value"))
+                {
+                    var value = Convert.ToDouble(appSettings.ControlStates["sliderBrightness"]["Value"]);
+                    sliderBrightness.Value = value;
+                }
+                sliderBrightness.ValueChanged += ColorSlider_ValueChanged;
+            }
+
+            // 根据HSV值重建当前背景画刷
+            if (sliderHue != null && sliderSaturation != null && sliderBrightness != null)
+            {
+                double hue = sliderHue.Value;
+                double saturation = sliderSaturation.Value / 100.0;
+                double brightness = sliderBrightness.Value / 100.0;
+                
+                Color color = HsvToRgb(hue, saturation, brightness);
+                currentBackgroundBrush = new SolidColorBrush(color);
+            }
+        }
+
+        // 更新派生颜色控件
+        private void UpdateDerivedColorControls()
+        {
+            if (sliderHue != null && sliderSaturation != null && sliderBrightness != null)
+            {
+                double hue = sliderHue.Value;
+
+                // 更新快速选色滑块
+                if (sliderColorSpectrum != null)
+                {
+                    sliderColorSpectrum.ValueChanged -= ColorSpectrum_ValueChanged;
+                    if (appSettings.ControlStates.ContainsKey("sliderColorSpectrum") && 
+                        appSettings.ControlStates["sliderColorSpectrum"].ContainsKey("Value"))
+                    {
+                        var value = Convert.ToDouble(appSettings.ControlStates["sliderColorSpectrum"]["Value"]);
+                        sliderColorSpectrum.Value = value;
+                    }
+                    else
+                    {
+                        sliderColorSpectrum.Value = hue;
+                    }
+                    sliderColorSpectrum.ValueChanged += ColorSpectrum_ValueChanged;
+                }
+
+                // 更新颜色选择器
+                if (colorPicker != null)
+                {
+                    colorPicker.SelectedColorChanged -= ColorPicker_SelectedColorChanged;
+                    if (appSettings.ControlStates.ContainsKey("colorPicker") && 
+                        appSettings.ControlStates["colorPicker"].ContainsKey("SelectedColor"))
+                    {
+                        var colorString = appSettings.ControlStates["colorPicker"]["SelectedColor"].ToString();
+                        if (!string.IsNullOrEmpty(colorString))
+                        {
+                            try
+                            {
+                                var color = (Color)ColorConverter.ConvertFromString(colorString);
+                                colorPicker.SelectedColor = color;
+                            }
+                            catch { }
+                        }
+                    }
+                    else
+                    {
+                        // 如果没有保存的颜色选择器值，使用当前HSV值
+                        double saturation = sliderSaturation.Value / 100.0;
+                        double brightness = sliderBrightness.Value / 100.0;
+                        Color color = HsvToRgb(hue, saturation, brightness);
+                        colorPicker.SelectedColor = color;
+                    }
+                    colorPicker.SelectedColorChanged += ColorPicker_SelectedColorChanged;
+                }
+            }
+        }
+
+        // 恢复背景类型（最后执行，覆盖之前的任何自动切换）
+        private void RestoreBackgroundType()
+        {
+            // 临时移除事件处理器以防止触发更新
+            if (rbTransparent != null) rbTransparent.Checked -= BackgroundType_Changed;
+            if (rbSolidColor != null) rbSolidColor.Checked -= BackgroundType_Changed;
+            if (rbImageBackground != null) rbImageBackground.Checked -= BackgroundType_Changed;
+            if (rbWindowTransparent != null) rbWindowTransparent.Checked -= BackgroundType_Changed;
+
+            // 恢复RadioButton状态
+            if (appSettings.ControlStates.ContainsKey("rbTransparent"))
+            {
+                var isChecked = Convert.ToBoolean(appSettings.ControlStates["rbTransparent"]["IsChecked"]);
+                if (rbTransparent != null) rbTransparent.IsChecked = isChecked;
+            }
+            if (appSettings.ControlStates.ContainsKey("rbSolidColor"))
+            {
+                var isChecked = Convert.ToBoolean(appSettings.ControlStates["rbSolidColor"]["IsChecked"]);
+                if (rbSolidColor != null) rbSolidColor.IsChecked = isChecked;
+            }
+            if (appSettings.ControlStates.ContainsKey("rbImageBackground"))
+            {
+                var isChecked = Convert.ToBoolean(appSettings.ControlStates["rbImageBackground"]["IsChecked"]);
+                if (rbImageBackground != null) rbImageBackground.IsChecked = isChecked;
+            }
+            if (appSettings.ControlStates.ContainsKey("rbWindowTransparent"))
+            {
+                var isChecked = Convert.ToBoolean(appSettings.ControlStates["rbWindowTransparent"]["IsChecked"]);
+                if (rbWindowTransparent != null) rbWindowTransparent.IsChecked = isChecked;
+            }
+
+            // 恢复事件处理器
+            if (rbTransparent != null) rbTransparent.Checked += BackgroundType_Changed;
+            if (rbSolidColor != null) rbSolidColor.Checked += BackgroundType_Changed;
+            if (rbImageBackground != null) rbImageBackground.Checked += BackgroundType_Changed;
+            if (rbWindowTransparent != null) rbWindowTransparent.Checked += BackgroundType_Changed;
+        }
+
+        private void ApplyBackgroundSettings()
+        {
+            // 解析背景颜色
+            try
+            {
+                var converter = new BrushConverter();
+                if (converter.ConvertFromString(appSettings.BackgroundColor) is SolidColorBrush brush)
+                {
+                    currentBackgroundBrush = brush;
+                }
+            }
+            catch
+            {
+                currentBackgroundBrush = new SolidColorBrush(Colors.Gray);
+            }
+
+            // 设置滑块值
+            if (sliderHue != null)
+                sliderHue.Value = appSettings.BackgroundHue;
+            if (sliderSaturation != null)
+                sliderSaturation.Value = appSettings.BackgroundSaturation;
+            if (sliderBrightness != null)
+                sliderBrightness.Value = appSettings.BackgroundBrightness;
+
+            // 记录最后使用的背景预设
+            if (!string.IsNullOrEmpty(appSettings.LastBackgroundPreset))
+            {
+                // 根据预设名称恢复背景
+                switch (appSettings.LastBackgroundPreset)
+                {
+                    case "White":
+                        currentBackgroundBrush = new SolidColorBrush(Colors.White);
+                        break;
+                    case "Black":
+                        currentBackgroundBrush = new SolidColorBrush(Colors.Black);
+                        break;
+                    case "#808080":
+                        currentBackgroundBrush = new SolidColorBrush(Color.FromRgb(128, 128, 128));
+                        break;
+                    case "#C0C0C0":
+                        currentBackgroundBrush = new SolidColorBrush(Color.FromRgb(192, 192, 192));
+                        break;
+                    case "#404040":
+                        currentBackgroundBrush = new SolidColorBrush(Color.FromRgb(64, 64, 64));
+                        break;
+                }
+            }
+
+            // 设置背景类型
+            switch (appSettings.BackgroundType)
+            {
+                case "Transparent":
+                    if (rbTransparent != null) rbTransparent.IsChecked = true;
+                    break;
+                case "SolidColor":
+                    if (rbSolidColor != null) rbSolidColor.IsChecked = true;
+                    break;
+                case "Image":
+                    if (rbImageBackground != null) rbImageBackground.IsChecked = true;
+                    if (!string.IsNullOrEmpty(appSettings.BackgroundImagePath) && File.Exists(appSettings.BackgroundImagePath))
+                    {
+                        LoadBackgroundImageFromPath(appSettings.BackgroundImagePath);
+                    }
+                    break;
+                case "WindowTransparent":
+                    if (rbWindowTransparent != null) rbWindowTransparent.IsChecked = true;
+                    break;
+            }
+            
+            // 应用背景更新
+            UpdateBackground();
+        }
+
+        private void ApplyUISettings()
+        {
+            // 设置通道显示状态
+            if (chkShowChannels != null)
+                chkShowChannels.IsChecked = appSettings.ShowChannels;
+            if (menuShowChannels != null)
+                menuShowChannels.IsChecked = appSettings.ShowChannels;
+            showChannels = appSettings.ShowChannels;
+            
+            // 根据showChannels状态显示或隐藏通道面板
+            if (showChannels)
+            {
+                if (channelPanel != null) channelPanel.Visibility = Visibility.Visible;
+                if (channelSplitter != null) channelSplitter.Visibility = Visibility.Visible;
+                if (channelColumn != null) channelColumn.Width = new GridLength(300);
+            }
+            else
+            {
+                if (channelPanel != null) channelPanel.Visibility = Visibility.Collapsed;
+                if (channelSplitter != null) channelSplitter.Visibility = Visibility.Collapsed;
+                if (channelColumn != null) channelColumn.Width = new GridLength(0);
+            }
+
+            // 设置背景面板展开状态
+            var bgExpander = this.FindName("backgroundExpander") as Expander;
+            if (bgExpander != null)
+                bgExpander.IsExpanded = appSettings.BackgroundPanelExpanded;
+            if (menuExpandBgPanel != null)
+                menuExpandBgPanel.IsChecked = appSettings.BackgroundPanelExpanded;
+
+            // 设置搜索面板可见性
+            if (searchPanel != null)
+                searchPanel.Visibility = appSettings.SearchPanelVisible ? Visibility.Visible : Visibility.Collapsed;
+
+            // 从设置中恢复打开方式应用
+            openWithApps.Clear();
+            foreach (var appData in appSettings.OpenWithApps)
+            {
+                openWithApps.Add(new OpenWithApp
+                {
+                    Name = appData.Name,
+                    ExecutablePath = appData.ExecutablePath,
+                    Arguments = appData.Arguments
+                });
+            }
+            UpdateOpenWithButtons();
+            UpdateOpenWithMenu();
+
+            // 恢复图像查看设置
+            if (appSettings.LastZoomLevel > 0)
+            {
+                currentZoom = appSettings.LastZoomLevel;
+                UpdateZoomText();
+            }
+
+            // 恢复图像位置
+            if (appSettings.RememberImagePosition)
+            {
+                imagePosition.X = appSettings.LastImageX;
+                imagePosition.Y = appSettings.LastImageY;
+            }
+        }
+
+        private void LoadBackgroundImageFromPath(string imagePath)
+        {
+            try
+            {
+                if (File.Exists(imagePath))
+                {
+                    BitmapImage bgImage = new BitmapImage();
+                    bgImage.BeginInit();
+                    bgImage.UriSource = new Uri(imagePath);
+                    bgImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bgImage.EndInit();
+                    bgImage.Freeze();
+                    
+                    backgroundImageBrush = new ImageBrush(bgImage)
+                    {
+                        Stretch = Stretch.UniformToFill,
+                        TileMode = TileMode.Tile,
+                        Opacity = 0.3
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                if (statusText != null)
+                    statusText.Text = $"加载背景图片失败: {ex.Message}";
+            }
+        }
+
+        private void SaveAppSettings()
+        {
+            if (isLoadingSettings || appSettings == null) return;
+
+            try
+            {
+                // 保存窗口状态
+                if (this.WindowState == WindowState.Normal)
+                {
+                    appSettings.WindowWidth = this.Width;
+                    appSettings.WindowHeight = this.Height;
+                    appSettings.WindowLeft = this.Left;
+                    appSettings.WindowTop = this.Top;
+                }
+                appSettings.IsMaximized = this.WindowState == WindowState.Maximized;
+
+                // 保存图像查看状态
+                appSettings.LastZoomLevel = currentZoom;
+                if (appSettings.RememberImagePosition)
+                {
+                    appSettings.LastImageX = imagePosition.X;
+                    appSettings.LastImageY = imagePosition.Y;
+                }
+
+                // 保存当前文件到最近文件列表
+                if (!string.IsNullOrEmpty(currentImagePath))
+                {
+                    SettingsManager.AddRecentFile(appSettings, currentImagePath);
+                }
+
+                // 保存打开方式应用
+                appSettings.OpenWithApps.Clear();
+                foreach (var app in openWithApps)
+                {
+                    appSettings.OpenWithApps.Add(new OpenWithAppData
+                    {
+                        Name = app.Name,
+                        ExecutablePath = app.ExecutablePath,
+                        Arguments = app.Arguments
+                    });
+                }
+
+                // 统一保存所有控件状态 - 这是新的核心功能
+                SettingsManager.SaveControlStates(this, appSettings);
+
+                // 保存设置到文件
+                SettingsManager.SaveSettings(appSettings);
+                
+                if (statusText != null)
+                    statusText.Text = $"设置已保存 - 控件状态: {appSettings.ControlStates.Count} 项";
+            }
+            catch (Exception ex)
+            {
+                if (statusText != null)
+                    statusText.Text = $"保存设置失败: {ex.Message}";
+            }
+        }
+
+        private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            SaveAppSettings();
+        }
+
+        #region 菜单事件处理
+
+        private void MenuOpen_Click(object sender, RoutedEventArgs e)
+        {
+            BtnOpen_Click(sender, e);
+        }
+
+        private void MenuSaveAs_Click(object sender, RoutedEventArgs e)
+        {
+            BtnSaveAs_Click(sender, e);
+        }
+
+        private void MenuOpenLocation_Click(object sender, RoutedEventArgs e)
+        {
+            BtnOpenLocation_Click(sender, e);
+        }
+
+        private void MenuSearch_Click(object sender, RoutedEventArgs e)
+        {
+            BtnSearch_Click(sender, e);
+        }
+
+        private void MenuExit_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
+
+        private void MenuFitWindow_Click(object sender, RoutedEventArgs e)
+        {
+            BtnFitWindow_Click(sender, e);
+        }
+
+        private void MenuActualSize_Click(object sender, RoutedEventArgs e)
+        {
+            BtnActualSize_Click(sender, e);
+        }
+
+        private void MenuCenterImage_Click(object sender, RoutedEventArgs e)
+        {
+            BtnCenterImage_Click(sender, e);
+        }
+
+        private void MenuFullScreen_Click(object sender, RoutedEventArgs e)
+        {
+            if (this.WindowState == WindowState.Maximized && this.WindowStyle == WindowStyle.None)
+            {
+                // 退出全屏
+                this.WindowState = WindowState.Normal;
+                this.WindowStyle = WindowStyle.None; // 保持无边框
+            }
+            else
+            {
+                // 进入全屏
+                this.WindowState = WindowState.Maximized;
+                this.WindowStyle = WindowStyle.None;
+            }
+        }
+
+        private void MenuShowChannels_Click(object sender, RoutedEventArgs e)
+        {
+            if (chkShowChannels != null)
+                chkShowChannels.IsChecked = menuShowChannels?.IsChecked ?? false;
+        }
+
+        private void MenuPrevious_Click(object sender, RoutedEventArgs e)
+        {
+            BtnPrevious_Click(sender, e);
+        }
+
+        private void MenuNext_Click(object sender, RoutedEventArgs e)
+        {
+            BtnNext_Click(sender, e);
+        }
+
+        private void MenuRotateLeft_Click(object sender, RoutedEventArgs e)
+        {
+            BtnRotateLeft_Click(sender, e);
+        }
+
+        private void MenuRotateRight_Click(object sender, RoutedEventArgs e)
+        {
+            BtnRotateRight_Click(sender, e);
+        }
+
+        private void MenuZoomIn_Click(object sender, RoutedEventArgs e)
+        {
+            BtnZoomIn_Click(sender, e);
+        }
+
+        private void MenuZoomOut_Click(object sender, RoutedEventArgs e)
+        {
+            BtnZoomOut_Click(sender, e);
+        }
+
+        private void MenuBgTransparent_Click(object sender, RoutedEventArgs e)
+        {
+            if (rbTransparent != null)
+                rbTransparent.IsChecked = true;
+            UpdateMenuBackgroundStates();
+        }
+
+        private void MenuBgSolid_Click(object sender, RoutedEventArgs e)
+        {
+            if (rbSolidColor != null)
+                rbSolidColor.IsChecked = true;
+            UpdateMenuBackgroundStates();
+        }
+
+        private void MenuBgImage_Click(object sender, RoutedEventArgs e)
+        {
+            if (rbImageBackground != null)
+                rbImageBackground.IsChecked = true;
+            UpdateMenuBackgroundStates();
+        }
+
+        private void MenuBgWindowTransparent_Click(object sender, RoutedEventArgs e)
+        {
+            if (rbWindowTransparent != null)
+                rbWindowTransparent.IsChecked = true;
+            UpdateMenuBackgroundStates();
+        }
+
+        private void MenuSelectBgImage_Click(object sender, RoutedEventArgs e)
+        {
+            BtnSelectBackgroundImage_Click(sender, e);
+        }
+
+        private void MenuSaveSettings_Click(object sender, RoutedEventArgs e)
+        {
+            SaveAppSettings();
+            if (statusText != null)
+                statusText.Text = "设置已手动保存";
+        }
+
+        private void MenuResetSettings_Click(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show("确定要还原到默认设置吗？这将清除所有自定义设置。", "还原设置", 
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+            
+            if (result == MessageBoxResult.Yes)
+            {
+                SettingsManager.ResetToDefault();
+                appSettings = new AppSettings();
+                
+                // 重新应用默认设置
+                ApplyBackgroundSettings();
+                ApplyUISettings();
+                
+                if (statusText != null)
+                    statusText.Text = "设置已还原到默认状态";
+            }
+        }
+
+        private void MenuExpandBgPanel_Click(object sender, RoutedEventArgs e)
+        {
+            var bgExpander = this.FindName("backgroundExpander") as Expander;
+            if (bgExpander != null)
+            {
+                bgExpander.IsExpanded = menuExpandBgPanel?.IsChecked ?? true;
+                SaveAppSettings();
+            }
+        }
+
+        private void MenuAbout_Click(object sender, RoutedEventArgs e)
+        {
+            string controlTest = SettingsManager.TestControlSaving(this);
+            
+            MessageBox.Show("PicView - Advanced Image Viewer\n\n" +
+                "版本: 1.0.0\n" +
+                "一个功能强大的图片查看器\n\n" +
+                "功能特色:\n" +
+                "• 支持多种图片格式\n" +
+                "• GIF动画播放\n" +
+                "• RGB/Alpha通道显示\n" +
+                "• 自定义背景设置\n" +
+                "• 命令行参数支持\n" +
+                "• 设置自动保存\n\n" +
+                "控件状态测试:\n" + controlTest, 
+                "关于PicView", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void MenuKeyboardHelp_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("快捷键帮助:\n\n" +
+                "文件操作:\n" +
+                "Ctrl+O - 打开文件\n" +
+                "Ctrl+S - 另存为\n" +
+                "Ctrl+F - 搜索图片\n\n" +
+                "图片浏览:\n" +
+                "Left/Right - 上一张/下一张\n" +
+                "F - 适应窗口\n" +
+                "1 - 实际大小\n" +
+                "Space - 居中显示\n" +
+                "F11 - 全屏\n\n" +
+                "图片操作:\n" +
+                "Ctrl+L - 左旋转\n" +
+                "Ctrl+R - 右旋转\n" +
+                "Ctrl++ - 放大\n" +
+                "Ctrl+- - 缩小\n\n" +
+                "设置:\n" +
+                "Ctrl+Shift+S - 保存设置\n" +
+                "Alt+F4 - 退出", 
+                "快捷键帮助", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void UpdateMenuBackgroundStates()
+        {
+            if (menuBgTransparent != null)
+                menuBgTransparent.IsChecked = rbTransparent?.IsChecked ?? false;
+            if (menuBgSolid != null)
+                menuBgSolid.IsChecked = rbSolidColor?.IsChecked ?? false;
+            if (menuBgImage != null)
+                menuBgImage.IsChecked = rbImageBackground?.IsChecked ?? false;
+            if (menuBgWindowTransparent != null)
+                menuBgWindowTransparent.IsChecked = rbWindowTransparent?.IsChecked ?? false;
+        }
+
+        #endregion
+
+        // 添加工具使用记录方法
+        private void RecordToolUsage(string toolName)
+        {
+            if (appSettings != null && !string.IsNullOrEmpty(toolName))
+            {
+                SettingsManager.AddRecentTool(appSettings, toolName);
+                
+                // 如果启用自动保存，立即保存设置
+                if (appSettings.AutoSaveSettings)
+                {
+                    SaveAppSettings();
+                }
+            }
+        }
     }
 } 
