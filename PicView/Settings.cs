@@ -64,6 +64,13 @@ namespace PicView
         public string LastSearchQuery { get; set; } = "";
         public bool RememberLastSearch { get; set; } = true;
         
+        // 序列帧播放设置
+        public bool SequencePlayerExpanded { get; set; } = false;
+        public int LastGridWidth { get; set; } = 3;
+        public int LastGridHeight { get; set; } = 3;
+        public int LastSequenceFPS { get; set; } = 10;
+        public string LastGridPreset { get; set; } = "3×3";
+        
         // 控件状态字典 - 存储所有控件的状态
         public Dictionary<string, Dictionary<string, object?>> ControlStates { get; set; } = new();
     }
@@ -73,6 +80,8 @@ namespace PicView
         public string Name { get; set; } = "";
         public string ExecutablePath { get; set; } = "";
         public string Arguments { get; set; } = "\"{0}\"";
+        public bool ShowText { get; set; } = true;
+        public string IconPath { get; set; } = "";
     }
 
     public static class SettingsManager
@@ -88,12 +97,19 @@ namespace PicView
             
             // 面板状态
             ["backgroundExpander"] = new() { "IsExpanded" },
+            ["sequenceExpander"] = new() { "IsExpanded" },
             ["searchPanel"] = new() { "Visibility" },
             ["channelPanel"] = new() { "Visibility" },
             ["channelColumn"] = new() { "Width" },
             
             // 搜索框
             ["txtSearch"] = new() { "Text" },
+            
+            // 序列帧控件
+            ["txtGridWidth"] = new() { "Text" },
+            ["txtGridHeight"] = new() { "Text" },
+            ["txtFPS"] = new() { "Text" },
+            ["cbGridPresets"] = new() { "SelectedIndex" },
             
             // 打开方式按钮
             ["btnOpenWith1"] = new() { "Content", "Visibility" },
@@ -102,6 +118,7 @@ namespace PicView
             
             // 菜单项
             ["menuExpandBgPanel"] = new() { "IsChecked" },
+            ["menuShowSequencePlayer"] = new() { "IsChecked" },
         };
 
         // 背景设置的优先级恢复配置

@@ -36,6 +36,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -65,6 +66,8 @@
             <MenuItem Header="文件(_F)">
                 <MenuItem Header="打开(_O)" Click="MenuOpen_Click" InputGestureText="Ctrl+O"/>
                 <MenuItem Header="另存为(_S)" Click="MenuSaveAs_Click" InputGestureText="Ctrl+S"/>
+                <Separator/>
+                <MenuItem Header="粘贴图片(_V)" Click="MenuPasteImage_Click" InputGestureText="Ctrl+V"/>
                 <Separator/>
                 <MenuItem Header="打开位置(_L)" Click="MenuOpenLocation_Click"/>
                 <MenuItem Header="搜索图片(_R)" Click="MenuSearch_Click" InputGestureText="Ctrl+F"/>
@@ -102,6 +105,7 @@
                 <MenuItem Header="还原默认设置(_R)" Click="MenuResetSettings_Click"/>
                 <Separator/>
                 <MenuItem Header="展开背景设置面板(_E)" x:Name="menuExpandBgPanel" IsCheckable="True" Click="MenuExpandBgPanel_Click"/>
+                <MenuItem Header="显示序列帧播放器(_Q)" x:Name="menuShowSequencePlayer" IsCheckable="True" Click="MenuShowSequencePlayer_Click"/>
             </MenuItem>
             <MenuItem Header="帮助(_H)">
                 <MenuItem Header="关于PicView(_A)" Click="MenuAbout_Click"/>
@@ -112,6 +116,7 @@
         <!-- 主工具栏 -->
         <ToolBar Grid.Row="2" Height="40">
             <Button x:Name="btnOpen" Content="打开" Click="BtnOpen_Click" Padding="10,5"/>
+            <Button x:Name="btnPaste" Content="📋 粘贴" Click="BtnPaste_Click" Padding="10,5" ToolTip="粘贴图片 (Ctrl+V)"/>
             <Separator/>
             <Button x:Name="btnPrevious" Content="◀" Click="BtnPrevious_Click" Padding="10,5" ToolTip="上一张 (Left)"/>
             <Button x:Name="btnNext" Content="▶" Click="BtnNext_Click" Padding="10,5" ToolTip="下一张 (Right)"/>
@@ -138,8 +143,7 @@
             <Button x:Name="btnOpenWithMenu" Content="打开方式..." Click="BtnOpenWithMenu_Click" Padding="10,5">
                 <Button.ContextMenu>
                     <ContextMenu x:Name="openWithContextMenu">
-                        <MenuItem Header="添加打开方式..." Click="AddOpenWithApp_Click"/>
-                        <Separator x:Name="openWithSeparator" Visibility="Collapsed"/>
+                        <!-- 菜单项将通过代码动态生成 -->
                     </ContextMenu>
                 </Button.ContextMenu>
             </Button>
@@ -149,8 +153,70 @@
             <CheckBox x:Name="chkShowChannels" Content="显示通道" Checked="ChkShowChannels_Checked" Unchecked="ChkShowChannels_Unchecked" Margin="10,0"/>
         </ToolBar>
         
+        <!-- 序列帧工具栏 -->
+        <Expander Grid.Row="3" Header="序列帧播放器" IsExpanded="False" x:Name="sequenceExpander" Background="#F5F5F5">
+            <ToolBar Height="50" Background="Transparent">
+                <!-- 网格设置 -->
+                <GroupBox Header="网格设置" Margin="5,2">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="宽:" VerticalAlignment="Center" Margin="5,0"/>
+                        <TextBox x:Name="txtGridWidth" Text="3" Width="40" VerticalAlignment="Center" TextAlignment="Center" Margin="2,0"/>
+                        <TextBlock Text="×" VerticalAlignment="Center" Margin="2,0"/>
+                        <TextBlock Text="高:" VerticalAlignment="Center" Margin="5,0,2,0"/>
+                        <TextBox x:Name="txtGridHeight" Text="3" Width="40" VerticalAlignment="Center" TextAlignment="Center" Margin="2,0"/>
+                        <Button x:Name="btnParseGrid" Content="解析" Click="BtnParseGrid_Click" Margin="5,0" Padding="8,2" ToolTip="按网格解析当前图片"/>
+                    </StackPanel>
+                </GroupBox>
+                
+                <Separator/>
+                
+                <!-- 播放控制 -->
+                <GroupBox Header="播放控制" Margin="5,2">
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="btnPlay" Content="▶ 播放" Click="BtnPlay_Click" Padding="8,2" ToolTip="开始/暂停播放" IsEnabled="False"/>
+                        <Button x:Name="btnStop" Content="⏹ 停止" Click="BtnStop_Click" Padding="8,2" ToolTip="停止播放并重置" IsEnabled="False"/>
+                        <TextBlock Text="FPS:" VerticalAlignment="Center" Margin="10,0,5,0"/>
+                        <TextBox x:Name="txtFPS" Text="10" Width="40" VerticalAlignment="Center" TextAlignment="Center" Margin="2,0"/>
+                    </StackPanel>
+                </GroupBox>
+                
+                <Separator/>
+                
+                <!-- 手动控制 -->
+                <GroupBox Header="手动控制" Margin="5,2">
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="btnFirstFrame" Content="⏮" Click="BtnFirstFrame_Click" Padding="8,2" ToolTip="第一帧" IsEnabled="False"/>
+                        <Button x:Name="btnPrevFrame" Content="⏪" Click="BtnPrevFrame_Click" Padding="8,2" ToolTip="上一帧" IsEnabled="False"/>
+                        <TextBlock x:Name="txtCurrentFrame" Text="- / -" VerticalAlignment="Center" Margin="10,0" MinWidth="50" TextAlignment="Center"/>
+                        <Button x:Name="btnNextFrame" Content="⏩" Click="BtnNextFrame_Click" Padding="8,2" ToolTip="下一帧" IsEnabled="False"/>
+                        <Button x:Name="btnLastFrame" Content="⏭" Click="BtnLastFrame_Click" Padding="8,2" ToolTip="最后一帧" IsEnabled="False"/>
+                    </StackPanel>
+                </GroupBox>
+                
+                <Separator/>
+                
+                <!-- 预设和保存 -->
+                <GroupBox Header="预设" Margin="5,2">
+                    <StackPanel Orientation="Horizontal">
+                        <ComboBox x:Name="cbGridPresets" Width="80" SelectedIndex="0" SelectionChanged="CbGridPresets_SelectionChanged">
+                            <ComboBoxItem Content="3×3"/>
+                            <ComboBoxItem Content="4×4"/>
+                            <ComboBoxItem Content="5×5"/>
+                            <ComboBoxItem Content="6×6"/>
+                            <ComboBoxItem Content="8×8"/>
+                            <ComboBoxItem Content="2×4"/>
+                            <ComboBoxItem Content="4×2"/>
+                            <ComboBoxItem Content="自定义"/>
+                        </ComboBox>
+                        <Button x:Name="btnResetSequence" Content="重置" Click="BtnResetSequence_Click" Margin="5,0" Padding="8,2" ToolTip="重置到原始图片" IsEnabled="False"/>
+                        <Button x:Name="btnSaveAsGif" Content="保存为GIF" Click="BtnSaveAsGif_Click" Margin="5,0" Padding="8,2" ToolTip="将序列帧保存为GIF动画" IsEnabled="False"/>
+                    </StackPanel>
+                </GroupBox>
+            </ToolBar>
+        </Expander>
+        
         <!-- Everything 搜索栏 -->
-        <Grid Grid.Row="3" x:Name="searchPanel" Visibility="Collapsed" Background="#F0F0F0" Height="40">
+        <Grid Grid.Row="4" x:Name="searchPanel" Visibility="Collapsed" Background="#F0F0F0" Height="40">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
@@ -162,7 +228,7 @@
         </Grid>
         
         <!-- 背景控制工具栏 -->
-        <Expander Grid.Row="4" Header="背景设置" IsExpanded="True" x:Name="backgroundExpander">
+        <Expander Grid.Row="5" Header="背景设置" IsExpanded="True" x:Name="backgroundExpander">
             <StackPanel Orientation="Horizontal" Height="86" Background="#F8F8F8">
                 <!-- 背景类型选择 -->
                 <GroupBox Header="背景类型" Margin="5">
@@ -230,15 +296,17 @@
         </Expander>
         
         <!-- 主显示区域 -->
-        <Grid Grid.Row="5">
+        <Grid Grid.Row="6">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto" x:Name="channelColumn"/>
+                <ColumnDefinition Width="Auto" x:Name="channelSplitterColumn"/>
+                <ColumnDefinition Width="0" x:Name="channelColumn"/>
             </Grid.ColumnDefinitions>
             
             <!-- 主图显示区域 -->
             <Border x:Name="imageContainer" Grid.Column="0" Background="{StaticResource CheckerboardBrush}"
-                    MouseWheel="ImageContainer_MouseWheel">
+                    MouseWheel="ImageContainer_MouseWheel"
+                    MouseLeftButtonDown="ImageContainer_MouseLeftButtonDown">
                 <Canvas x:Name="imageCanvas">
                     <Image x:Name="mainImage" 
                            RenderOptions.BitmapScalingMode="HighQuality"
@@ -249,9 +317,12 @@
                 </Canvas>
             </Border>
             
+            <!-- 通道显示区域分隔符 -->
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" 
+                         x:Name="channelSplitter" Visibility="Collapsed" ResizeBehavior="PreviousAndNext"/>
+            
             <!-- 通道显示区域 -->
-            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Left" VerticalAlignment="Stretch" x:Name="channelSplitter" Visibility="Collapsed"/>
-            <Grid x:Name="channelPanel" Grid.Column="1" Width="300" Visibility="Collapsed">
+            <Grid x:Name="channelPanel" Grid.Column="2" Visibility="Collapsed">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -264,7 +335,7 @@
         </Grid>
         
         <!-- 状态栏 -->
-        <StatusBar Grid.Row="6">
+        <StatusBar Grid.Row="7">
             <StatusBarItem>
                 <TextBlock x:Name="statusText" Text="就绪"/>
             </StatusBarItem>
