@@ -103,9 +103,10 @@
             <MenuItem Header="设置(_S)">
                 <MenuItem Header="保存设置(_S)" Click="MenuSaveSettings_Click" InputGestureText="Ctrl+Shift+S"/>
                 <MenuItem Header="还原默认设置(_R)" Click="MenuResetSettings_Click"/>
-                <Separator/>
-                <MenuItem Header="展开背景设置面板(_E)" x:Name="menuExpandBgPanel" IsCheckable="True" Click="MenuExpandBgPanel_Click"/>
-                <MenuItem Header="显示序列帧播放器(_Q)" x:Name="menuShowSequencePlayer" IsCheckable="True" Click="MenuShowSequencePlayer_Click"/>
+            </MenuItem>
+            <MenuItem Header="工具(_T)">
+                <MenuItem Header="显示背景工具栏(_B)" x:Name="menuShowBgToolbar" IsCheckable="True" IsChecked="True" Click="MenuShowBgToolbar_Click"/>
+                <MenuItem Header="显示序列帧工具栏(_S)" x:Name="menuShowSequenceToolbar" IsCheckable="True" IsChecked="False" Click="MenuShowSequenceToolbar_Click"/>
             </MenuItem>
             <MenuItem Header="帮助(_H)">
                 <MenuItem Header="关于PicView(_A)" Click="MenuAbout_Click"/>

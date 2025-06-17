@@ -140,6 +140,9 @@ namespace PicView
             
             // 初始化序列播放器
             InitializeSequencePlayer();
+            
+            // 同步工具菜单状态 - 确保菜单勾选状态与实际显示状态一致
+            SynchronizeToolMenuStates();
         }
 
         private void InitializeWindowTransparency()
@@ -149,6 +152,67 @@ namespace PicView
             {
                 rbWindowTransparent.Checked += (s, e) => EnableWindowTransparency();
                 rbWindowTransparent.Unchecked += (s, e) => DisableWindowTransparency();
+            }
+        }
+
+        /// <summary>
+        /// 同步工具菜单状态 - 确保菜单勾选状态与实际工具栏显示状态一致
+        /// </summary>
+        private void SynchronizeToolMenuStates()
+        {
+            try
+            {
+                Console.WriteLine("--- 开始同步工具菜单状态 ---");
+                
+                // 同步背景工具栏菜单状态
+                if (menuShowBgToolbar != null && backgroundExpander != null)
+                {
+                    // 菜单勾选状态应该反映工具栏的实际可见性
+                    // 对于Expander，应该基于Visibility而不是IsExpanded
+                    bool isVisible = backgroundExpander.Visibility == Visibility.Visible;
+                    bool wasChecked = menuShowBgToolbar.IsChecked == true;
+                    
+                    Console.WriteLine($"背景工具栏 - 实际可见: {isVisible}, 菜单勾选: {wasChecked}");
+                    
+                    // 如果设置中的状态与实际状态不一致，以实际状态为准
+                    if (menuShowBgToolbar.IsChecked != isVisible)
+                    {
+                        menuShowBgToolbar.IsChecked = isVisible;
+                        Console.WriteLine($"背景工具栏菜单状态已修正: {wasChecked} -> {isVisible}");
+                    }
+                }
+
+                // 同步序列帧工具栏菜单状态
+                if (menuShowSequenceToolbar != null && sequenceExpander != null)
+                {
+                    // 菜单勾选状态应该反映工具栏的实际可见性
+                    bool isVisible = sequenceExpander.Visibility == Visibility.Visible;
+                    bool wasChecked = menuShowSequenceToolbar.IsChecked == true;
+                    
+                    Console.WriteLine($"序列帧工具栏 - 实际可见: {isVisible}, 菜单勾选: {wasChecked}");
+                    
+                    // 如果设置中的状态与实际状态不一致，以实际状态为准
+                    if (menuShowSequenceToolbar.IsChecked != isVisible)
+                    {
+                        menuShowSequenceToolbar.IsChecked = isVisible;
+                        Console.WriteLine($"序列帧工具栏菜单状态已修正: {wasChecked} -> {isVisible}");
+                    }
+                }
+
+                Console.WriteLine("--- 结束同步工具菜单状态 ---");
+
+                if (statusText != null)
+                {
+                    string bgStatus = menuShowBgToolbar?.IsChecked == true ? "显示" : "隐藏";
+                    string seqStatus = menuShowSequenceToolbar?.IsChecked == true ? "显示" : "隐藏";
+                    statusText.Text = $"工具菜单状态已同步 - 背景工具栏: {bgStatus}, 序列帧工具栏: {seqStatus}";
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"同步工具菜单状态失败: {ex.Message}");
+                if (statusText != null)
+                    statusText.Text = $"同步工具菜单状态失败: {ex.Message}";
             }
         }
 
@@ -2694,6 +2758,9 @@ namespace PicView
                     
                     isLoadingSettings = false;
                     
+                    // 同步工具菜单状态 - 确保设置恢复后菜单状态正确
+                    SynchronizeToolMenuStates();
+                    
                     if (statusText != null)
                         statusText.Text = $"设置已加载 - 控件状态: {appSettings.ControlStates.Count} 项";
                         
@@ -2982,15 +3049,24 @@ namespace PicView
             // 设置背景面板展开状态
             var bgExpander = this.FindName("backgroundExpander") as Expander;
             if (bgExpander != null)
+            {
                 bgExpander.IsExpanded = appSettings.BackgroundPanelExpanded;
-            if (menuExpandBgPanel != null)
-                menuExpandBgPanel.IsChecked = appSettings.BackgroundPanelExpanded;
+                // 工具菜单项控制的是工具栏的可见性，默认情况下工具栏应该显示
+                // 只有用户通过菜单明确隐藏时才不显示
+                bgExpander.Visibility = Visibility.Visible;
+            }
+            if (menuShowBgToolbar != null)
+                menuShowBgToolbar.IsChecked = true; // 默认显示
 
             // 设置序列帧面板展开状态
             if (sequenceExpander != null)
+            {
                 sequenceExpander.IsExpanded = appSettings.SequencePlayerExpanded;
-            if (menuShowSequencePlayer != null)
-                menuShowSequencePlayer.IsChecked = appSettings.SequencePlayerExpanded;
+                // 序列帧工具栏默认显示
+                sequenceExpander.Visibility = Visibility.Visible;
+            }
+            if (menuShowSequenceToolbar != null)
+                menuShowSequenceToolbar.IsChecked = true; // 默认显示
 
             // 恢复序列帧设置
             if (txtGridWidth != null)
@@ -3272,20 +3348,14 @@ namespace PicView
 
         private void MenuResetSettings_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show("确定要还原到默认设置吗？这将清除所有自定义设置。", "还原设置", 
+            var result = MessageBox.Show("确定要还原到默认设置吗？这将清除所有自定义设置，并需要重启应用才能完全生效。", "还原设置", 
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
             
             if (result == MessageBoxResult.Yes)
             {
                 SettingsManager.ResetToDefault();
-                appSettings = new AppSettings();
-                
-                // 重新应用默认设置
-                ApplyBackgroundSettings();
-                ApplyUISettings();
-                
-                if (statusText != null)
-                    statusText.Text = "设置已还原到默认状态";
+                MessageBox.Show("设置已重置。请重新启动 PicView。", "操作完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                this.Close(); // Close the application to apply changes on restart
             }
         }
 
@@ -3294,8 +3364,8 @@ namespace PicView
             var bgExpander = this.FindName("backgroundExpander") as Expander;
             if (bgExpander != null)
             {
-                bgExpander.IsExpanded = menuExpandBgPanel?.IsChecked ?? true;
-                SaveAppSettings();
+                // bgExpander.IsExpanded = menuExpandBgPanel?.IsChecked ?? true;
+                // SaveAppSettings();
             }
         }
 
@@ -3906,11 +3976,12 @@ namespace PicView
 
         private void MenuShowSequencePlayer_Click(object sender, RoutedEventArgs e)
         {
-            if (sequenceExpander != null && menuShowSequencePlayer != null)
-            {
-                sequenceExpander.IsExpanded = menuShowSequencePlayer.IsChecked == true;
-                SaveAppSettings();
-            }
+            // 这个方法已被弃用 - 新的工具菜单使用MenuShowSequenceToolbar_Click
+            // if (sequenceExpander != null && menuShowSequencePlayer != null)
+            // {
+            //     sequenceExpander.IsExpanded = menuShowSequencePlayer.IsChecked == true;
+            //     SaveAppSettings();
+            // }
         }
 
         // 重置序列按钮事件
@@ -4369,6 +4440,22 @@ namespace PicView
             {
                 // 如果解析失败，返回原路径
                 return path;
+            }
+        }
+
+        private void MenuShowBgToolbar_Click(object sender, RoutedEventArgs e)
+        {
+            if (backgroundExpander != null && menuShowBgToolbar != null)
+            {
+                backgroundExpander.Visibility = menuShowBgToolbar.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+
+        private void MenuShowSequenceToolbar_Click(object sender, RoutedEventArgs e)
+        {
+            if (sequenceExpander != null && menuShowSequenceToolbar != null)
+            {
+                sequenceExpander.Visibility = menuShowSequenceToolbar.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             }
         }
     }

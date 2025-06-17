@@ -87,6 +87,9 @@ namespace PicView
     public static class SettingsManager
     {
         private static readonly string SettingsFileName = "PicViewSettings.json";
+        private static string? settingsPathCache; // 缓存路径
+        private static bool isSaving = false; // 添加一个静态锁标志
+        private static readonly object saveLock = new object(); // 锁对象
         
         // 控件保存配置 - 可以配置哪些控件的哪些属性要保存
         private static readonly Dictionary<string, List<string>> ControlSaveConfig = new()
@@ -117,8 +120,8 @@ namespace PicView
             ["btnOpenWith3"] = new() { "Content", "Visibility" },
             
             // 菜单项
-            ["menuExpandBgPanel"] = new() { "IsChecked" },
-            ["menuShowSequencePlayer"] = new() { "IsChecked" },
+            ["menuShowBgToolbar"] = new() { "IsChecked" },
+            ["menuShowSequenceToolbar"] = new() { "IsChecked" },
         };
 
         // 背景设置的优先级恢复配置
@@ -146,75 +149,171 @@ namespace PicView
             ["menuBgWindowTransparent"] = new() { "IsChecked" },
         };
         
-        // 获取exe所在目录的设置文件路径
-        private static string GetSettingsPath()
+        // 获取设置文件路径 (增加权限检查和缓存)
+        public static string GetSettingsPath()
         {
+            // 如果已经计算过，直接返回缓存的路径
+            if (!string.IsNullOrEmpty(settingsPathCache))
+            {
+                return settingsPathCache;
+            }
+
+            // 优先尝试exe所在目录
             try
             {
-                string exeDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? 
-                                     AppDomain.CurrentDomain.BaseDirectory;
-                return Path.Combine(exeDirectory, SettingsFileName);
+                string exeDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) 
+                                     ?? AppDomain.CurrentDomain.BaseDirectory;
+                string localPath = Path.Combine(exeDirectory, SettingsFileName);
+
+                // 检查写入权限
+                if (HasWriteAccess(exeDirectory))
+                {
+                    System.Diagnostics.Debug.WriteLine($"使用本地设置文件路径: {localPath}");
+                    settingsPathCache = localPath;
+                    return localPath;
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                string fallbackDirectory = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), 
-                    "PicView");
-                return Path.Combine(fallbackDirectory, SettingsFileName);
+                System.Diagnostics.Debug.WriteLine($"检查本地路径时发生错误: {ex.Message}");
+            }
+
+            // 如果没有写入权限或发生错误，则使用APPDATA目录
+            string appDataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PicView");
+            
+            // 确保APPDATA目录存在
+            if (!Directory.Exists(appDataDirectory))
+            {
+                try
+                {
+                    Directory.CreateDirectory(appDataDirectory);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"创建APPDATA目录失败: {ex.Message}");
+                    // 如果连APPDATA都创建失败，就只能返回一个临时路径了
+                    return Path.Combine(Path.GetTempPath(), SettingsFileName);
+                }
+            }
+            
+            string appDataPath = Path.Combine(appDataDirectory, SettingsFileName);
+            System.Diagnostics.Debug.WriteLine($"使用APPDATA设置文件路径: {appDataPath}");
+            settingsPathCache = appDataPath;
+            return appDataPath;
+        }
+
+        // 检查目录是否有写入权限
+        private static bool HasWriteAccess(string directoryPath)
+        {
+            if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+            {
+                return false;
+            }
+
+            try
+            {
+                // 尝试在目录中创建一个临时文件
+                string testFile = Path.Combine(directoryPath, Guid.NewGuid().ToString() + ".tmp");
+                File.WriteAllText(testFile, "test");
+                File.Delete(testFile);
+                return true;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                System.Diagnostics.Debug.WriteLine($"对目录 '{directoryPath}' 没有写入权限");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"检查写入权限时发生未知错误: {ex.Message}");
+                return false;
             }
         }
 
         public static AppSettings LoadSettings()
         {
+            string settingsPath = GetSettingsPath();
+            Console.WriteLine($"--- 开始加载设置 ---");
+            Console.WriteLine($"路径: {settingsPath}");
+
             try
             {
-                string settingsPath = GetSettingsPath();
                 if (File.Exists(settingsPath))
                 {
                     string json = File.ReadAllText(settingsPath);
+                    Console.WriteLine("加载的 JSON 内容:");
+                    Console.WriteLine(json); // 输出加载的原始JSON
+
                     var settings = JsonSerializer.Deserialize<AppSettings>(json);
                     if (settings != null)
                     {
                         ValidateAndCleanSettings(settings);
+                        Console.WriteLine("设置解析成功。");
+                        Console.WriteLine($"--- 结束加载设置 ---");
                         return settings;
                     }
+                }
+                else
+                {
+                    Console.WriteLine("设置文件不存在，返回默认设置。");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"加载设置失败: {ex.Message}");
+                Console.WriteLine($"!!! 加载设置失败: {ex.Message}");
             }
             
+            Console.WriteLine($"--- 结束加载设置 (失败或默认) ---");
             return new AppSettings();
         }
 
         public static void SaveSettings(AppSettings settings)
         {
+            // 使用锁来防止并发写入
+            lock (saveLock)
+            {
+                if (isSaving)
+                {
+                    Console.WriteLine("--- 保存操作已被锁定，跳过当前请求 ---");
+                    return; // 如果正在保存，则跳过
+                }
+                isSaving = true;
+            }
+
             try
             {
                 string settingsPath = GetSettingsPath();
-                string directory = Path.GetDirectoryName(settingsPath);
-                
-                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                }
+                Console.WriteLine($"--- 开始保存设置 ---");
+                Console.WriteLine($"路径: {settingsPath}");
 
+                // 在序列化之前验证和清理数据
                 ValidateAndCleanSettings(settings);
 
                 var options = new JsonSerializerOptions
                 {
                     WriteIndented = true,
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                    // 允许写入特殊的浮点数值，但我们更倾向于在Validate中处理它们
+                    // NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals
                 };
                 
                 string json = JsonSerializer.Serialize(settings, options);
+                Console.WriteLine("保存的 JSON 内容:");
+                Console.WriteLine(json); // 输出将要保存的JSON
+
                 File.WriteAllText(settingsPath, json, System.Text.Encoding.UTF8);
+                Console.WriteLine("设置保存成功。");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"保存设置失败: {ex.Message}");
+                Console.WriteLine($"!!! 保存设置失败: {ex.Message}");
             }
+            finally
+            {
+                // 确保在操作完成后释放锁
+                isSaving = false;
+            }
+            Console.WriteLine($"--- 结束保存设置 ---");
         }
 
         // 保存窗口中所有配置的控件状态
@@ -355,140 +454,106 @@ namespace PicView
         // 恢复窗口中所有配置的控件状态
         public static void RestoreControlStates(Window window, AppSettings settings)
         {
-            try
+            if (settings?.ControlStates == null) return;
+
+            int restoredCount = 0;
+            
+            foreach (var kvp in settings.ControlStates)
             {
-                int restoredCount = 0;
-                
-                foreach (var kvp in settings.ControlStates)
+                string controlName = kvp.Key;
+                var controlStates = kvp.Value;
+                var control = window.FindName(controlName);
+
+                if (control == null)
                 {
-                    string controlName = kvp.Key;
-                    var controlStates = kvp.Value;
-                    
-                    // 通过名称查找控件
-                    var control = window.FindName(controlName);
-                    if (control != null)
+                    System.Diagnostics.Debug.WriteLine($"[Restore] Control not found: {controlName}");
+                    continue;
+                }
+
+                foreach (var stateKvp in controlStates)
+                {
+                    string propertyName = stateKvp.Key;
+                    object? savedValue = stateKvp.Value;
+
+                    try
                     {
-                        foreach (var stateKvp in controlStates)
+                        var property = control.GetType().GetProperty(propertyName);
+                        if (property != null && property.CanWrite)
                         {
-                            string propertyName = stateKvp.Key;
-                            object? value = stateKvp.Value;
+                            object? convertedValue = ConvertValue(savedValue, property.PropertyType);
                             
-                            try
+                            var isNullable = Nullable.GetUnderlyingType(property.PropertyType) != null || !property.PropertyType.IsValueType;
+
+                            if (convertedValue != null || isNullable)
                             {
-                                var property = control.GetType().GetProperty(propertyName);
-                                if (property != null && property.CanWrite && value != null)
-                                {
-                                    // 类型转换
-                                    object? convertedValue = ConvertValue(value, property.PropertyType);
-                                    if (convertedValue != null)
-                                    {
-                                        property.SetValue(control, convertedValue);
-                                        restoredCount++;
-                                        System.Diagnostics.Debug.WriteLine($"已恢复 {controlName}.{propertyName} = {convertedValue}");
-                                    }
-                                    else
-                                    {
-                                        System.Diagnostics.Debug.WriteLine($"类型转换失败: {controlName}.{propertyName} value={value} targetType={property.PropertyType}");
-                                    }
-                                }
-                                else
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"属性不可写或值为空: {controlName}.{propertyName}");
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"恢复控件 {controlName}.{propertyName} 失败: {ex.Message}");
+                                property.SetValue(control, convertedValue);
+                                restoredCount++;
                             }
                         }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"恢复时控件未找到: {controlName}");
+                        System.Diagnostics.Debug.WriteLine($"[Restore] Failed to restore {controlName}.{propertyName}: {ex.Message}");
                     }
                 }
-                
-                System.Diagnostics.Debug.WriteLine($"恢复了 {restoredCount} 个控件属性");
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"恢复控件状态失败: {ex.Message}");
-            }
+            System.Diagnostics.Debug.WriteLine($"[Restore] Restored {restoredCount} control properties.");
         }
 
-        // 类型转换辅助方法
-        private static object? ConvertValue(object value, Type targetType)
+        private static object? ConvertValue(object? value, Type targetType)
         {
+            if (value == null)
+            {
+                return targetType.IsValueType ? Activator.CreateInstance(targetType) : null;
+            }
+
+            // Handle JsonElement conversions
+            if (value is JsonElement jsonElement)
+            {
+                switch (jsonElement.ValueKind)
+                {
+                    case JsonValueKind.True:
+                        return true;
+                    case JsonValueKind.False:
+                        return false;
+                    case JsonValueKind.Number:
+                        if (targetType == typeof(double)) return jsonElement.GetDouble();
+                        if (targetType == typeof(int)) return jsonElement.GetInt32();
+                        return jsonElement.GetDouble(); // Fallback for numbers
+                    case JsonValueKind.String:
+                        value = jsonElement.GetString();
+                        break;
+                    case JsonValueKind.Null:
+                        return null;
+                }
+            }
+            
+            if (value == null) return null;
+
             try
             {
-                if (targetType == typeof(Color) || targetType == typeof(Color?))
+                if (targetType.IsEnum)
                 {
-                    if (value is string colorString)
-                    {
-                        return (Color)ColorConverter.ConvertFromString(colorString);
-                    }
+                    return Enum.Parse(targetType, value.ToString()!, true);
                 }
-                else if (targetType == typeof(GridLength))
+
+                if (targetType == typeof(Color))
                 {
-                    if (value is double doubleValue)
-                    {
-                        return new GridLength(doubleValue);
-                    }
-                    else if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Number)
-                    {
-                        return new GridLength(jsonElement.GetDouble());
-                    }
+                    return (Color)ColorConverter.ConvertFromString(value.ToString()!);
                 }
-                else if (targetType == typeof(Visibility))
+
+                if (targetType == typeof(GridLength))
                 {
-                    if (value is string visibilityString)
-                    {
-                        return Enum.Parse<Visibility>(visibilityString);
-                    }
+                    return new GridLength(Convert.ToDouble(value), GridUnitType.Star);
                 }
-                else if (targetType == typeof(bool) || targetType == typeof(bool?))
-                {
-                    if (value is JsonElement jsonElement)
-                    {
-                        if (jsonElement.ValueKind == JsonValueKind.True) return true;
-                        if (jsonElement.ValueKind == JsonValueKind.False) return false;
-                        if (jsonElement.ValueKind == JsonValueKind.Null) return null;
-                    }
-                    else if (value is bool boolValue)
-                    {
-                        return boolValue;
-                    }
-                    else if (value == null && targetType == typeof(bool?))
-                    {
-                        return null;
-                    }
-                    
-                    return Convert.ToBoolean(value);
-                }
-                else if (targetType == typeof(double) || targetType == typeof(double?))
-                {
-                    if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Number)
-                    {
-                        return jsonElement.GetDouble();
-                    }
-                    return Convert.ToDouble(value);
-                }
-                else if (targetType == typeof(string))
-                {
-                    return value?.ToString();
-                }
-                else
-                {
-                    return Convert.ChangeType(value, targetType);
-                }
+
+                return Convert.ChangeType(value, targetType);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"类型转换异常: {value} -> {targetType}: {ex.Message}");
-                return null;
+                System.Diagnostics.Debug.WriteLine($"[ConvertValue] Failed to convert '{value}' to '{targetType.Name}': {ex.Message}");
+                return targetType.IsValueType ? Activator.CreateInstance(targetType) : null;
             }
-            
-            return null; // 默认返回值
         }
 
         // 添加或移除要保存的控件
@@ -531,14 +596,19 @@ namespace PicView
                 settings.RecentlyUsedTools = settings.RecentlyUsedTools.GetRange(0, settings.MaxRecentTools);
             }
 
+            // 验证并修正无效的数值
+            settings.WindowWidth = ValidateDouble(settings.WindowWidth, 1200);
+            settings.WindowHeight = ValidateDouble(settings.WindowHeight, 800);
+            settings.WindowLeft = ValidateDouble(settings.WindowLeft, 100);
+            settings.WindowTop = ValidateDouble(settings.WindowTop, 100);
+            settings.LastZoomLevel = ValidateDouble(settings.LastZoomLevel, 1.0, 0.1, 20.0);
+            settings.LastImageX = ValidateDouble(settings.LastImageX, 0);
+            settings.LastImageY = ValidateDouble(settings.LastImageY, 0);
+
             // 验证窗口尺寸
             if (settings.WindowWidth < 400) settings.WindowWidth = 1200;
             if (settings.WindowHeight < 300) settings.WindowHeight = 800;
             
-            // 验证缩放级别
-            if (settings.LastZoomLevel < 0.1) settings.LastZoomLevel = 1.0;
-            if (settings.LastZoomLevel > 10.0) settings.LastZoomLevel = 1.0;
-
             // 清理不存在的背景图片路径
             if (!string.IsNullOrEmpty(settings.BackgroundImagePath) && 
                 !File.Exists(settings.BackgroundImagePath))
@@ -554,6 +624,16 @@ namespace PicView
                     settings.RecentFiles.RemoveAt(i);
                 }
             }
+        }
+
+        // 新增一个辅助方法来验证double值
+        private static double ValidateDouble(double value, double defaultValue, double min = -10000, double max = 10000)
+        {
+            if (double.IsNaN(value) || double.IsInfinity(value) || value < min || value > max)
+            {
+                return defaultValue;
+            }
+            return value;
         }
 
         public static AppSettings GetDefaultSettings()
