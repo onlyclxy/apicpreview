@@ -29,13 +29,13 @@
 
   <ItemGroup>
     <!-- 图片格式支持 -->
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.5" />
-    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.4" />
-    <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="13.10.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
+    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.7" />
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.8.2" />
     <!-- UI 相关 -->
-    <PackageReference Include="Extended.Wpf.Toolkit" Version="4.6.1" />
+    <PackageReference Include="Extended.Wpf.Toolkit" Version="5.0.0" />
     <!-- System.Drawing for some legacy support -->
-    <PackageReference Include="System.Drawing.Common" Version="8.0.8" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.9" />
     <!-- Microsoft VisualBasic for InputBox -->
     <PackageReference Include="Microsoft.VisualBasic" Version="10.3.0" />
     <!-- GIF动画支持 -->

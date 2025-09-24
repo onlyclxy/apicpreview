@@ -1,18 +1,19 @@
+using ImageMagick;
+using Microsoft.VisualBasic;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using Microsoft.Win32;
-using ImageMagick;
-using System.Threading.Tasks;
-using System.Diagnostics;
 using WpfAnimatedGif;
-using Microsoft.VisualBasic;
 
 namespace PicView
 {
@@ -2888,7 +2889,7 @@ namespace PicView
                     if (appSettings.ControlStates.ContainsKey("colorPicker") && 
                         appSettings.ControlStates["colorPicker"].ContainsKey("SelectedColor"))
                     {
-                        var colorString = appSettings.ControlStates["colorPicker"]["SelectedColor"].ToString();
+                        var colorString = appSettings.ControlStates["colorPicker"]?["SelectedColor"]?.ToString();
                         if (!string.IsNullOrEmpty(colorString))
                         {
                             try
@@ -3199,7 +3200,7 @@ namespace PicView
             }
         }
 
-        private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        private void MainWindow_Closing(object? sender, CancelEventArgs e)
         {
             // 清理临时文件
             CleanupTemporaryFile();
@@ -3907,7 +3908,7 @@ namespace PicView
                             stream.Position = 0;
                             
                             var magickFrame = new MagickImage(stream);
-                            magickFrame.AnimationDelay = delay;
+                            magickFrame.AnimationDelay = (uint)delay;
                             magickFrame.GifDisposeMethod = GifDisposeMethod.Background;
                             
                             gifImage.Add(magickFrame);
@@ -4100,21 +4101,45 @@ namespace PicView
                     sourceInfo = "剪贴板图像";
                 }
                 // 如果没有直接的图像，尝试从文件列表获取
+                //else if (Clipboard.ContainsFileDropList())
+                //{
+                //    var files = Clipboard.GetFileDropList();
+                //    foreach (string file in files)
+                //    {
+                //        string extension = Path.GetExtension(file).ToLower();
+                //        if (supportedFormats.Contains(extension))
+                //        {
+                //            // 找到第一个支持的图片文件
+                //            clipboardImage = LoadImageWithMagick(file);
+                //            sourceInfo = $"剪贴板文件: {Path.GetFileName(file)}";
+                //            break;
+                //        }
+                //    }
+                //}
+
                 else if (Clipboard.ContainsFileDropList())
                 {
                     var files = Clipboard.GetFileDropList();
-                    foreach (string file in files)
+                    foreach (string? maybeFile in files) // 先按可空来拿
                     {
-                        string extension = Path.GetExtension(file).ToLower();
-                        if (supportedFormats.Contains(extension))
+                        if (string.IsNullOrWhiteSpace(maybeFile))
+                            continue;
+
+                        string file = maybeFile; // 经过上面判空，这里被收窄为非空 string
+
+                        var ext = Path.GetExtension(file) ?? string.Empty;
+                        if (supportedFormats.Contains(ext))
                         {
-                            // 找到第一个支持的图片文件
-                            clipboardImage = LoadImageWithMagick(file);
+                            var img = LoadImageWithMagick(file);
+                            if (img is null) continue;
+
+                            clipboardImage = img;       // 建议 clipboardImage: BitmapImage?
                             sourceInfo = $"剪贴板文件: {Path.GetFileName(file)}";
                             break;
                         }
                     }
                 }
+
 
                 if (clipboardImage == null)
                 {

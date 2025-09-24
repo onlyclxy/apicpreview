@@ -1,0 +1,349 @@
+﻿<Window x:Class="PicViewEx.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:PicViewEx"
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        mc:Ignorable="d"
+        Title="PicViewEx - Advanced Image Viewer" Height="800" Width="1200"
+        KeyDown="MainWindow_KeyDown"
+        Drop="MainWindow_Drop"
+        AllowDrop="True"
+        AllowsTransparency="True"
+        WindowStyle="None"
+        Background="White"
+        ResizeMode="CanResizeWithGrip">
+
+    <Window.Resources>
+        <!-- 透明方格画笔 -->
+        <DrawingBrush x:Key="CheckerboardBrush" TileMode="Tile" Viewport="0,0,20,20" ViewportUnits="Absolute">
+            <DrawingBrush.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Brush="White" Geometry="M 0,0 L 10,0 L 10,10 L 0,10 Z"/>
+                    <GeometryDrawing Brush="LightGray" Geometry="M 10,0 L 20,0 L 20,10 L 10,10 Z"/>
+                    <GeometryDrawing Brush="LightGray" Geometry="M 0,10 L 10,10 L 10,20 L 0,20 Z"/>
+                    <GeometryDrawing Brush="White" Geometry="M 10,10 L 20,10 L 20,20 L 10,20 Z"/>
+                </DrawingGroup>
+            </DrawingBrush.Drawing>
+        </DrawingBrush>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 自定义标题栏 -->
+        <Border Grid.Row="0" Background="#F0F0F0" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="PicViewEx - Advanced Image Viewer" 
+                           VerticalAlignment="Center" Margin="10,0" FontWeight="Bold"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="btnMinimize" Content="🗕" Click="BtnMinimize_Click" 
+                            Width="30" Height="30" Background="Transparent" BorderThickness="0"/>
+                    <Button x:Name="btnMaximize" Content="🗖" Click="BtnMaximize_Click" 
+                            Width="30" Height="30" Background="Transparent" BorderThickness="0"/>
+                    <Button x:Name="btnClose" Content="✕" Click="BtnClose_Click" 
+                            Width="30" Height="30" Background="Transparent" BorderThickness="0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 菜单栏 -->
+        <Menu Grid.Row="1" Background="#F8F8F8">
+            <MenuItem Header="文件(_F)">
+                <MenuItem Header="打开(_O)" Click="MenuOpen_Click" InputGestureText="Ctrl+O"/>
+                <MenuItem Header="另存为(_S)" Click="MenuSaveAs_Click" InputGestureText="Ctrl+S"/>
+                <Separator/>
+                <MenuItem Header="粘贴图片(_V)" Click="MenuPasteImage_Click" InputGestureText="Ctrl+V"/>
+                <Separator/>
+                <MenuItem Header="打开位置(_L)" Click="MenuOpenLocation_Click"/>
+                <MenuItem Header="搜索图片(_R)" Click="MenuSearch_Click" InputGestureText="Ctrl+F"/>
+                <Separator/>
+                <MenuItem Header="退出(_X)" Click="MenuExit_Click" InputGestureText="Alt+F4"/>
+            </MenuItem>
+            <MenuItem Header="查看(_V)">
+                <MenuItem Header="适应窗口(_F)" Click="MenuFitWindow_Click" InputGestureText="F"/>
+                <MenuItem Header="实际大小(_A)" Click="MenuActualSize_Click" InputGestureText="1"/>
+                <MenuItem Header="居中显示(_C)" Click="MenuCenterImage_Click" InputGestureText="Space"/>
+                <Separator/>
+                <MenuItem Header="全屏(_F)" Click="MenuFullScreen_Click" InputGestureText="F11"/>
+                <MenuItem Header="显示通道(_H)" x:Name="menuShowChannels" IsCheckable="True" Click="MenuShowChannels_Click"/>
+                <Separator/>
+                <MenuItem Header="上一张(_P)" Click="MenuPrevious_Click" InputGestureText="Left"/>
+                <MenuItem Header="下一张(_N)" Click="MenuNext_Click" InputGestureText="Right"/>
+            </MenuItem>
+            <MenuItem Header="图像(_I)">
+                <MenuItem Header="左旋转(_L)" Click="MenuRotateLeft_Click" InputGestureText="Ctrl+L"/>
+                <MenuItem Header="右旋转(_R)" Click="MenuRotateRight_Click" InputGestureText="Ctrl+R"/>
+                <Separator/>
+                <MenuItem Header="放大(_I)" Click="MenuZoomIn_Click" InputGestureText="Ctrl++"/>
+                <MenuItem Header="缩小(_O)" Click="MenuZoomOut_Click" InputGestureText="Ctrl+-"/>
+            </MenuItem>
+            <MenuItem Header="背景(_B)">
+                <MenuItem Header="透明方格(_T)" x:Name="menuBgTransparent" IsCheckable="True" Click="MenuBgTransparent_Click"/>
+                <MenuItem Header="纯色背景(_S)" x:Name="menuBgSolid" IsCheckable="True" Click="MenuBgSolid_Click"/>
+                <MenuItem Header="图片背景(_I)" x:Name="menuBgImage" IsCheckable="True" Click="MenuBgImage_Click"/>
+                <MenuItem Header="窗口透明(_W)" x:Name="menuBgWindowTransparent" IsCheckable="True" Click="MenuBgWindowTransparent_Click"/>
+                <Separator/>
+                <MenuItem Header="选择背景图片(_P)" Click="MenuSelectBgImage_Click"/>
+            </MenuItem>
+            <MenuItem Header="设置(_S)">
+                <MenuItem Header="保存设置(_S)" Click="MenuSaveSettings_Click" InputGestureText="Ctrl+Shift+S"/>
+                <MenuItem Header="还原默认设置(_R)" Click="MenuResetSettings_Click"/>
+            </MenuItem>
+            <MenuItem Header="工具(_T)">
+                <MenuItem Header="显示背景工具栏(_B)" x:Name="menuShowBgToolbar" IsCheckable="True" IsChecked="True" Click="MenuShowBgToolbar_Click"/>
+                <MenuItem Header="显示序列帧工具栏(_S)" x:Name="menuShowSequenceToolbar" IsCheckable="True" IsChecked="False" Click="MenuShowSequenceToolbar_Click"/>
+            </MenuItem>
+            <MenuItem Header="帮助(_H)">
+                <MenuItem Header="关于PicViewEx(_A)" Click="MenuAbout_Click"/>
+                <MenuItem Header="快捷键帮助(_K)" Click="MenuKeyboardHelp_Click"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- 主工具栏 -->
+        <ToolBar Grid.Row="2" Height="40">
+            <Button x:Name="btnOpen" Content="打开" Click="BtnOpen_Click" Padding="10,5"/>
+            <Button x:Name="btnPaste" Content="📋 粘贴" Click="BtnPaste_Click" Padding="10,5" ToolTip="粘贴图片 (Ctrl+V)"/>
+            <Separator/>
+            <Button x:Name="btnPrevious" Content="◀" Click="BtnPrevious_Click" Padding="10,5" ToolTip="上一张 (Left)"/>
+            <Button x:Name="btnNext" Content="▶" Click="BtnNext_Click" Padding="10,5" ToolTip="下一张 (Right)"/>
+            <Separator/>
+            <Button x:Name="btnRotateLeft" Content="↺" Click="BtnRotateLeft_Click" Padding="10,5" ToolTip="左旋转"/>
+            <Button x:Name="btnRotateRight" Content="↻" Click="BtnRotateRight_Click" Padding="10,5" ToolTip="右旋转"/>
+            <Separator/>
+            <!-- 缩放控制 -->
+            <Button x:Name="btnZoomIn" Content="🔍+" Click="BtnZoomIn_Click" Padding="10,5" ToolTip="放大"/>
+            <Button x:Name="btnZoomOut" Content="🔍-" Click="BtnZoomOut_Click" Padding="10,5" ToolTip="缩小"/>
+            <TextBlock x:Name="zoomPercentage" Text="100%" VerticalAlignment="Center" Margin="5,0" MinWidth="40"/>
+            <Separator/>
+            <!-- 视图控制 -->
+            <Button x:Name="btnFitWindow" Content="适应窗口" Click="BtnFitWindow_Click" Padding="10,5" ToolTip="适应窗口大小"/>
+            <Button x:Name="btnActualSize" Content="实际大小" Click="BtnActualSize_Click" Padding="10,5" ToolTip="1:1显示"/>
+            <Button x:Name="btnCenterImage" Content="居中显示" Click="BtnCenterImage_Click" Padding="10,5" ToolTip="居中图片"/>
+            <Separator/>
+            <Button x:Name="btnSaveAs" Content="另存为" Click="BtnSaveAs_Click" Padding="10,5"/>
+            <Separator/>
+            <!-- 文件操作 -->
+            <Button x:Name="btnOpenWith1" Content="打开方式1" Click="BtnOpenWith1_Click" Padding="10,5" Visibility="Collapsed"/>
+            <Button x:Name="btnOpenWith2" Content="打开方式2" Click="BtnOpenWith2_Click" Padding="10,5" Visibility="Collapsed"/>
+            <Button x:Name="btnOpenWith3" Content="打开方式3" Click="BtnOpenWith3_Click" Padding="10,5" Visibility="Collapsed"/>
+            <Button x:Name="btnOpenWithMenu" Content="打开方式..." Click="BtnOpenWithMenu_Click" Padding="10,5">
+                <Button.ContextMenu>
+                    <ContextMenu x:Name="openWithContextMenu">
+                        <!-- 菜单项将通过代码动态生成 -->
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
+            <Button x:Name="btnOpenLocation" Content="打开位置" Click="BtnOpenLocation_Click" Padding="10,5" ToolTip="在资源管理器中显示"/>
+            <Separator/>
+            <Button x:Name="btnSearch" Content="搜索" Click="BtnSearch_Click" Padding="10,5" ToolTip="Everything搜索"/>
+            <CheckBox x:Name="chkShowChannels" Content="显示通道" Checked="ChkShowChannels_Checked" Unchecked="ChkShowChannels_Unchecked" Margin="10,0"/>
+        </ToolBar>
+
+        <!-- 序列帧工具栏 -->
+        <Expander Grid.Row="3" Header="序列帧播放器" IsExpanded="False" x:Name="sequenceExpander" Background="#F5F5F5">
+            <ToolBar Height="50" Background="Transparent">
+                <!-- 网格设置 -->
+                <GroupBox Header="网格设置" Margin="5,2">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="宽:" VerticalAlignment="Center" Margin="5,0"/>
+                        <TextBox x:Name="txtGridWidth" Text="3" Width="40" VerticalAlignment="Center" TextAlignment="Center" Margin="2,0"/>
+                        <TextBlock Text="×" VerticalAlignment="Center" Margin="2,0"/>
+                        <TextBlock Text="高:" VerticalAlignment="Center" Margin="5,0,2,0"/>
+                        <TextBox x:Name="txtGridHeight" Text="3" Width="40" VerticalAlignment="Center" TextAlignment="Center" Margin="2,0"/>
+                        <Button x:Name="btnParseGrid" Content="解析" Click="BtnParseGrid_Click" Margin="5,0" Padding="8,2" ToolTip="按网格解析当前图片"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <Separator/>
+
+                <!-- 播放控制 -->
+                <GroupBox Header="播放控制" Margin="5,2">
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="btnPlay" Content="▶ 播放" Click="BtnPlay_Click" Padding="8,2" ToolTip="开始/暂停播放" IsEnabled="False"/>
+                        <Button x:Name="btnStop" Content="⏹ 停止" Click="BtnStop_Click" Padding="8,2" ToolTip="停止播放并重置" IsEnabled="False"/>
+                        <TextBlock Text="FPS:" VerticalAlignment="Center" Margin="10,0,5,0"/>
+                        <TextBox x:Name="txtFPS" Text="10" Width="40" VerticalAlignment="Center" TextAlignment="Center" Margin="2,0"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <Separator/>
+
+                <!-- 手动控制 -->
+                <GroupBox Header="手动控制" Margin="5,2">
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="btnFirstFrame" Content="⏮" Click="BtnFirstFrame_Click" Padding="8,2" ToolTip="第一帧" IsEnabled="False"/>
+                        <Button x:Name="btnPrevFrame" Content="⏪" Click="BtnPrevFrame_Click" Padding="8,2" ToolTip="上一帧" IsEnabled="False"/>
+                        <TextBlock x:Name="txtCurrentFrame" Text="- / -" VerticalAlignment="Center" Margin="10,0" MinWidth="50" TextAlignment="Center"/>
+                        <Button x:Name="btnNextFrame" Content="⏩" Click="BtnNextFrame_Click" Padding="8,2" ToolTip="下一帧" IsEnabled="False"/>
+                        <Button x:Name="btnLastFrame" Content="⏭" Click="BtnLastFrame_Click" Padding="8,2" ToolTip="最后一帧" IsEnabled="False"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <Separator/>
+
+                <!-- 预设和保存 -->
+                <GroupBox Header="预设" Margin="5,2">
+                    <StackPanel Orientation="Horizontal">
+                        <ComboBox x:Name="cbGridPresets" Width="80" SelectedIndex="0" SelectionChanged="CbGridPresets_SelectionChanged">
+                            <ComboBoxItem Content="3×3"/>
+                            <ComboBoxItem Content="4×4"/>
+                            <ComboBoxItem Content="5×5"/>
+                            <ComboBoxItem Content="6×6"/>
+                            <ComboBoxItem Content="8×8"/>
+                            <ComboBoxItem Content="2×4"/>
+                            <ComboBoxItem Content="4×2"/>
+                            <ComboBoxItem Content="自定义"/>
+                        </ComboBox>
+                        <Button x:Name="btnResetSequence" Content="重置" Click="BtnResetSequence_Click" Margin="5,0" Padding="8,2" ToolTip="重置到原始图片" IsEnabled="False"/>
+                        <Button x:Name="btnSaveAsGif" Content="保存为GIF" Click="BtnSaveAsGif_Click" Margin="5,0" Padding="8,2" ToolTip="将序列帧保存为GIF动画" IsEnabled="False"/>
+                    </StackPanel>
+                </GroupBox>
+            </ToolBar>
+        </Expander>
+
+        <!-- Everything 搜索栏 -->
+        <Grid Grid.Row="4" x:Name="searchPanel" Visibility="Collapsed" Background="#F0F0F0" Height="40">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="搜索:" VerticalAlignment="Center" Margin="10,0"/>
+            <TextBox x:Name="txtSearch" Grid.Column="1" Margin="5" VerticalAlignment="Center" KeyDown="TxtSearch_KeyDown"/>
+            <Button x:Name="btnCloseSearch" Grid.Column="2" Content="✕" Click="BtnCloseSearch_Click" Margin="5" Width="30"/>
+        </Grid>
+
+        <!-- 背景控制工具栏 -->
+        <Expander Grid.Row="5" Header="背景设置" IsExpanded="True" x:Name="backgroundExpander">
+            <StackPanel Orientation="Horizontal" Height="86" Background="#F8F8F8">
+                <!-- 背景类型选择 -->
+                <GroupBox Header="背景类型" Margin="5">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="rbTransparent" Content="透明方格" Checked="BackgroundType_Changed" Margin="5"/>
+                        <RadioButton x:Name="rbSolidColor" Content="纯色" Checked="BackgroundType_Changed" Margin="5"/>
+                        <RadioButton x:Name="rbImageBackground" Content="图片" Checked="BackgroundType_Changed" Margin="5"/>
+                        <RadioButton x:Name="rbWindowTransparent" Content="窗口透明" Checked="BackgroundType_Changed" Margin="5"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- 预设颜色 -->
+                <GroupBox Header="预设颜色" Margin="5">
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="btnWhite" Width="30" Height="30" Background="White" Margin="2" Click="PresetColor_Click" Tag="White"/>
+                        <Button x:Name="btnBlack" Width="30" Height="30" Background="Black" Margin="2" Click="PresetColor_Click" Tag="Black"/>
+                        <Button x:Name="btnNeutralGray" Width="30" Height="30" Background="#808080" Margin="2" Click="PresetColor_Click" Tag="#808080"/>
+                        <Button x:Name="btnLightGray" Width="30" Height="30" Background="#C0C0C0" Margin="2" Click="PresetColor_Click" Tag="#C0C0C0"/>
+                        <Button x:Name="btnDarkGray" Width="30" Height="30" Background="#404040" Margin="2" Click="PresetColor_Click" Tag="#404040"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- 颜色调节 -->
+                <GroupBox Header="颜色调节" Margin="5">
+                    <StackPanel Orientation="Horizontal">
+                        <StackPanel Margin="5">
+                            <TextBlock Text="快速选色" HorizontalAlignment="Center"/>
+                            <Slider x:Name="sliderColorSpectrum" Width="120" Minimum="0" Maximum="360" ValueChanged="ColorSpectrum_ValueChanged">
+                                <Slider.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#FF0000" Offset="0.0"/>
+                                        <GradientStop Color="#FFFF00" Offset="0.17"/>
+                                        <GradientStop Color="#00FF00" Offset="0.33"/>
+                                        <GradientStop Color="#00FFFF" Offset="0.5"/>
+                                        <GradientStop Color="#0000FF" Offset="0.67"/>
+                                        <GradientStop Color="#FF00FF" Offset="0.83"/>
+                                        <GradientStop Color="#FF0000" Offset="1.0"/>
+                                    </LinearGradientBrush>
+                                </Slider.Background>
+                            </Slider>
+                        </StackPanel>
+                        <StackPanel Margin="5">
+                            <TextBlock Text="色相" HorizontalAlignment="Center"/>
+                            <Slider x:Name="sliderHue" Width="100" Minimum="0" Maximum="360" ValueChanged="ColorSlider_ValueChanged"/>
+                        </StackPanel>
+                        <StackPanel Margin="5">
+                            <TextBlock Text="饱和度" HorizontalAlignment="Center"/>
+                            <Slider x:Name="sliderSaturation" Width="100" Minimum="0" Maximum="100" Value="100" ValueChanged="ColorSlider_ValueChanged"/>
+                        </StackPanel>
+                        <StackPanel Margin="5">
+                            <TextBlock Text="明度" HorizontalAlignment="Center"/>
+                            <Slider x:Name="sliderBrightness" Width="100" Minimum="0" Maximum="100" Value="50" ValueChanged="ColorSlider_ValueChanged"/>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- 颜色选择器 -->
+                <GroupBox Header="自定义颜色" Margin="5">
+                    <StackPanel Orientation="Horizontal">
+                        <xctk:ColorPicker x:Name="colorPicker" SelectedColorChanged="ColorPicker_SelectedColorChanged" Width="100"/>
+                        <Button x:Name="btnSelectBackgroundImage" Content="选择背景图" Click="BtnSelectBackgroundImage_Click" Margin="5" Padding="10,5"/>
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
+        </Expander>
+
+        <!-- 主显示区域 -->
+        <Grid Grid.Row="6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto" x:Name="channelSplitterColumn"/>
+                <ColumnDefinition Width="0" x:Name="channelColumn"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 主图显示区域 -->
+            <Border x:Name="imageContainer" Grid.Column="0" Background="{StaticResource CheckerboardBrush}"
+                    MouseWheel="ImageContainer_MouseWheel"
+                    MouseLeftButtonDown="ImageContainer_MouseLeftButtonDown">
+                <Canvas x:Name="imageCanvas">
+                    <Image x:Name="mainImage" 
+                           RenderOptions.BitmapScalingMode="HighQuality"
+                           Stretch="None"
+                           MouseLeftButtonDown="MainImage_MouseLeftButtonDown"
+                           MouseLeftButtonUp="MainImage_MouseLeftButtonUp"
+                           MouseMove="MainImage_MouseMove"/>
+                </Canvas>
+            </Border>
+
+            <!-- 通道显示区域分隔符 -->
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" 
+                         x:Name="channelSplitter" Visibility="Collapsed" ResizeBehavior="PreviousAndNext"/>
+
+            <!-- 通道显示区域 -->
+            <Grid x:Name="channelPanel" Grid.Column="2" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="通道预览" FontWeight="Bold" Margin="10,5"/>
+                <ScrollViewer Grid.Row="1">
+                    <StackPanel x:Name="channelStackPanel"/>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+
+        <!-- 状态栏 -->
+        <StatusBar Grid.Row="7">
+            <StatusBarItem>
+                <TextBlock x:Name="statusText" Text="就绪"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock x:Name="imageInfoText"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>

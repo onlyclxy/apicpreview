@@ -1,0 +1,160 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <LEADTOOLS_BIN>C:\LEADTOOLS 19\Bin\Dotnet4\x64</LEADTOOLS_BIN>
+
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsDesktopSdk>true</UseWindowsDesktopSdk>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <DisableWinExeOutputInference>true</DisableWinExeOutputInference>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Win32.SystemEvents" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Leadtools">
+      <HintPath>$(LEADTOOLS_BIN)\Leadtools.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <Reference Include="Leadtools.Codecs">
+      <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <Reference Include="Leadtools.Drawing">
+      <HintPath>$(LEADTOOLS_BIN)\Leadtools.Drawing.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <Reference Include="Leadtools.Codecs.Abc"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Abc.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Abi"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Abi.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Afp"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Afp.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Ani"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Ani.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Anz"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Anz.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Bmp"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Bmp.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Cal"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Cal.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Cgm"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Cgm.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Cin"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Cin.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Clp"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Clp.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Cmp"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Cmp.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Cmw"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Cmw.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Cmx"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Cmx.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Cut"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Cut.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Dcf"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Dcf.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Dgn"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Dgn.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Doc"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Doc.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Dox"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Dox.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Drw"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Drw.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Dwf"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Dwf.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Dwg"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Dwg.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Dxf"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Dxf.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.E00"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.E00.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Eps"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Eps.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Fax"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Fax.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Fit"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Fit.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Flc"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Flc.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Fpx"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Fpx.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Gbr"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Gbr.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Gif"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Gif.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Hdp"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Hdp.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Htm"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Htm.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Ica"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Ica.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Iff"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Iff.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Img"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Img.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Ing"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Ing.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Itg"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Itg.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.J2k"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.J2k.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Jb2"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Jb2.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Jbg"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Jbg.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Jls"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Jls.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Jpm"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Jpm.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Jxr"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Jxr.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Lma"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Lma.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Lmb"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Lmb.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Mac"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Mac.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Mif"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Mif.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Mng"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Mng.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Mob"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Mob.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Msp"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Msp.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Nap"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Nap.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Pcl"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Pcl.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Pct"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Pct.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Pcx"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Pcx.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Png"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Png.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Pnm"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Pnm.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Ppt"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Ppt.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Ppx"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Ppx.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Psd"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Psd.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Pst"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Pst.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Ptk"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Ptk.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Pub"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Pub.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Ras"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Ras.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Raw"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Raw.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Rtf"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Rtf.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Sct"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Sct.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Sff"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Sff.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Sgi"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Sgi.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Shp"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Shp.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Smp"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Smp.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Snp"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Snp.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Tdb"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Tdb.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Tfx"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Tfx.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Tga"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Tga.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Tif"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Tif.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Txt"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Txt.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Vff"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Vff.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Wfx"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Wfx.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Wmf"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Wmf.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Wmp"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Wmp.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Wmz"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Wmz.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Wpg"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Wpg.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.X9F"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.X9F.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Xbm"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Xbm.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Xls"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Xls.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Xlx"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Xlx.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Xmp"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Xmp.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Xpm"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Xpm.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Xps"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Xps.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+    <Reference Include="Leadtools.Codecs.Xwd"> <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Xwd.dll</HintPath> <Private>true</Private> <SpecificVersion>false</SpecificVersion> </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="runtimeconfig.template.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="full_license.key">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="full_license.lic">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <Target Name="CopyLeadtoolsDependencies" AfterTargets="Build">
+    <ItemGroup>
+      <LeadtoolsFiles Include="$(LEADTOOLS_BIN)\*.dll" />
+      <LeadtoolsCommonFiles Include="C:\LEADTOOLS 19\Bin\Common\*.*" />
+      <LeadtoolsCDLL Include="C:\LEADTOOLS 19\Bin\CDLL\x64\*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(LeadtoolsFiles)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" ContinueOnError="true" />
+    <Copy SourceFiles="@(LeadtoolsCommonFiles)" DestinationFolder="$(OutputPath)\LEADTOOLS" SkipUnchangedFiles="true" ContinueOnError="true" />
+    <Copy SourceFiles="@(LeadtoolsCDLL)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" ContinueOnError="true" />
+  </Target>
+
+</Project>
