@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# 忽略大文件（超过100MB的备份文件）
+PicView_引擎备份.zip
