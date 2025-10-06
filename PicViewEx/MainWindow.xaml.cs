@@ -1509,14 +1509,16 @@ namespace PicViewEx
                 Console.WriteLine($"累积后角度: {rotationAngle}度");
                 
                 // 创建新的旋转变换，使用累积的角度
+                // 关键修改:以原始图片像素尺寸的中心为旋转中心
                 RotateTransform rotate = new RotateTransform(rotationAngle);
-                // 设置旋转中心为图片控件的中心
-                rotate.CenterX = mainImage.ActualWidth / 2;
-                rotate.CenterY = mainImage.ActualHeight / 2;
+                rotate.CenterX = source.PixelWidth / 2.0;
+                rotate.CenterY = source.PixelHeight / 2.0;
 
                 // 直接设置旋转变换，而不是累积多个变换
                 currentTransform = rotate;
-                mainImage.RenderTransform = currentTransform;
+
+                // 更新图片变换(会同时应用缩放和旋转)
+                UpdateImageTransform();
                 
                 Console.WriteLine($"旋转后变换: {currentTransform}");
                 Console.WriteLine($"旋转后图片位置: ({imagePosition.X}, {imagePosition.Y})");
@@ -2009,14 +2011,29 @@ namespace PicViewEx
                 effectiveWidth = Math.Max(100, containerWidth - 305);
             }
 
-            var (actualWidth, actualHeight) = GetRotatedImageBounds(source.PixelWidth, source.PixelHeight);
-            double scaledWidth = actualWidth * currentZoom;
-            double scaledHeight = actualHeight * currentZoom;
+            // 计算旋转后的边界框尺寸并应用缩放
+            var (rotatedWidth, rotatedHeight) = GetRotatedImageBounds(source.PixelWidth, source.PixelHeight);
+            double scaledRotatedWidth = rotatedWidth * currentZoom;
+            double scaledRotatedHeight = rotatedHeight * currentZoom;
 
-            imagePosition.X = (effectiveWidth - scaledWidth) / 2.0;
-            imagePosition.Y = (containerHeight - scaledHeight) / 2.0;
+            // 原始图片尺寸(缩放后)
+            double scaledOriginalWidth = source.PixelWidth * currentZoom;
+            double scaledOriginalHeight = source.PixelHeight * currentZoom;
 
-            Console.WriteLine($"[CenterImageInContainer] 有效宽度={effectiveWidth}, 位置=({imagePosition.X}, {imagePosition.Y})");
+            // 期望的旋转后边界框中心位置
+            double desiredCenterX = effectiveWidth / 2.0;
+            double desiredCenterY = containerHeight / 2.0;
+
+            // 图片元素的旋转中心在Canvas坐标系中的位置
+            // 旋转中心相对于图片元素左上角的偏移是 (scaledOriginalWidth/2, scaledOriginalHeight/2)
+            double rotationCenterOffsetX = scaledOriginalWidth / 2.0;
+            double rotationCenterOffsetY = scaledOriginalHeight / 2.0;
+
+            // Canvas位置 = 期望中心 - 旋转中心偏移
+            imagePosition.X = desiredCenterX - rotationCenterOffsetX;
+            imagePosition.Y = desiredCenterY - rotationCenterOffsetY;
+
+            Console.WriteLine($"[CenterImageInContainer] 旋转角度={rotationAngle}, 原始尺寸缩放后=({scaledOriginalWidth},{scaledOriginalHeight}), 边界框尺寸=({scaledRotatedWidth},{scaledRotatedHeight}), Canvas位置=({imagePosition.X}, {imagePosition.Y})");
 
             UpdateImagePosition();
         }
@@ -2028,27 +2045,24 @@ namespace PicViewEx
             var source = mainImage.Source as BitmapSource;
             if (source == null) return;
 
-            // 不要直接设置图片的Width和Height，让WPF自动处理
-            // 移除这两行以避免大分辨率图片显示问题：
-            // mainImage.Width = source.PixelWidth;
-            // mainImage.Height = source.PixelHeight;
-
             // 清除之前的尺寸设置，让图片按原始尺寸显示
             mainImage.ClearValue(FrameworkElement.WidthProperty);
             mainImage.ClearValue(FrameworkElement.HeightProperty);
 
-            // 创建变换组：缩放 + 旋转
+            // 创建变换组：先旋转，再缩放(顺序很重要!)
             var transformGroup = new TransformGroup();
 
-            // 添加缩放变换
-            var scaleTransform = new ScaleTransform(currentZoom, currentZoom);
-            transformGroup.Children.Add(scaleTransform);
-
-            // 添加旋转变换（如果有的话）
-            if (currentTransform != Transform.Identity)
+            // 1. 先添加旋转变换(如果有的话)
+            if (currentTransform != Transform.Identity && currentTransform is RotateTransform)
             {
                 transformGroup.Children.Add(currentTransform);
             }
+
+            // 2. 再添加缩放变换
+            // 关键修复: 缩放变换不设置中心点,默认以(0,0)为中心
+            // 这样可以避免与旋转变换的中心点产生冲突
+            var scaleTransform = new ScaleTransform(currentZoom, currentZoom);
+            transformGroup.Children.Add(scaleTransform);
 
             // 应用变换
             mainImage.RenderTransform = transformGroup;
@@ -2174,7 +2188,7 @@ namespace PicViewEx
 
             // 计算有效显示区域宽度
             double effectiveWidth = containerWidth;
-            
+
             // 只有当通道面板真正显示时才减去其宽度
             if (showChannels && channelPanel != null && channelPanel.Visibility == Visibility.Visible)
             {
@@ -2182,14 +2196,24 @@ namespace PicViewEx
                 effectiveWidth = Math.Max(100, containerWidth - 305); // 确保至少有100像素显示区域
             }
 
-            // 计算旋转后的实际边界框尺寸，然后应用缩放
-            var (rotatedWidth, rotatedHeight) = GetRotatedImageBounds(source.PixelWidth, source.PixelHeight);
-            var imageWidth = rotatedWidth * currentZoom;
-            var imageHeight = rotatedHeight * currentZoom;
+            // 原始图片尺寸(缩放后)
+            double scaledOriginalWidth = source.PixelWidth * currentZoom;
+            double scaledOriginalHeight = source.PixelHeight * currentZoom;
 
-            // 精确计算居中位置 - 在有效区域内居中
-            imagePosition.X = Math.Round((effectiveWidth - imageWidth) / 2.0);
-            imagePosition.Y = Math.Round((containerHeight - imageHeight) / 2.0);
+            // 期望的中心位置
+            double desiredCenterX = effectiveWidth / 2.0;
+            double desiredCenterY = containerHeight / 2.0;
+
+            // 图片元素的旋转中心在Canvas坐标系中的位置
+            // 旋转中心相对于图片元素左上角的偏移是 (scaledOriginalWidth/2, scaledOriginalHeight/2)
+            double rotationCenterOffsetX = scaledOriginalWidth / 2.0;
+            double rotationCenterOffsetY = scaledOriginalHeight / 2.0;
+
+            // Canvas位置 = 期望中心 - 旋转中心偏移
+            imagePosition.X = Math.Round(desiredCenterX - rotationCenterOffsetX);
+            imagePosition.Y = Math.Round(desiredCenterY - rotationCenterOffsetY);
+
+            Console.WriteLine($"[CenterImage] 旋转角度={rotationAngle}, 原始尺寸缩放后=({scaledOriginalWidth},{scaledOriginalHeight}), Canvas位置=({imagePosition.X}, {imagePosition.Y})");
 
             UpdateImageTransform();
             UpdateZoomText();
