@@ -1,0 +1,1211 @@
+diff --git a/PicViewEx/ImageLoader.cs b/PicViewEx/ImageLoader.cs
+new file mode 100644
+index 0000000000000000000000000000000000000000..fc2956809616edff3e02eba0470808b653532706
+--- /dev/null
++++ b/PicViewEx/ImageLoader.cs
+@@ -0,0 +1,282 @@
++using ImageMagick;
++using System;
++using System.Collections.Generic;
++using System.IO;
++using System.Windows;
++using System.Windows.Media;
++using System.Windows.Media.Imaging;
++
++namespace PicViewEx
++{
++    /// <summary>
++    /// 集中管理图片及相关资源的加载逻辑，便于在不同场景复用。
++    /// </summary>
++    public class ImageLoader
++    {
++        private readonly double backgroundOpacity;
++
++        public ImageLoader(double backgroundOpacity = 0.3)
++        {
++            this.backgroundOpacity = backgroundOpacity;
++        }
++
++        /// <summary>
++        /// 加载常规图片资源，优先使用 ImageMagick 以获得更好的格式兼容性。
++        /// </summary>
++        public BitmapImage LoadImage(string imagePath)
++        {
++            if (string.IsNullOrWhiteSpace(imagePath))
++                throw new ArgumentException("imagePath 不能为空", nameof(imagePath));
++
++            try
++            {
++                using (var magickImage = new MagickImage(imagePath))
++                {
++                    return CreateBitmapFromMagickImage(magickImage);
++                }
++            }
++            catch
++            {
++                try
++                {
++                    return LoadBitmapImageFromFile(imagePath);
++                }
++                catch (Exception ex)
++                {
++                    throw new InvalidOperationException($"无法加载图片: {imagePath}", ex);
++                }
++            }
++        }
++
++        /// <summary>
++        /// 为 GIF 动画加载静态源图像（用于 WpfAnimatedGif 控件）。
++        /// </summary>
++        public BitmapImage LoadGifAnimationSource(string gifPath)
++        {
++            if (string.IsNullOrWhiteSpace(gifPath))
++                throw new ArgumentException("gifPath 不能为空", nameof(gifPath));
++
++            var image = new BitmapImage();
++            image.BeginInit();
++            image.UriSource = new Uri(gifPath);
++            image.CacheOption = BitmapCacheOption.OnLoad;
++            image.EndInit();
++            image.Freeze();
++            return image;
++        }
++
++        /// <summary>
++        /// 从文件加载背景图片，并返回包含图像刷的结果。
++        /// </summary>
++        public BackgroundImageResult LoadBackgroundImage(string imagePath)
++        {
++            if (string.IsNullOrWhiteSpace(imagePath))
++                throw new ArgumentException("imagePath 不能为空", nameof(imagePath));
++            if (!File.Exists(imagePath))
++                throw new FileNotFoundException("背景图片不存在", imagePath);
++
++            var bitmap = LoadBitmapImageFromFile(imagePath);
++            var brush = CreateBackgroundBrush(bitmap);
++            return new BackgroundImageResult(brush, imagePath, usedFallback: false);
++        }
++
++        /// <summary>
++        /// 加载默认背景图片，如果默认资源不存在则回退到渐变背景。
++        /// </summary>
++        public BackgroundImageResult LoadDefaultBackgroundImage(string baseDirectory)
++        {
++            if (string.IsNullOrWhiteSpace(baseDirectory))
++                throw new ArgumentException("baseDirectory 不能为空", nameof(baseDirectory));
++
++            string defaultImagePath = Path.Combine(baseDirectory, "res", "01.jpg");
++            if (File.Exists(defaultImagePath))
++            {
++                var bitmap = LoadBitmapImageFromFile(defaultImagePath);
++                var brush = CreateBackgroundBrush(bitmap);
++                return new BackgroundImageResult(brush, defaultImagePath, usedFallback: false);
++            }
++
++            var fallbackBrush = CreateBackgroundBrush(CreateGradientImage());
++            return new BackgroundImageResult(fallbackBrush, null, usedFallback: true);
++        }
++
++        /// <summary>
++        /// 为指定图片生成 RGB/Alpha 通道。
++        /// </summary>
++        public List<Tuple<string, BitmapImage>> LoadChannels(string imagePath)
++        {
++            if (string.IsNullOrWhiteSpace(imagePath))
++                throw new ArgumentException("imagePath 不能为空", nameof(imagePath));
++
++            using (var magickImage = new MagickImage(imagePath))
++            {
++                return LoadChannelsFromMagickImage(magickImage);
++            }
++        }
++
++        /// <summary>
++        /// 为剪贴板图片生成通道信息。
++        /// </summary>
++        public List<Tuple<string, BitmapImage>> LoadChannels(BitmapSource source)
++        {
++            if (source == null)
++                throw new ArgumentNullException(nameof(source));
++
++            byte[] imageBytes = ConvertBitmapSourceToBytes(source);
++            using (var magickImage = new MagickImage(imageBytes))
++            {
++                return LoadChannelsFromMagickImage(magickImage);
++            }
++        }
++
++        private List<Tuple<string, BitmapImage>> LoadChannelsFromMagickImage(MagickImage magickImage)
++        {
++            var channels = new List<Tuple<string, BitmapImage>>();
++
++            var redImage = new MagickImage(magickImage);
++            try
++            {
++                redImage.Evaluate(Channels.Green, EvaluateOperator.Set, 0);
++                redImage.Evaluate(Channels.Blue, EvaluateOperator.Set, 0);
++                var redBitmap = CreateBitmapFromMagickImage(redImage);
++                channels.Add(Tuple.Create("红色 (R)", redBitmap));
++            }
++            finally
++            {
++                redImage.Dispose();
++            }
++
++            var greenImage = new MagickImage(magickImage);
++            try
++            {
++                greenImage.Evaluate(Channels.Red, EvaluateOperator.Set, 0);
++                greenImage.Evaluate(Channels.Blue, EvaluateOperator.Set, 0);
++                var greenBitmap = CreateBitmapFromMagickImage(greenImage);
++                channels.Add(Tuple.Create("绿色 (G)", greenBitmap));
++            }
++            finally
++            {
++                greenImage.Dispose();
++            }
++
++            var blueImage = new MagickImage(magickImage);
++            try
++            {
++                blueImage.Evaluate(Channels.Red, EvaluateOperator.Set, 0);
++                blueImage.Evaluate(Channels.Green, EvaluateOperator.Set, 0);
++                var blueBitmap = CreateBitmapFromMagickImage(blueImage);
++                channels.Add(Tuple.Create("蓝色 (B)", blueBitmap));
++            }
++            finally
++            {
++                blueImage.Dispose();
++            }
++
++            if (magickImage.HasAlpha)
++            {
++                var alphaImage = new MagickImage(magickImage);
++                try
++                {
++                    alphaImage.Alpha(AlphaOption.Extract);
++                    alphaImage.Format = MagickFormat.Png;
++                    var alphaBitmap = CreateBitmapFromMagickImage(alphaImage);
++                    channels.Add(Tuple.Create("透明 (Alpha)", alphaBitmap));
++                }
++                finally
++                {
++                    alphaImage.Dispose();
++                }
++            }
++
++            int expectedChannels = magickImage.HasAlpha ? 4 : 3;
++            if (channels.Count != expectedChannels)
++            {
++                throw new InvalidOperationException($"通道生成不完整，预期 {expectedChannels} 个通道，实际生成 {channels.Count} 个");
++            }
++
++            return channels;
++        }
++
++        private BitmapImage LoadBitmapImageFromFile(string imagePath)
++        {
++            var bitmap = new BitmapImage();
++            bitmap.BeginInit();
++            bitmap.UriSource = new Uri(imagePath);
++            bitmap.CacheOption = BitmapCacheOption.OnLoad;
++            bitmap.EndInit();
++            bitmap.Freeze();
++            return bitmap;
++        }
++
++        private ImageBrush CreateBackgroundBrush(BitmapSource source)
++        {
++            return new ImageBrush(source)
++            {
++                Stretch = Stretch.UniformToFill,
++                TileMode = TileMode.Tile,
++                Opacity = backgroundOpacity
++            };
++        }
++
++        private BitmapSource CreateGradientImage()
++        {
++            var visual = new DrawingVisual();
++            using (var context = visual.RenderOpen())
++            {
++                var gradientBrush = new LinearGradientBrush();
++                gradientBrush.StartPoint = new Point(0, 0);
++                gradientBrush.EndPoint = new Point(1, 1);
++                gradientBrush.GradientStops.Add(new GradientStop(Colors.LightBlue, 0.0));
++                gradientBrush.GradientStops.Add(new GradientStop(Colors.LightGray, 1.0));
++
++                context.DrawRectangle(gradientBrush, null, new Rect(0, 0, 256, 256));
++            }
++
++            var renderBitmap = new RenderTargetBitmap(256, 256, 96, 96, PixelFormats.Pbgra32);
++            renderBitmap.Render(visual);
++            renderBitmap.Freeze();
++            return renderBitmap;
++        }
++
++        private BitmapImage CreateBitmapFromMagickImage(MagickImage magickImage)
++        {
++            magickImage.Format = MagickFormat.Png;
++            byte[] imageBytes = magickImage.ToByteArray();
++
++            BitmapImage bitmap = new BitmapImage();
++            bitmap.BeginInit();
++            bitmap.StreamSource = new MemoryStream(imageBytes);
++            bitmap.CacheOption = BitmapCacheOption.OnLoad;
++            bitmap.EndInit();
++            bitmap.Freeze();
++
++            return bitmap;
++        }
++
++        private byte[] ConvertBitmapSourceToBytes(BitmapSource bitmapSource)
++        {
++            var encoder = new PngBitmapEncoder();
++            encoder.Frames.Add(BitmapFrame.Create(bitmapSource));
++
++            using (var ms = new MemoryStream())
++            {
++                encoder.Save(ms);
++                return ms.ToArray();
++            }
++        }
++    }
++
++    public class BackgroundImageResult
++    {
++        public BackgroundImageResult(ImageBrush brush, string sourcePath, bool usedFallback)
++        {
++            Brush = brush ?? throw new ArgumentNullException(nameof(brush));
++            SourcePath = sourcePath;
++            UsedFallback = usedFallback;
++        }
++
++        public ImageBrush Brush { get; }
++        public string SourcePath { get; }
++        public bool UsedFallback { get; }
++    }
++}
+diff --git a/PicViewEx/MainWindow.xaml.cs b/PicViewEx/MainWindow.xaml.cs
+index 29c3ca5cde3f8f0d1ee44aae265c7d5434deb951..21d19b26afeea1837659f7878e50b98c2467c433 100644
+--- a/PicViewEx/MainWindow.xaml.cs
++++ b/PicViewEx/MainWindow.xaml.cs
+@@ -20,80 +20,83 @@ namespace PicViewEx
+     public class OpenWithApp
+     {
+         public string Name { get; set; } = "";
+         public string ExecutablePath { get; set; } = "";
+         public string Arguments { get; set; } = "\"{0}\""; // {0} 将被替换为文件路径
+         public bool ShowText { get; set; } = true;
+         public string IconPath { get; set; } = "";
+     }
+ 
+     public partial class MainWindow : Window
+     {
+         private List<string> supportedFormats = new List<string> {
+             ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".tif",
+             ".ico", ".webp", ".tga", ".dds", ".psd"
+         };
+ 
+         private List<string> currentImageList = new List<string>();
+         private int currentImageIndex = -1;
+         private string currentImagePath = "";
+         private double currentZoom = 1.0;
+         private Transform currentTransform = Transform.Identity;
+         private bool showChannels = false;
+         private SolidColorBrush currentBackgroundBrush = new SolidColorBrush(Colors.Gray); // 默认中性灰
+         private ImageBrush backgroundImageBrush;
+         private EverythingSearch everythingSearch;
++        private readonly ImageLoader imageLoader;
+ 
+         // 拖拽相关
+         private bool isDragging = false;
+         private Point lastMousePosition;
+         private Point imagePosition = new Point(0, 0);
+ 
+         // 通道缓存相关
+         private string currentChannelCachePath = null;
+         //private readonly List<(string name, BitmapImage image)> channelCache = new();
+         private readonly List<Tuple<string, BitmapImage>> channelCache = new List<Tuple<string, BitmapImage>>();
+ 
+ 
+         // 打开方式配置
+         private List<OpenWithApp> openWithApps = new List<OpenWithApp>();
+ 
+         // 窗口大小变化时的智能缩放
+         private bool isWindowInitialized = false;
+         private Size lastWindowSize;
+ 
+         // 设置管理
+         private AppSettings appSettings;
+         private bool isLoadingSettings = false;
+ 
+         // 临时文件路径，用于剪贴板图片的打开方式功能
+         private string temporaryImagePath = null;
+ 
+         public MainWindow()
+         {
+             InitializeComponent();
+ 
++            imageLoader = new ImageLoader();
++
+             // 加载设置
+             LoadAppSettings();
+ 
+             InitializeBackgroundSettings();
+             UpdateZoomText();
+ 
+             // 监听窗口大小变化
+             this.SizeChanged += MainWindow_SizeChanged;
+             this.Loaded += MainWindow_Loaded;
+             this.Closing += MainWindow_Closing;
+ 
+             // 初始化Everything搜索（如果失败也不影响其他功能）
+             try
+             {
+                 everythingSearch = new EverythingSearch(supportedFormats);
+             }
+             catch (Exception ex)
+             {
+                 if (statusText != null)
+                     statusText.Text = $"搜索功能初始化失败: {ex.Message}";
+             }
+ 
+             // 初始化窗口透明功能
+             InitializeWindowTransparency();
+ 
+@@ -766,121 +769,68 @@ namespace PicViewEx
+             {
+                 string backgroundType = "";
+                 if (rb == rbTransparent) backgroundType = "Transparent";
+                 else if (rb == rbSolidColor) backgroundType = "SolidColor";
+                 else if (rb == rbImageBackground) backgroundType = "ImageBackground";
+                 else if (rb == rbWindowTransparent) backgroundType = "WindowTransparent";
+ 
+                 if (!string.IsNullOrEmpty(backgroundType))
+                 {
+                     RecordToolUsage($"Background{backgroundType}");
+                 }
+             }
+ 
+             // 如果切换到图片背景，但还没有设置背景图片，则加载默认图片
+             if (rbImageBackground?.IsChecked == true && backgroundImageBrush == null)
+             {
+                 LoadDefaultBackgroundImage();
+             }
+             UpdateBackground();
+         }
+ 
+         private void LoadDefaultBackgroundImage()
+         {
+             try
+             {
+-                // 获取exe所在目录
+-                string exeDirectory = AppDomain.CurrentDomain.BaseDirectory;
+-                string defaultImagePath = Path.Combine(exeDirectory, "res", "01.jpg");
+-
+-                if (File.Exists(defaultImagePath))
+-                {
+-                    BitmapImage bgImage = new BitmapImage();
+-                    bgImage.BeginInit();
+-                    bgImage.UriSource = new Uri(defaultImagePath);
+-                    bgImage.CacheOption = BitmapCacheOption.OnLoad;
+-                    bgImage.EndInit();
+-                    bgImage.Freeze();
+-
+-                    backgroundImageBrush = new ImageBrush(bgImage)
+-                    {
+-                        Stretch = Stretch.UniformToFill,
+-                        TileMode = TileMode.Tile,
+-                        Opacity = 0.3
+-                    };
++                var result = imageLoader.LoadDefaultBackgroundImage(AppDomain.CurrentDomain.BaseDirectory);
++                backgroundImageBrush = result.Brush;
+ 
+-                    if (statusText != null)
+-                        statusText.Text = "已加载默认背景图片: 01.jpg";
+-                }
+-                else
++                if (statusText != null)
+                 {
+-                    // 如果默认图片不存在，创建一个简单的渐变背景
+-                    var gradientBrush = new LinearGradientBrush();
+-                    gradientBrush.StartPoint = new Point(0, 0);
+-                    gradientBrush.EndPoint = new Point(1, 1);
+-                    gradientBrush.GradientStops.Add(new GradientStop(Colors.LightBlue, 0.0));
+-                    gradientBrush.GradientStops.Add(new GradientStop(Colors.LightGray, 1.0));
+-
+-                    backgroundImageBrush = new ImageBrush
+-                    {
+-                        ImageSource = CreateGradientImage(),
+-                        Stretch = Stretch.UniformToFill,
+-                        TileMode = TileMode.Tile,
+-                        Opacity = 0.3
+-                    };
+-
+-                    if (statusText != null)
++                    if (result.UsedFallback)
+                         statusText.Text = "默认图片不存在，使用渐变背景";
++                    else if (!string.IsNullOrEmpty(result.SourcePath))
++                        statusText.Text = $"已加载默认背景图片: {Path.GetFileName(result.SourcePath)}";
+                 }
+             }
+             catch (Exception ex)
+             {
+                 if (statusText != null)
+                     statusText.Text = $"加载默认背景图片失败: {ex.Message}";
+             }
+         }
+ 
+-        private BitmapSource CreateGradientImage()
+-        {
+-            // 创建一个简单的渐变图像作为后备
+-            var visual = new DrawingVisual();
+-            using (var context = visual.RenderOpen())
+-            {
+-                var gradientBrush = new LinearGradientBrush();
+-                gradientBrush.StartPoint = new Point(0, 0);
+-                gradientBrush.EndPoint = new Point(1, 1);
+-                gradientBrush.GradientStops.Add(new GradientStop(Colors.LightBlue, 0.0));
+-                gradientBrush.GradientStops.Add(new GradientStop(Colors.LightGray, 1.0));
+-
+-                context.DrawRectangle(gradientBrush, null, new Rect(0, 0, 256, 256));
+-            }
+-
+-            var renderBitmap = new RenderTargetBitmap(256, 256, 96, 96, PixelFormats.Pbgra32);
+-            renderBitmap.Render(visual);
+-            return renderBitmap;
+-        }
+-
+         private void PresetColor_Click(object sender, RoutedEventArgs e)
+         {
+             if (sender is Button button && button.Tag is string colorString)
+             {
+                 RecordToolUsage("PresetColor");
+ 
+                 if (rbSolidColor != null)
+                     rbSolidColor.IsChecked = true;
+ 
+                 Color color;
+                 switch (colorString)
+                 {
+                     case "White":
+                         color = Colors.White;
+                         break;
+                     case "Black":
+                         color = Colors.Black;
+                         break;
+                     default:
+                         var converter = new BrushConverter();
+                         if (converter.ConvertFromString(colorString) is SolidColorBrush brush)
+                             color = brush.Color;
+                         else
+                             return;
+                         break;
+@@ -1023,87 +973,51 @@ namespace PicViewEx
+                 {
+                     sliderSaturation.ValueChanged -= ColorSlider_ValueChanged;
+                     sliderSaturation.Value = s * 100;
+                     sliderSaturation.ValueChanged += ColorSlider_ValueChanged;
+                 }
+ 
+                 if (sliderBrightness != null)
+                 {
+                     sliderBrightness.ValueChanged -= ColorSlider_ValueChanged;
+                     sliderBrightness.Value = v * 100;
+                     sliderBrightness.ValueChanged += ColorSlider_ValueChanged;
+                 }
+ 
+                 UpdateBackground();
+             }
+         }
+ 
+         private void BtnSelectBackgroundImage_Click(object sender, RoutedEventArgs e)
+         {
+             OpenFileDialog dialog = new OpenFileDialog();
+             dialog.Filter = "图片文件|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.tif|所有文件|*.*";
+             dialog.Title = "选择背景图片";
+ 
+             if (dialog.ShowDialog() == true)
+             {
+-                try
+-                {
+-                    BitmapImage bgImage = new BitmapImage();
+-                    bgImage.BeginInit();
+-                    bgImage.UriSource = new Uri(dialog.FileName);
+-                    bgImage.CacheOption = BitmapCacheOption.OnLoad;
+-                    bgImage.EndInit();
+-                    bgImage.Freeze();
+-
+-                    backgroundImageBrush = new ImageBrush(bgImage)
+-                    {
+-                        Stretch = Stretch.UniformToFill,
+-                        TileMode = TileMode.Tile,
+-                        Opacity = 0.3
+-                    };
+-
+-                    if (rbImageBackground != null)
+-                        rbImageBackground.IsChecked = true;
+-
+-                    UpdateBackground();
+-
+-                    if (statusText != null)
+-                        statusText.Text = $"背景图片已设置: {Path.GetFileName(dialog.FileName)}";
+-                }
+-                catch (Exception ex)
+-                {
+-                    // 如果加载用户选择的图片失败，尝试加载默认图片
+-                    if (statusText != null)
+-                        statusText.Text = $"加载背景图片失败，尝试使用默认图片: {ex.Message}";
+-
+-                    LoadDefaultBackgroundImage();
+-
+-                    if (rbImageBackground != null)
+-                        rbImageBackground.IsChecked = true;
+-
+-                    UpdateBackground();
+-                }
++                ApplyBackgroundImageFromPath(dialog.FileName);
+             }
+             else
+             {
+                 // 用户取消了选择，如果当前没有背景图片，则加载默认图片
+                 if (backgroundImageBrush == null)
+                 {
+                     LoadDefaultBackgroundImage();
+ 
+                     if (rbImageBackground != null)
+                         rbImageBackground.IsChecked = true;
+ 
+                     UpdateBackground();
+                 }
+             }
+         }
+ 
+         private void ImageContainer_MouseWheel(object sender, MouseWheelEventArgs e)
+         {
+             if (mainImage?.Source == null) return;
+ 
+             double scaleFactor = e.Delta > 0 ? 1.1 : 0.9;
+             double newZoom = currentZoom * scaleFactor;
+ 
+             // 限制缩放范围
+             var originalImage = mainImage.Source as BitmapSource;
+@@ -1320,111 +1234,81 @@ namespace PicViewEx
+                         statusText.Text = $"已加载: {Path.GetFileName(imagePath)}";
+                 }
+             }
+             catch (Exception ex)
+             {
+                 MessageBox.Show($"加载图片失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                 if (statusText != null)
+                     statusText.Text = "加载失败";
+             }
+         }
+ 
+         public void LoadImageFromCommandLine(string imagePath)
+         {
+             LoadImage(imagePath);
+             var directoryPath = Path.GetDirectoryName(imagePath);
+             if (!string.IsNullOrEmpty(directoryPath))
+             {
+                 LoadDirectoryImages(directoryPath);
+             }
+         }
+ 
+         private void LoadGifAnimation(string gifPath)
+         {
+             try
+             {
+-                var image = new BitmapImage();
+-                image.BeginInit();
+-                image.UriSource = new Uri(gifPath);
+-                image.CacheOption = BitmapCacheOption.OnLoad;
+-                image.EndInit();
++                var image = imageLoader.LoadGifAnimationSource(gifPath);
+ 
+                 // 使用WpfAnimatedGif库来播放GIF动画
+                 WpfAnimatedGif.ImageBehavior.SetAnimatedSource(mainImage, image);
+ 
+                 if (statusText != null)
+                     statusText.Text = $"已加载GIF动画: {Path.GetFileName(gifPath)}";
+             }
+             catch (Exception ex)
+             {
+                 // 如果GIF加载失败，尝试普通图片加载
+                 if (statusText != null)
+                     statusText.Text = $"GIF动画加载失败，尝试静态显示: {ex.Message}";
+ 
+                 var bitmap = LoadImageWithMagick(gifPath);
+                 if (bitmap != null)
+                 {
+                     mainImage.Source = bitmap;
+                 }
+             }
+         }
+ 
+         private BitmapImage LoadImageWithMagick(string imagePath)
+         {
+             try
+             {
+-                using (var magickImage = new MagickImage(imagePath))
+-                {
+-                    magickImage.Format = MagickFormat.Png;
+-                    byte[] imageBytes = magickImage.ToByteArray();
+-
+-                    BitmapImage bitmap = new BitmapImage();
+-                    bitmap.BeginInit();
+-                    bitmap.StreamSource = new MemoryStream(imageBytes);
+-                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+-                    bitmap.EndInit();
+-                    bitmap.Freeze();
+-
+-                    return bitmap;
+-                }
++                return imageLoader.LoadImage(imagePath);
+             }
+             catch
+             {
+-                try
+-                {
+-                    BitmapImage bitmap = new BitmapImage();
+-                    bitmap.BeginInit();
+-                    bitmap.UriSource = new Uri(imagePath);
+-                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+-                    bitmap.EndInit();
+-                    bitmap.Freeze();
+-                    return bitmap;
+-                }
+-                catch
+-                {
+-                    return null;
+-                }
++                return null;
+             }
+         }
+ 
+         private void LoadDirectoryImages(string directoryPath)
+         {
+             if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+                 return;
+ 
+             currentImageList.Clear();
+ 
+             foreach (string extension in supportedFormats)
+             {
+                 currentImageList.AddRange(Directory.GetFiles(directoryPath, $"*{extension}", SearchOption.TopDirectoryOnly));
+             }
+ 
+             currentImageList.Sort();
+             currentImageIndex = currentImageList.IndexOf(currentImagePath);
+         }
+ 
+         private void UpdateImageInfo(BitmapImage bitmap)
+         {
+             if (bitmap != null && imageInfoText != null)
+             {
+                 imageInfoText.Text = $"{bitmap.PixelWidth} × {bitmap.PixelHeight} | {FormatFileSize(new FileInfo(currentImagePath).Length)}";
+             }
+@@ -1704,207 +1588,72 @@ namespace PicViewEx
+             {
+                 if (channelStackPanel == null) return;
+                 channelStackPanel.Children.Clear();
+ 
+                 // 检查是否可以使用缓存
+                 if (imagePath == currentChannelCachePath && channelCache.Count > 0)
+                 {
+                     // 直接使用缓存的通道图片
+                     foreach (var (name, image) in channelCache)
+                     {
+                         CreateChannelControl(name, image);
+                     }
+ 
+                     if (statusText != null)
+                         statusText.Text = $"已从缓存加载通道 ({channelCache.Count}个) - {Path.GetFileName(imagePath)}";
+                     return;
+                 }
+ 
+                 // 如果是新图片，清除旧的缓存
+                 channelCache.Clear();
+                 currentChannelCachePath = null;
+ 
+                 if (statusText != null)
+                     statusText.Text = $"正在生成通道...";
+ 
+-                using (var magickImage = new MagickImage(imagePath))
+-                {
+-                    // 先计算需要生成的通道数量
+-                    int expectedChannels = 3; // RGB基础通道
+-                    if (magickImage.HasAlpha)
+-                        expectedChannels++; // 加上Alpha通道
+-
+-                    // 生成并缓存所有通道
+-                    var channels = new List<(string name, MagickImage image)>();
+-
+-                    // 准备RGB通道
+-                    var redImage = new MagickImage(magickImage);
+-                    redImage.Evaluate(Channels.Green, EvaluateOperator.Set, 0);
+-                    redImage.Evaluate(Channels.Blue, EvaluateOperator.Set, 0);
+-                    channels.Add(("红色 (R)", redImage));
+-
+-                    var greenImage = new MagickImage(magickImage);
+-                    greenImage.Evaluate(Channels.Red, EvaluateOperator.Set, 0);
+-                    greenImage.Evaluate(Channels.Blue, EvaluateOperator.Set, 0);
+-                    channels.Add(("绿色 (G)", greenImage));
+-
+-                    var blueImage = new MagickImage(magickImage);
+-                    blueImage.Evaluate(Channels.Red, EvaluateOperator.Set, 0);
+-                    blueImage.Evaluate(Channels.Green, EvaluateOperator.Set, 0);
+-                    channels.Add(("蓝色 (B)", blueImage));
+-
+-                    // 如果有Alpha通道，添加到列表
+-                    if (magickImage.HasAlpha)
+-                    {
+-                        var alphaImage = new MagickImage(magickImage);
+-                        alphaImage.Alpha(AlphaOption.Extract);
+-                        alphaImage.Format = MagickFormat.Png;
+-                        channels.Add(("透明 (Alpha)", alphaImage));
+-                    }
+-
+-                    // 转换所有通道为BitmapImage并添加到缓存
+-                    foreach (var (name, channelImage) in channels)
+-                    {
+-                        var bitmap = CreateBitmapFromMagickImage(channelImage);
+-                        if (bitmap != null)
+-                        {
+-                            channelCache.Add(Tuple.Create(name, bitmap));
+-
+-                            CreateChannelControl(name, bitmap);
+-                        }
+-                        channelImage.Dispose();
+-                    }
++                var loadedChannels = imageLoader.LoadChannels(imagePath);
+ 
+-                    // 验证是否所有通道都已生成
+-                    if (channelCache.Count == expectedChannels)
+-                    {
+-                        currentChannelCachePath = imagePath;
+-                        if (statusText != null)
+-                            statusText.Text = $"通道加载完成 ({channelCache.Count}个) - {Path.GetFileName(imagePath)}";
+-                    }
+-                    else
+-                    {
+-                        throw new Exception($"通道生成不完整，预期{expectedChannels}个通道，实际生成{channelCache.Count}个");
+-                    }
++                foreach (var (name, channelImage) in loadedChannels)
++                {
++                    channelCache.Add(Tuple.Create(name, channelImage));
++                    CreateChannelControl(name, channelImage);
+                 }
++
++                currentChannelCachePath = imagePath;
++                if (statusText != null)
++                    statusText.Text = $"通道加载完成 ({channelCache.Count}个) - {Path.GetFileName(imagePath)}";
+             }
+             catch (Exception ex)
+             {
+                 // 如果生成过程中出错，清除可能不完整的缓存
+                 channelCache.Clear();
+                 currentChannelCachePath = null;
+                 if (statusText != null)
+                     statusText.Text = $"通道加载失败: {ex.Message}";
+             }
+         }
+ 
+-        private void CreateSimpleRGBChannels(MagickImage originalImage)
+-        {
+-            try
+-            {
+-                // R通道 - 保留红色，其他为0
+-                var redImage = new MagickImage(originalImage);
+-                redImage.Evaluate(Channels.Green, EvaluateOperator.Set, 0);
+-                redImage.Evaluate(Channels.Blue, EvaluateOperator.Set, 0);
+-                var redBitmap = CreateBitmapFromMagickImage(redImage);
+-                if (redBitmap != null)
+-                {
+-                    channelCache.Add(Tuple.Create("红色 (R)", redBitmap));
+-
+-                    CreateChannelControl("红色 (R)", redBitmap);
+-                }
+-                redImage.Dispose();
+-
+-                // G通道 - 保留绿色，其他为0
+-                var greenImage = new MagickImage(originalImage);
+-                greenImage.Evaluate(Channels.Red, EvaluateOperator.Set, 0);
+-                greenImage.Evaluate(Channels.Blue, EvaluateOperator.Set, 0);
+-                var greenBitmap = CreateBitmapFromMagickImage(greenImage);
+-                if (greenBitmap != null)
+-                    CreateChannelControl("绿色 (G)", greenBitmap);
+-                greenImage.Dispose();
+-
+-                // B通道 - 保留蓝色，其他为0
+-                var blueImage = new MagickImage(originalImage);
+-                blueImage.Evaluate(Channels.Red, EvaluateOperator.Set, 0);
+-                blueImage.Evaluate(Channels.Green, EvaluateOperator.Set, 0);
+-                var blueBitmap = CreateBitmapFromMagickImage(blueImage);
+-                if (blueBitmap != null)
+-                    CreateChannelControl("蓝色 (B)", blueBitmap);
+-                blueImage.Dispose();
+-            }
+-            catch (Exception ex)
+-            {
+-                if (statusText != null)
+-                    statusText.Text = $"RGB通道分离失败: {ex.Message}";
+-            }
+-        }
+-
+-        private void CreateAlphaChannel(MagickImage originalImage)
+-        {
+-            try
+-            {
+-                // 提取Alpha通道
+-                var alphaImage = new MagickImage(originalImage);
+-                alphaImage.Alpha(AlphaOption.Extract);
+-                alphaImage.Format = MagickFormat.Png;
+-
+-                var alphaBitmap = CreateBitmapFromMagickImage(alphaImage);
+-                if (alphaBitmap != null)
+-                    CreateChannelControl("透明 (Alpha)", alphaBitmap);
+-
+-                alphaImage.Dispose();
+-            }
+-            catch (Exception ex)
+-            {
+-                if (statusText != null)
+-                    statusText.Text = $"Alpha通道提取失败: {ex.Message}";
+-            }
+-        }
+-
+-        private BitmapImage CreateBitmapFromMagickImage(MagickImage magickImage)
+-        {
+-            try
+-            {
+-                magickImage.Format = MagickFormat.Png;
+-                byte[] imageBytes = magickImage.ToByteArray();
+-
+-                BitmapImage bitmap = new BitmapImage();
+-                bitmap.BeginInit();
+-                bitmap.StreamSource = new MemoryStream(imageBytes);
+-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+-                bitmap.EndInit();
+-                bitmap.Freeze(); // 确保位图被冻结，这样可以在不同线程间安全使用
+-
+-                return bitmap;
+-            }
+-            catch
+-            {
+-                return null;
+-            }
+-        }
+-
+         private void CreateChannelControl(string channelName, BitmapImage channelImage)
+         {
+             if (channelStackPanel == null) return;
+ 
+             var border = new Border
+             {
+                 BorderBrush = System.Windows.Media.Brushes.Gray,
+                 BorderThickness = new Thickness(1),
+                 Margin = new Thickness(5)
+             };
+ 
+             var stackPanel = new StackPanel();
+ 
+             var label = new TextBlock
+             {
+                 Text = channelName,
+                 FontWeight = FontWeights.Bold,
+                 Margin = new Thickness(5),
+                 HorizontalAlignment = HorizontalAlignment.Center
+             };
+ 
+             var image = new System.Windows.Controls.Image
+             {
+                 Source = channelImage,
+                 Height = 150,
+@@ -3098,74 +2847,112 @@ namespace PicViewEx
+                     IconPath = appData.IconPath
+                 });
+             }
+             UpdateOpenWithButtons();
+             UpdateOpenWithMenu();
+ 
+             // 恢复图像查看设置
+             if (appSettings.LastZoomLevel > 0)
+             {
+                 currentZoom = appSettings.LastZoomLevel;
+                 UpdateZoomText();
+             }
+ 
+             // 恢复图像位置
+             if (appSettings.RememberImagePosition)
+             {
+                 imagePosition.X = appSettings.LastImageX;
+                 imagePosition.Y = appSettings.LastImageY;
+             }
+         }
+ 
+         private void LoadBackgroundImageFromPath(string imagePath)
+         {
+             try
+             {
+-                if (File.Exists(imagePath))
+-                {
+-                    BitmapImage bgImage = new BitmapImage();
+-                    bgImage.BeginInit();
+-                    bgImage.UriSource = new Uri(imagePath);
+-                    bgImage.CacheOption = BitmapCacheOption.OnLoad;
+-                    bgImage.EndInit();
+-                    bgImage.Freeze();
+-
+-                    backgroundImageBrush = new ImageBrush(bgImage)
+-                    {
+-                        Stretch = Stretch.UniformToFill,
+-                        TileMode = TileMode.Tile,
+-                        Opacity = 0.3
+-                    };
+-                }
++                var result = imageLoader.LoadBackgroundImage(imagePath);
++                backgroundImageBrush = result.Brush;
+             }
+             catch (Exception ex)
+             {
+                 if (statusText != null)
+                     statusText.Text = $"加载背景图片失败: {ex.Message}";
+             }
+         }
+ 
++        private void ApplyBackgroundImageFromPath(string imagePath)
++        {
++            if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
++            {
++                if (appSettings != null)
++                    appSettings.BackgroundImagePath = "";
++
++                if (statusText != null)
++                    statusText.Text = "背景图片路径无效，已恢复默认背景";
++
++                LoadDefaultBackgroundImage();
++
++                if (rbImageBackground != null)
++                    rbImageBackground.IsChecked = true;
++
++                UpdateBackground();
++                return;
++            }
++
++            try
++            {
++                var result = imageLoader.LoadBackgroundImage(imagePath);
++                backgroundImageBrush = result.Brush;
++
++                if (appSettings != null)
++                    appSettings.BackgroundImagePath = imagePath;
++
++                if (rbImageBackground != null)
++                    rbImageBackground.IsChecked = true;
++
++                UpdateBackground();
++
++                if (statusText != null)
++                    statusText.Text = $"背景图片已设置: {Path.GetFileName(result.SourcePath ?? imagePath)}";
++            }
++            catch (Exception ex)
++            {
++                if (appSettings != null)
++                    appSettings.BackgroundImagePath = "";
++
++                if (statusText != null)
++                    statusText.Text = $"加载背景图片失败，尝试使用默认图片: {ex.Message}";
++
++                LoadDefaultBackgroundImage();
++
++                if (rbImageBackground != null)
++                    rbImageBackground.IsChecked = true;
++
++                UpdateBackground();
++            }
++        }
++
+         private void SaveAppSettings()
+         {
+             if (isLoadingSettings || appSettings == null) return;
+ 
+             try
+             {
+                 // 保存窗口状态
+                 if (this.WindowState == WindowState.Normal)
+                 {
+                     appSettings.WindowWidth = this.Width;
+                     appSettings.WindowHeight = this.Height;
+                     appSettings.WindowLeft = this.Left;
+                     appSettings.WindowTop = this.Top;
+                 }
+                 appSettings.IsMaximized = this.WindowState == WindowState.Maximized;
+ 
+                 // 保存图像查看状态
+                 appSettings.LastZoomLevel = currentZoom;
+                 if (appSettings.RememberImagePosition)
+                 {
+                     appSettings.LastImageX = imagePosition.X;
+                     appSettings.LastImageY = imagePosition.Y;
+                 }
+ 
+                 // 保存当前文件到最近文件列表
+@@ -4268,93 +4055,68 @@ namespace PicViewEx
+         {
+             if (imageInfoText != null)
+             {
+                 // 由于是剪贴板图片，无法获取文件大小，只显示尺寸和来源
+                 imageInfoText.Text = $"{image.PixelWidth} × {image.PixelHeight} | {sourceInfo}";
+             }
+         }
+ 
+         /// <summary>
+         /// 为剪贴板图片加载通道信息
+         /// </summary>
+         private void LoadClipboardImageChannels(BitmapSource image)
+         {
+             try
+             {
+                 if (channelStackPanel == null) return;
+                 channelStackPanel.Children.Clear();
+ 
+                 // 清除之前的缓存，因为这是新的剪贴板图片
+                 channelCache.Clear();
+                 currentChannelCachePath = null;
+ 
+                 if (statusText != null)
+                     statusText.Text = "正在为剪贴板图片生成通道...";
+ 
+-                // 将 BitmapSource 转换为字节数组，然后用 ImageMagick 处理
+-                byte[] imageBytes = ConvertBitmapSourceToBytes(image);
++                var loadedChannels = imageLoader.LoadChannels(image);
+ 
+-                using (var magickImage = new MagickImage(imageBytes))
++                foreach (var (name, channelImage) in loadedChannels)
+                 {
+-                    // 生成RGB通道
+-                    CreateSimpleRGBChannels(magickImage);
+-
+-                    // 如果有Alpha通道，也生成Alpha通道
+-                    if (magickImage.HasAlpha)
+-                    {
+-                        CreateAlphaChannel(magickImage);
+-                    }
+-
+-                    if (statusText != null)
+-                        statusText.Text = $"剪贴板图片通道加载完成 ({channelStackPanel.Children.Count}个)";
++                    channelCache.Add(Tuple.Create(name, channelImage));
++                    CreateChannelControl(name, channelImage);
+                 }
++
++                if (statusText != null)
++                    statusText.Text = $"剪贴板图片通道加载完成 ({channelStackPanel.Children.Count}个)";
+             }
+             catch (Exception ex)
+             {
+                 if (statusText != null)
+                     statusText.Text = $"剪贴板图片通道生成失败: {ex.Message}";
+             }
+         }
+ 
+-        /// <summary>
+-        /// 将 BitmapSource 转换为字节数组
+-        /// </summary>
+-        private byte[] ConvertBitmapSourceToBytes(BitmapSource bitmapSource)
+-        {
+-            byte[] data;
+-            var encoder = new PngBitmapEncoder();
+-            encoder.Frames.Add(BitmapFrame.Create(bitmapSource));
+-
+-            using (var ms = new MemoryStream())
+-            {
+-                encoder.Save(ms);
+-                data = ms.ToArray();
+-            }
+-
+-            return data;
+-        }
+-
+         /// <summary>
+         /// 为剪贴板图片创建临时文件（用于打开方式功能）
+         /// </summary>
+         private string CreateTemporaryImageFile()
+         {
+             try
+             {
+                 if (mainImage?.Source == null)
+                     throw new InvalidOperationException("没有可用的图片");
+ 
+                 var source = mainImage.Source as BitmapSource;
+                 if (source == null)
+                     throw new InvalidOperationException("图片格式不支持");
+ 
+                 // 清理旧的临时文件
+                 CleanupTemporaryFile();
+ 
+                 // 创建临时文件路径
+                 string tempDir = Path.GetTempPath();
+                 string guidPart = Guid.NewGuid().ToString("N").Substring(0, 8);                // 取前8位
+                 string tempFileName = $"PicViewEx_Temp_{DateTime.Now:yyyyMMdd_HHmmss}_{guidPart}.png";
+                 temporaryImagePath = Path.Combine(tempDir, tempFileName);
+ 
+                 // 保存图片到临时文件
+                 SaveBitmapSource(source, temporaryImagePath);
+diff --git a/PicViewEx/PicViewEx.csproj b/PicViewEx/PicViewEx.csproj
+index f1bb155d85d16c5ea19c508b89ac0f123bb4be47..61f5d9e3eadeb455ac5f336b488c1e224b93aaab 100644
+--- a/PicViewEx/PicViewEx.csproj
++++ b/PicViewEx/PicViewEx.csproj
+@@ -53,50 +53,51 @@
+     <Reference Include="PresentationCore" />
+     <Reference Include="PresentationFramework" />
+     <Reference Include="System.Configuration" />
+   </ItemGroup>
+   <ItemGroup>
+     <ApplicationDefinition Include="App.xaml">
+       <Generator>MSBuild:Compile</Generator>
+       <SubType>Designer</SubType>
+     </ApplicationDefinition>
+     <Page Include="MainWindow.xaml">
+       <Generator>MSBuild:Compile</Generator>
+       <SubType>Designer</SubType>
+     </Page>
+     <Compile Include="App.xaml.cs">
+       <DependentUpon>App.xaml</DependentUpon>
+       <SubType>Code</SubType>
+     </Compile>
+     <Compile Include="MainWindow.xaml.cs">
+       <DependentUpon>MainWindow.xaml</DependentUpon>
+       <SubType>Code</SubType>
+     </Compile>
+   </ItemGroup>
+   <ItemGroup>
+     <Compile Include="AssemblyInfo.cs" />
+     <Compile Include="EverythingSearch.cs" />
++    <Compile Include="ImageLoader.cs" />
+     <Compile Include="OpenWithManagerWindow.xaml.cs">
+       <DependentUpon>OpenWithManagerWindow.xaml</DependentUpon>
+     </Compile>
+     <Compile Include="Settings.cs" />
+     <None Include="App.config" />
+   </ItemGroup>
+   <ItemGroup>
+     <Content Include="ico.ico" />
+     <Content Include="magick.exe">
+       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+     </Content>
+     <Content Include="OpenWithPhotoshop.exe">
+       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+     </Content>
+     <Content Include="res\01.jpg">
+       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+     </Content>
+   </ItemGroup>
+   <ItemGroup>
+     <Page Include="OpenWithManagerWindow.xaml">
+       <SubType>Designer</SubType>
+       <Generator>MSBuild:Compile</Generator>
+     </Page>
+   </ItemGroup>
+   <ItemGroup>

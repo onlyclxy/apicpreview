@@ -1192,17 +1192,19 @@ namespace PicViewEx
                     // 检查图片尺寸是否超过窗口尺寸
                     if (imageContainer != null)
                     {
+                        // 计算有效显示区域宽度
                         double containerWidth = imageContainer.ActualWidth;
                         double containerHeight = imageContainer.ActualHeight;
 
-                        // 如果通道面板显示，需要考虑其占用的空间
+                        // 只有当通道面板真正显示时才减去其宽度
+                        double effectiveWidth = containerWidth;
                         if (showChannels && channelPanel != null && channelPanel.Visibility == Visibility.Visible)
                         {
-                            containerWidth -= 305; // 300(通道面板) + 5(分隔符)
+                            effectiveWidth = Math.Max(100, containerWidth - 305); // 确保至少有100像素显示区域
                         }
 
                         // 如果图片尺寸超过容器的80%，自动适应窗口
-                        if (bitmap.PixelWidth > containerWidth * 0.8 || bitmap.PixelHeight > containerHeight * 0.8)
+                        if (bitmap.PixelWidth > effectiveWidth * 0.8 || bitmap.PixelHeight > containerHeight * 0.8)
                         {
                             this.Dispatcher.BeginInvoke(new Action(() =>
                             {
@@ -1820,15 +1822,14 @@ namespace PicViewEx
 
             if (containerWidth <= 0 || containerHeight <= 0) return;
 
-            // 如果通道面板显示，需要减去通道面板占用的宽度
+            // 计算有效显示区域宽度
             double effectiveWidth = containerWidth;
+            
+            // 只有当通道面板真正显示时才减去其宽度
             if (showChannels && channelPanel != null && channelPanel.Visibility == Visibility.Visible)
             {
                 // 通道面板宽度是300，还要减去分隔符的5像素宽度
-                effectiveWidth = containerWidth - 305; // 300(通道面板) + 5(分隔符)
-
-                // 确保有效宽度不会为负数
-                if (effectiveWidth < 100) effectiveWidth = 100; // 至少保留100像素显示区域
+                effectiveWidth = Math.Max(100, containerWidth - 305); // 确保至少有100像素显示区域
             }
 
             // 计算缩放后的图片尺寸（使用source的像素尺寸和当前缩放）
@@ -1948,15 +1949,14 @@ namespace PicViewEx
 
             if (containerWidth <= 0 || containerHeight <= 0) return;
 
-            // 如果通道面板显示，需要在有效区域内适应
+            // 计算有效显示区域宽度
             double effectiveWidth = containerWidth;
+            
+            // 只有当通道面板真正显示时才减去其宽度
             if (showChannels && channelPanel != null && channelPanel.Visibility == Visibility.Visible)
             {
                 // 通道面板宽度是300，还要减去分隔符的5像素宽度
-                effectiveWidth = containerWidth - 305; // 300(通道面板) + 5(分隔符)
-
-                // 确保有效宽度不会为负数
-                if (effectiveWidth < 100) effectiveWidth = 100; // 至少保留100像素显示区域
+                effectiveWidth = Math.Max(100, containerWidth - 305); // 确保至少有100像素显示区域
             }
 
             // 计算适应窗口的缩放比例 - 使用有效区域
@@ -1999,15 +1999,14 @@ namespace PicViewEx
                 return;
             }
 
-            // 如果通道面板显示，需要在有效区域内居中
+            // 计算有效显示区域宽度
             double effectiveWidth = containerWidth;
+            
+            // 只有当通道面板真正显示时才减去其宽度
             if (showChannels && channelPanel != null && channelPanel.Visibility == Visibility.Visible)
             {
                 // 通道面板宽度是300，还要减去分隔符的5像素宽度
-                effectiveWidth = containerWidth - 305; // 300(通道面板) + 5(分隔符)
-
-                // 确保有效宽度不会为负数
-                if (effectiveWidth < 100) effectiveWidth = 100; // 至少保留100像素显示区域
+                effectiveWidth = Math.Max(100, containerWidth - 305); // 确保至少有100像素显示区域
             }
 
             // 计算缩放后的图片尺寸（使用source的像素尺寸）
@@ -2538,7 +2537,7 @@ namespace PicViewEx
                 // 第一步：恢复背景图片路径（如果有的话）
                 if (!string.IsNullOrEmpty(appSettings.BackgroundImagePath) && File.Exists(appSettings.BackgroundImagePath))
                 {
-                    ApplyBackgroundImageFromPath(appSettings.BackgroundImagePath, updateStatus: false, updateBackground: false);
+                    ApplyBackgroundImageFromPath(appSettings.BackgroundImagePath);
                 }
 
                 // 第二步：恢复颜色值（禁用事件处理器以防止自动切换背景类型）
@@ -2704,181 +2703,7 @@ namespace PicViewEx
             if (rbImageBackground != null) rbImageBackground.Checked += BackgroundType_Changed;
             if (rbWindowTransparent != null) rbWindowTransparent.Checked += BackgroundType_Changed;
         }
-
-        private void ApplyBackgroundSettings()
-        {
-            // 解析背景颜色
-            try
-            {
-                var converter = new BrushConverter();
-                if (converter.ConvertFromString(appSettings.BackgroundColor) is SolidColorBrush brush)
-                {
-                    currentBackgroundBrush = brush;
-                }
-            }
-            catch
-            {
-                currentBackgroundBrush = new SolidColorBrush(Colors.Gray);
-            }
-
-            // 设置滑块值
-            if (sliderHue != null)
-                sliderHue.Value = appSettings.BackgroundHue;
-            if (sliderSaturation != null)
-                sliderSaturation.Value = appSettings.BackgroundSaturation;
-            if (sliderBrightness != null)
-                sliderBrightness.Value = appSettings.BackgroundBrightness;
-
-            // 记录最后使用的背景预设
-            if (!string.IsNullOrEmpty(appSettings.LastBackgroundPreset))
-            {
-                // 根据预设名称恢复背景
-                switch (appSettings.LastBackgroundPreset)
-                {
-                    case "White":
-                        currentBackgroundBrush = new SolidColorBrush(Colors.White);
-                        break;
-                    case "Black":
-                        currentBackgroundBrush = new SolidColorBrush(Colors.Black);
-                        break;
-                    case "#808080":
-                        currentBackgroundBrush = new SolidColorBrush(Color.FromRgb(128, 128, 128));
-                        break;
-                    case "#C0C0C0":
-                        currentBackgroundBrush = new SolidColorBrush(Color.FromRgb(192, 192, 192));
-                        break;
-                    case "#404040":
-                        currentBackgroundBrush = new SolidColorBrush(Color.FromRgb(64, 64, 64));
-                        break;
-                }
-            }
-
-            // 设置背景类型
-            switch (appSettings.BackgroundType)
-            {
-                case "Transparent":
-                    if (rbTransparent != null) rbTransparent.IsChecked = true;
-                    break;
-                case "SolidColor":
-                    if (rbSolidColor != null) rbSolidColor.IsChecked = true;
-                    break;
-                case "Image":
-                    if (rbImageBackground != null) rbImageBackground.IsChecked = true;
-                    if (!string.IsNullOrEmpty(appSettings.BackgroundImagePath) && File.Exists(appSettings.BackgroundImagePath))
-                    {
-                        ApplyBackgroundImageFromPath(appSettings.BackgroundImagePath, updateStatus: false, updateBackground: false);
-                    }
-                    break;
-                case "WindowTransparent":
-                    if (rbWindowTransparent != null) rbWindowTransparent.IsChecked = true;
-                    break;
-            }
-
-            // 应用背景更新
-            UpdateBackground();
-        }
-
-        private void ApplyUISettings()
-        {
-            // 设置通道显示状态
-            if (chkShowChannels != null)
-                chkShowChannels.IsChecked = appSettings.ShowChannels;
-            if (menuShowChannels != null)
-                menuShowChannels.IsChecked = appSettings.ShowChannels;
-            showChannels = appSettings.ShowChannels;
-
-            // 根据showChannels状态显示或隐藏通道面板
-            if (showChannels)
-            {
-                if (channelPanel != null) channelPanel.Visibility = Visibility.Visible;
-                if (channelSplitter != null) channelSplitter.Visibility = Visibility.Visible;
-                if (channelColumn != null) channelColumn.Width = new GridLength(300);
-            }
-            else
-            {
-                if (channelPanel != null) channelPanel.Visibility = Visibility.Collapsed;
-                if (channelSplitter != null) channelSplitter.Visibility = Visibility.Collapsed;
-                if (channelColumn != null) channelColumn.Width = new GridLength(0);
-            }
-
-            // 设置背景面板展开状态
-            var bgExpander = this.FindName("backgroundExpander") as Expander;
-            if (bgExpander != null)
-            {
-                bgExpander.IsExpanded = appSettings.BackgroundPanelExpanded;
-                // 工具菜单项控制的是工具栏的可见性，默认情况下工具栏应该显示
-                // 只有用户通过菜单明确隐藏时才不显示
-                bgExpander.Visibility = Visibility.Visible;
-            }
-            if (menuShowBgToolbar != null)
-                menuShowBgToolbar.IsChecked = true; // 默认显示
-
-            // 设置序列帧面板展开状态
-            if (sequenceExpander != null)
-            {
-                sequenceExpander.IsExpanded = appSettings.SequencePlayerExpanded;
-                // 序列帧工具栏默认显示
-                sequenceExpander.Visibility = Visibility.Visible;
-            }
-            if (menuShowSequenceToolbar != null)
-                menuShowSequenceToolbar.IsChecked = true; // 默认显示
-
-            // 恢复序列帧设置
-            if (txtGridWidth != null)
-                txtGridWidth.Text = appSettings.LastGridWidth.ToString();
-            if (txtGridHeight != null)
-                txtGridHeight.Text = appSettings.LastGridHeight.ToString();
-            if (txtFPS != null)
-                txtFPS.Text = appSettings.LastSequenceFPS.ToString();
-
-            // 设置搜索面板可见性
-            if (searchPanel != null)
-                searchPanel.Visibility = appSettings.SearchPanelVisible ? Visibility.Visible : Visibility.Collapsed;
-
-            // 从设置中恢复打开方式应用
-            openWithApps.Clear();
-            foreach (var appData in appSettings.OpenWithApps)
-            {
-                openWithApps.Add(new OpenWithApp
-                {
-                    Name = appData.Name,
-                    ExecutablePath = appData.ExecutablePath,
-                    Arguments = appData.Arguments,
-                    ShowText = appData.ShowText,
-                    IconPath = appData.IconPath
-                });
-            }
-            UpdateOpenWithButtons();
-            UpdateOpenWithMenu();
-
-            // 恢复图像查看设置
-            if (appSettings.LastZoomLevel > 0)
-            {
-                currentZoom = appSettings.LastZoomLevel;
-                UpdateZoomText();
-            }
-
-            // 恢复图像位置
-            if (appSettings.RememberImagePosition)
-            {
-                imagePosition.X = appSettings.LastImageX;
-                imagePosition.Y = appSettings.LastImageY;
-            }
-        }
-
-        private void LoadBackgroundImageFromPath(string imagePath)
-        {
-            try
-            {
-                var result = imageLoader.LoadBackgroundImage(imagePath);
-                backgroundImageBrush = result.Brush;
-            }
-            catch (Exception ex)
-            {
-                if (statusText != null)
-                    statusText.Text = $"加载背景图片失败: {ex.Message}";
-            }
-        }
+           
 
         private void ApplyBackgroundImageFromPath(string imagePath)
         {
@@ -2890,7 +2715,7 @@ namespace PicViewEx
                 if (statusText != null)
                     statusText.Text = "背景图片路径无效，已恢复默认背景";
 
-                LoadDefaultBackgroundImage();
+                ApplyDefaultBackgroundImage();
 
                 if (rbImageBackground != null)
                     rbImageBackground.IsChecked = true;
@@ -2923,7 +2748,7 @@ namespace PicViewEx
                 if (statusText != null)
                     statusText.Text = $"加载背景图片失败，尝试使用默认图片: {ex.Message}";
 
-                LoadDefaultBackgroundImage();
+                ApplyDefaultBackgroundImage();
 
                 if (rbImageBackground != null)
                     rbImageBackground.IsChecked = true;
@@ -3997,14 +3822,17 @@ namespace PicViewEx
                     double containerWidth = imageContainer.ActualWidth;
                     double containerHeight = imageContainer.ActualHeight;
 
-                    // 如果通道面板显示，需要考虑其占用的空间
+                    // 计算有效显示区域宽度
+                    double effectiveWidth = containerWidth;
+                    
+                    // 只有当通道面板真正显示时才减去其宽度
                     if (showChannels && channelPanel != null && channelPanel.Visibility == Visibility.Visible)
                     {
-                        containerWidth -= 305;
+                        effectiveWidth = Math.Max(100, containerWidth - 305); // 确保至少有100像素显示区域
                     }
 
                     // 如果图片尺寸超过容器的80%，自动适应窗口
-                    if (clipboardImage.PixelWidth > containerWidth * 0.8 ||
+                    if (clipboardImage.PixelWidth > effectiveWidth * 0.8 ||
                         clipboardImage.PixelHeight > containerHeight * 0.8)
                     {
                         this.Dispatcher.BeginInvoke(new Action(() =>
