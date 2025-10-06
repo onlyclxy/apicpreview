@@ -69,6 +69,13 @@ namespace PicViewEx
         // 临时文件路径，用于剪贴板图片的打开方式功能
         private string temporaryImagePath = null;
 
+        // 图片信息打印相关的公共变量
+        private Size canvasSize = new Size(0, 0);           // 画布大小
+        private Point currentImagePosition = new Point(0, 0); // 当前图片位置
+        private Size originalImageSize = new Size(0, 0);     // 原始图片尺寸
+        private Size displayImageSize = new Size(0, 0);      // 显示图片尺寸（缩放后）
+        private double rotationAngle = 0.0;                  // 旋转角度
+
         public MainWindow()
         {
             InitializeComponent();
@@ -130,6 +137,85 @@ namespace PicViewEx
             {
                 zoomPercentage.Text = $"{(currentZoom * 100):F0}%";
             }
+        }
+
+        /// <summary>
+        /// 统一的图片信息打印方法
+        /// </summary>
+        private void PrintImageInfo(string operation = "")
+        {
+            try
+            {
+                // 更新画布大小
+                if (imageContainer != null)
+                {
+                    canvasSize = new Size(imageContainer.ActualWidth, imageContainer.ActualHeight);
+                }
+
+                // 更新当前图片位置
+                currentImagePosition = imagePosition;
+
+                // 更新原始图片尺寸和显示尺寸
+                if (mainImage?.Source is BitmapSource source)
+                {
+                    originalImageSize = new Size(source.PixelWidth, source.PixelHeight);
+                    displayImageSize = new Size(source.PixelWidth * currentZoom, source.PixelHeight * currentZoom);
+                }
+
+                // 更新旋转角度
+                rotationAngle = GetCurrentRotationAngle();
+
+                // 打印信息
+                Console.WriteLine("=== 图片信息 ===");
+                if (!string.IsNullOrEmpty(operation))
+                {
+                    Console.WriteLine($"操作: {operation}");
+                }
+                Console.WriteLine($"画布大小: {canvasSize.Width:F0} x {canvasSize.Height:F0}");
+                Console.WriteLine($"当前位置: ({currentImagePosition.X:F0}, {currentImagePosition.Y:F0})");
+                Console.WriteLine($"原始尺寸: {originalImageSize.Width:F0} x {originalImageSize.Height:F0}");
+                Console.WriteLine($"显示尺寸: {displayImageSize.Width:F0} x {displayImageSize.Height:F0}");
+                Console.WriteLine($"缩放比例: {currentZoom * 100:F1}%");
+                Console.WriteLine($"旋转角度: {rotationAngle:F0}°");
+                if (!string.IsNullOrEmpty(currentImagePath))
+                {
+                    Console.WriteLine($"文件路径: {currentImagePath}");
+                }
+                Console.WriteLine("================");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"打印图片信息时出错: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 获取当前旋转角度
+        /// </summary>
+        private double GetCurrentRotationAngle()
+        {
+            double totalAngle = 0;
+            
+            if (currentTransform is RotateTransform rotate)
+            {
+                totalAngle = rotate.Angle;
+            }
+            else if (currentTransform is TransformGroup group)
+            {
+                foreach (var transform in group.Children)
+                {
+                    if (transform is RotateTransform r)
+                    {
+                        totalAngle += r.Angle;
+                    }
+                }
+            }
+            
+            // 将角度标准化到0-360度范围
+            totalAngle = totalAngle % 360;
+            if (totalAngle < 0) totalAngle += 360;
+            
+            return totalAngle;
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -384,17 +470,26 @@ namespace PicViewEx
                     break;
                 case Key.F:
                     if (e.KeyboardDevice.Modifiers == ModifierKeys.None)
+                    {
                         FitToWindow();
+                        PrintImageInfo("适应窗口 (快捷键F)");
+                    }
                     else if (e.KeyboardDevice.Modifiers == ModifierKeys.Control)
                         BtnSearch_Click(sender, e);
                     break;
                 case Key.D1:
                     if (e.KeyboardDevice.Modifiers == ModifierKeys.None)
+                    {
                         SetActualSize();
+                        PrintImageInfo("实际大小 (快捷键1)");
+                    }
                     break;
                 case Key.Space:
                     if (e.KeyboardDevice.Modifiers == ModifierKeys.None)
+                    {
                         CenterImage();
+                        PrintImageInfo("居中显示 (快捷键空格)");
+                    }
                     break;
                 case Key.F11:
                     MenuFullScreen_Click(sender, e);
@@ -559,12 +654,14 @@ namespace PicViewEx
         {
             RecordToolUsage("RotateLeft");
             RotateImage(-90);
+            PrintImageInfo("左旋转");
         }
 
         private void BtnRotateRight_Click(object sender, RoutedEventArgs e)
         {
             RecordToolUsage("RotateRight");
             RotateImage(90);
+            PrintImageInfo("右旋转");
         }
 
         private void BtnSaveAs_Click(object sender, RoutedEventArgs e)
@@ -1053,6 +1150,10 @@ namespace PicViewEx
             // 应用变换和位置更新（包含边界约束）
             UpdateImageTransform();
             UpdateZoomText();
+            
+            // 添加信息打印
+            string zoomAction = e.Delta > 0 ? "鼠标滚轮放大" : "鼠标滚轮缩小";
+            PrintImageInfo(zoomAction);
 
             e.Handled = true;
         }
@@ -1209,6 +1310,7 @@ namespace PicViewEx
                             this.Dispatcher.BeginInvoke(new Action(() =>
                             {
                                 FitToWindow();
+                                PrintImageInfo("图片加载 - 自动适应窗口");
                                 if (statusText != null)
                                     statusText.Text = $"已加载并自动适应窗口: {Path.GetFileName(imagePath)}";
                             }), System.Windows.Threading.DispatcherPriority.Loaded);
@@ -1219,6 +1321,7 @@ namespace PicViewEx
                             this.Dispatcher.BeginInvoke(new Action(() =>
                             {
                                 CenterImage();
+                                PrintImageInfo("图片加载 - 居中显示");
                             }), System.Windows.Threading.DispatcherPriority.Loaded);
                         }
                     }
@@ -1740,30 +1843,35 @@ namespace PicViewEx
         {
             RecordToolUsage("ZoomIn");
             ZoomImage(1.2);
+            PrintImageInfo("放大");
         }
 
         private void BtnZoomOut_Click(object sender, RoutedEventArgs e)
         {
             RecordToolUsage("ZoomOut");
             ZoomImage(0.8);
+            PrintImageInfo("缩小");
         }
 
         private void BtnFitWindow_Click(object sender, RoutedEventArgs e)
         {
             RecordToolUsage("FitWindow");
             FitToWindow();
+            PrintImageInfo("适应窗口");
         }
 
         private void BtnActualSize_Click(object sender, RoutedEventArgs e)
         {
             RecordToolUsage("ActualSize");
             SetActualSize();
+            PrintImageInfo("实际大小");
         }
 
         private void BtnCenterImage_Click(object sender, RoutedEventArgs e)
         {
             RecordToolUsage("CenterImage");
             CenterImage();
+            PrintImageInfo("居中显示");
         }
 
         private void BtnOpenWith1_Click(object sender, RoutedEventArgs e)
@@ -3838,6 +3946,7 @@ namespace PicViewEx
                         this.Dispatcher.BeginInvoke(new Action(() =>
                         {
                             FitToWindow();
+                            PrintImageInfo("剪贴板图片加载 - 自动适应窗口");
                             if (statusText != null)
                                 statusText.Text = $"已粘贴并自动适应窗口: {sourceInfo}";
                         }), System.Windows.Threading.DispatcherPriority.Loaded);
@@ -3848,6 +3957,7 @@ namespace PicViewEx
                         this.Dispatcher.BeginInvoke(new Action(() =>
                         {
                             CenterImage();
+                            PrintImageInfo("剪贴板图片加载 - 居中显示");
                             if (statusText != null)
                                 statusText.Text = $"已粘贴: {sourceInfo}";
                         }), System.Windows.Threading.DispatcherPriority.Loaded);

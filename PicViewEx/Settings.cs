@@ -308,11 +308,12 @@ namespace PicViewEx
                 // 序列化
                 string json = JsonConvert.SerializeObject(settings, jsonSettings);
 
-                Console.WriteLine("保存的 JSON 内容:");
-                Console.WriteLine(json); // 输出将要保存的JSON
+                Console.WriteLine("设置暂停保存");
+                //Console.WriteLine("保存的 JSON 内容:");
+                //Console.WriteLine(json); // 输出将要保存的JSON
 
-                File.WriteAllText(settingsPath, json, System.Text.Encoding.UTF8);
-                Console.WriteLine("设置保存成功。");
+                //File.WriteAllText(settingsPath, json, System.Text.Encoding.UTF8);
+                //Console.WriteLine("设置保存成功。");
             }
             catch (Exception ex)
             {
