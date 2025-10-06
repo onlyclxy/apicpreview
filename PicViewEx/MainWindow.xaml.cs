@@ -795,53 +795,18 @@ namespace PicViewEx
                 var result = imageLoader.LoadDefaultBackgroundImage(AppDomain.CurrentDomain.BaseDirectory);
                 backgroundImageBrush = result.Brush;
 
-                if (updateBackground)
-                    UpdateBackground();
-
-                if (updateStatus && statusText != null)
+                if (statusText != null)
                 {
                     if (result.UsedFallback)
-                    {
                         statusText.Text = "默认图片不存在，使用渐变背景";
-                    }
                     else if (!string.IsNullOrEmpty(result.SourcePath))
-                    {
                         statusText.Text = $"已加载默认背景图片: {Path.GetFileName(result.SourcePath)}";
-                    }
                 }
             }
             catch (Exception ex)
             {
                 if (updateStatus && statusText != null)
                     statusText.Text = $"加载默认背景图片失败: {ex.Message}";
-            }
-        }
-
-        private bool ApplyBackgroundImageFromPath(string imagePath, bool updateStatus = false, bool updateBackground = true, bool setRadioButton = false)
-        {
-            try
-            {
-                var result = imageLoader.LoadBackgroundImage(imagePath);
-                backgroundImageBrush = result.Brush;
-
-                if (setRadioButton && rbImageBackground != null)
-                    rbImageBackground.IsChecked = true;
-
-                if (updateBackground)
-                    UpdateBackground();
-
-                if (updateStatus && statusText != null && !string.IsNullOrEmpty(result.SourcePath))
-                {
-                    statusText.Text = $"背景图片已设置: {Path.GetFileName(result.SourcePath)}";
-                }
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                if (updateStatus && statusText != null)
-                    statusText.Text = $"加载背景图片失败: {ex.Message}";
-                return false;
             }
         }
 
@@ -1031,8 +996,20 @@ namespace PicViewEx
 
             if (dialog.ShowDialog() == true)
             {
-                bool success = ApplyBackgroundImageFromPath(dialog.FileName, updateStatus: true, updateBackground: true, setRadioButton: true);
-                if (!success)
+                try
+                {
+                    var result = imageLoader.LoadBackgroundImage(dialog.FileName);
+                    backgroundImageBrush = result.Brush;
+
+                    if (rbImageBackground != null)
+                        rbImageBackground.IsChecked = true;
+
+                    UpdateBackground();
+
+                    if (statusText != null)
+                        statusText.Text = $"背景图片已设置: {Path.GetFileName(result.SourcePath)}";
+                }
+                catch (Exception ex)
                 {
                     ApplyDefaultBackgroundImage(updateBackground: true, updateStatus: true);
                     if (rbImageBackground != null)
@@ -1309,15 +1286,23 @@ namespace PicViewEx
                 if (statusText != null)
                     statusText.Text = $"GIF动画加载失败，尝试静态显示: {ex.Message}";
 
-                try
+                var bitmap = LoadImageWithMagick(gifPath);
+                if (bitmap != null)
                 {
-                    var bitmap = imageLoader.LoadImage(gifPath);
                     mainImage.Source = bitmap;
                 }
-                catch
-                {
-                    // 保持静默，主调用方会处理错误状态
-                }
+            }
+        }
+
+        private BitmapImage LoadImageWithMagick(string imagePath)
+        {
+            try
+            {
+                return imageLoader.LoadImage(imagePath);
+            }
+            catch
+            {
+                return null;
             }
         }
 
@@ -1644,11 +1629,15 @@ namespace PicViewEx
                 channelCache.AddRange(channels);
                 currentChannelCachePath = imagePath;
 
+                var channels = imageLoader.LoadChannels(imagePath);
+
                 foreach (var (name, channelImage) in channels)
                 {
+                    channelCache.Add(Tuple.Create(name, channelImage));
                     CreateChannelControl(name, channelImage);
                 }
 
+                currentChannelCachePath = imagePath;
                 if (statusText != null)
                     statusText.Text = $"通道加载完成 ({channelCache.Count}个) - {Path.GetFileName(imagePath)}";
             }
@@ -2895,6 +2884,20 @@ namespace PicViewEx
             }
         }
 
+        private void LoadBackgroundImageFromPath(string imagePath)
+        {
+            try
+            {
+                var result = imageLoader.LoadBackgroundImage(imagePath);
+                backgroundImageBrush = result.Brush;
+            }
+            catch (Exception ex)
+            {
+                if (statusText != null)
+                    statusText.Text = $"加载背景图片失败: {ex.Message}";
+            }
+        }
+
         private void SaveAppSettings()
         {
             if (isLoadingSettings || appSettings == null) return;
@@ -4042,8 +4045,11 @@ namespace PicViewEx
                     statusText.Text = "正在为剪贴板图片生成通道...";
                 var channels = imageLoader.LoadChannels(image);
 
+                var channels = imageLoader.LoadChannels(image);
+
                 foreach (var (name, channelImage) in channels)
                 {
+                    channelCache.Add(Tuple.Create(name, channelImage));
                     CreateChannelControl(name, channelImage);
                 }
 
