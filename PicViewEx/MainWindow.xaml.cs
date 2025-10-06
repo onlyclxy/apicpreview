@@ -996,25 +996,7 @@ namespace PicViewEx
 
             if (dialog.ShowDialog() == true)
             {
-                try
-                {
-                    var result = imageLoader.LoadBackgroundImage(dialog.FileName);
-                    backgroundImageBrush = result.Brush;
-
-                    if (rbImageBackground != null)
-                        rbImageBackground.IsChecked = true;
-
-                    UpdateBackground();
-
-                    if (statusText != null)
-                        statusText.Text = $"背景图片已设置: {Path.GetFileName(result.SourcePath)}";
-                }
-                catch (Exception ex)
-                {
-                    ApplyDefaultBackgroundImage(updateBackground: true, updateStatus: true);
-                    if (rbImageBackground != null)
-                        rbImageBackground.IsChecked = true;
-                }
+                ApplyBackgroundImageFromPath(dialog.FileName);
             }
             else
             {
@@ -2895,6 +2877,58 @@ namespace PicViewEx
             {
                 if (statusText != null)
                     statusText.Text = $"加载背景图片失败: {ex.Message}";
+            }
+        }
+
+        private void ApplyBackgroundImageFromPath(string imagePath)
+        {
+            if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
+            {
+                if (appSettings != null)
+                    appSettings.BackgroundImagePath = "";
+
+                if (statusText != null)
+                    statusText.Text = "背景图片路径无效，已恢复默认背景";
+
+                LoadDefaultBackgroundImage();
+
+                if (rbImageBackground != null)
+                    rbImageBackground.IsChecked = true;
+
+                UpdateBackground();
+                return;
+            }
+
+            try
+            {
+                var result = imageLoader.LoadBackgroundImage(imagePath);
+                backgroundImageBrush = result.Brush;
+
+                if (appSettings != null)
+                    appSettings.BackgroundImagePath = imagePath;
+
+                if (rbImageBackground != null)
+                    rbImageBackground.IsChecked = true;
+
+                UpdateBackground();
+
+                if (statusText != null)
+                    statusText.Text = $"背景图片已设置: {Path.GetFileName(result.SourcePath ?? imagePath)}";
+            }
+            catch (Exception ex)
+            {
+                if (appSettings != null)
+                    appSettings.BackgroundImagePath = "";
+
+                if (statusText != null)
+                    statusText.Text = $"加载背景图片失败，尝试使用默认图片: {ex.Message}";
+
+                LoadDefaultBackgroundImage();
+
+                if (rbImageBackground != null)
+                    rbImageBackground.IsChecked = true;
+
+                UpdateBackground();
             }
         }
 
