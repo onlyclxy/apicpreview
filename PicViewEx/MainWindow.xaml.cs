@@ -1629,9 +1629,9 @@ namespace PicViewEx
                 channelCache.AddRange(channels);
                 currentChannelCachePath = imagePath;
 
-                var channels = imageLoader.LoadChannels(imagePath);
+                var loadedChannels = imageLoader.LoadChannels(imagePath);
 
-                foreach (var (name, channelImage) in channels)
+                foreach (var (name, channelImage) in loadedChannels)
                 {
                     channelCache.Add(Tuple.Create(name, channelImage));
                     CreateChannelControl(name, channelImage);
@@ -4045,9 +4045,9 @@ namespace PicViewEx
                     statusText.Text = "正在为剪贴板图片生成通道...";
                 var channels = imageLoader.LoadChannels(image);
 
-                var channels = imageLoader.LoadChannels(image);
+                var loadedChannels = imageLoader.LoadChannels(image);
 
-                foreach (var (name, channelImage) in channels)
+                foreach (var (name, channelImage) in loadedChannels)
                 {
                     channelCache.Add(Tuple.Create(name, channelImage));
                     CreateChannelControl(name, channelImage);
