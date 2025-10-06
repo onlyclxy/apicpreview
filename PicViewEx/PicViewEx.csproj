@@ -75,6 +75,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="EverythingSearch.cs" />
+    <Compile Include="ImageLoader.cs" />
     <Compile Include="OpenWithManagerWindow.xaml.cs">
       <DependentUpon>OpenWithManagerWindow.xaml</DependentUpon>
     </Compile>
