@@ -782,12 +782,13 @@ namespace PicViewEx
             // 如果切换到图片背景，但还没有设置背景图片，则加载默认图片
             if (rbImageBackground?.IsChecked == true && backgroundImageBrush == null)
             {
-                LoadDefaultBackgroundImage();
+                ApplyDefaultBackgroundImage(updateBackground: false, updateStatus: true);
             }
+
             UpdateBackground();
         }
 
-        private void LoadDefaultBackgroundImage()
+        private void ApplyDefaultBackgroundImage(bool updateBackground = true, bool updateStatus = true)
         {
             try
             {
@@ -804,7 +805,7 @@ namespace PicViewEx
             }
             catch (Exception ex)
             {
-                if (statusText != null)
+                if (updateStatus && statusText != null)
                     statusText.Text = $"加载默认背景图片失败: {ex.Message}";
             }
         }
@@ -1010,16 +1011,9 @@ namespace PicViewEx
                 }
                 catch (Exception ex)
                 {
-                    // 如果加载用户选择的图片失败，尝试加载默认图片
-                    if (statusText != null)
-                        statusText.Text = $"加载背景图片失败，尝试使用默认图片: {ex.Message}";
-
-                    LoadDefaultBackgroundImage();
-
+                    ApplyDefaultBackgroundImage(updateBackground: true, updateStatus: true);
                     if (rbImageBackground != null)
                         rbImageBackground.IsChecked = true;
-
-                    UpdateBackground();
                 }
             }
             else
@@ -1027,12 +1021,9 @@ namespace PicViewEx
                 // 用户取消了选择，如果当前没有背景图片，则加载默认图片
                 if (backgroundImageBrush == null)
                 {
-                    LoadDefaultBackgroundImage();
-
+                    ApplyDefaultBackgroundImage(updateBackground: true, updateStatus: true);
                     if (rbImageBackground != null)
                         rbImageBackground.IsChecked = true;
-
-                    UpdateBackground();
                 }
             }
         }
@@ -1196,7 +1187,7 @@ namespace PicViewEx
                 if (statusText != null)
                     statusText.Text = $"加载中: {Path.GetFileName(imagePath)}";
 
-                BitmapImage bitmap = LoadImageWithMagick(imagePath);
+                BitmapImage bitmap = imageLoader.LoadImage(imagePath);
                 if (bitmap != null && mainImage != null)
                 {
                     // 检查是否是GIF文件，如果是则启用动画
@@ -1504,7 +1495,7 @@ namespace PicViewEx
                 // 如果没有背景图片，先尝试加载默认图片
                 if (backgroundImageBrush == null)
                 {
-                    LoadDefaultBackgroundImage();
+                    ApplyDefaultBackgroundImage(updateBackground: false, updateStatus: false);
                 }
 
                 // 应用背景图片
@@ -1634,6 +1625,9 @@ namespace PicViewEx
 
                 if (statusText != null)
                     statusText.Text = $"正在生成通道...";
+                var channels = imageLoader.LoadChannels(imagePath);
+                channelCache.AddRange(channels);
+                currentChannelCachePath = imagePath;
 
                 var channels = imageLoader.LoadChannels(imagePath);
 
@@ -2562,7 +2556,7 @@ namespace PicViewEx
                 // 第一步：恢复背景图片路径（如果有的话）
                 if (!string.IsNullOrEmpty(appSettings.BackgroundImagePath) && File.Exists(appSettings.BackgroundImagePath))
                 {
-                    LoadBackgroundImageFromPath(appSettings.BackgroundImagePath);
+                    ApplyBackgroundImageFromPath(appSettings.BackgroundImagePath, updateStatus: false, updateBackground: false);
                 }
 
                 // 第二步：恢复颜色值（禁用事件处理器以防止自动切换背景类型）
@@ -2790,7 +2784,7 @@ namespace PicViewEx
                     if (rbImageBackground != null) rbImageBackground.IsChecked = true;
                     if (!string.IsNullOrEmpty(appSettings.BackgroundImagePath) && File.Exists(appSettings.BackgroundImagePath))
                     {
-                        LoadBackgroundImageFromPath(appSettings.BackgroundImagePath);
+                        ApplyBackgroundImageFromPath(appSettings.BackgroundImagePath, updateStatus: false, updateBackground: false);
                     }
                     break;
                 case "WindowTransparent":
@@ -3874,7 +3868,7 @@ namespace PicViewEx
                         if (supportedFormats.Contains(extension))
                         {
                             // 找到第一个支持的图片文件
-                            clipboardImage = LoadImageWithMagick(file);
+                            clipboardImage = imageLoader.LoadImage(file);
                             sourceInfo = $"剪贴板文件: {Path.GetFileName(file)}";
                             break;
                         }
@@ -4049,6 +4043,7 @@ namespace PicViewEx
 
                 if (statusText != null)
                     statusText.Text = "正在为剪贴板图片生成通道...";
+                var channels = imageLoader.LoadChannels(image);
 
                 var channels = imageLoader.LoadChannels(image);
 
