@@ -22,17 +22,12 @@ namespace ImageViewerWPF
         private double currentZoom = 1.0;
         private bool isChannelViewEnabled = false;
         private BitmapSource? currentImageSource;
+        private System.Drawing.Bitmap currentChannelBitmap;
         private ImageBackground currentBackground = ImageBackground.SolidColor;
         private System.Drawing.Color currentBackgroundColor = System.Drawing.Color.Gray;
         private BitmapSource? backgroundImageSource;
         private bool isDragging = false;
         private System.Windows.Point lastMousePosition;
-
-        // 支持的图片格式
-        private readonly string[] supportedExtensions = { 
-            ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".ico",
-            ".tga", ".dds", ".psd", ".webp", ".a"
-        };
 
         public enum ImageBackground
         {
@@ -181,10 +176,10 @@ namespace ImageViewerWPF
                     return;
                 }
 
-                // 加载图片
-                currentImageSource = LoadImageSource(filePath);
+                currentImageSource = ImageLoader.LoadImage(filePath);
                 if (currentImageSource != null)
                 {
+                    RefreshChannelBitmap();
                     MainImage.Source = currentImageSource;
                     currentFilePath = filePath;
 
@@ -211,105 +206,26 @@ namespace ImageViewerWPF
             }
         }
 
-        private BitmapSource? LoadImageSource(string filePath)
+        private void RefreshChannelBitmap()
         {
-            string ext = Path.GetExtension(filePath).ToLowerInvariant();
-            
+            currentChannelBitmap?.Dispose();
+            currentChannelBitmap = null;
+
+            if (currentImageSource == null)
+            {
+                return;
+            }
+
             try
             {
-                switch (ext)
-                {
-                    case ".tga":
-                        return LoadTgaImage(filePath);
-                    case ".dds":
-                        return LoadDdsImage(filePath);
-                    case ".psd":
-                        return LoadPsdImage(filePath);
-                    case ".webp":
-                        return LoadWebPImage(filePath);
-                    case ".a":
-                        return LoadAFileImage(filePath);
-                    default:
-                        // 使用WPF原生支持
-                        var bitmap = new BitmapImage();
-                        bitmap.BeginInit();
-                        bitmap.UriSource = new Uri(filePath);
-                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                        bitmap.EndInit();
-                        return bitmap;
-                }
+                currentChannelBitmap = ImageLoader.CreateChannelBitmap(currentImageSource);
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException($"无法加载 {ext} 格式: {ex.Message}");
+                currentChannelBitmap = null;
+                StatusText.Text = $"通道缓存创建失败: {ex.Message}";
             }
         }
-
-        #endregion
-
-        #region 图片格式支持
-
-        private BitmapSource LoadTgaImage(string filePath)
-        {
-            // TODO: 实现TGA支持（需要Pfim库）
-            return CreatePlaceholderImage("TGA", "需要安装 Pfim 库");
-        }
-
-        private BitmapSource LoadDdsImage(string filePath)
-        {
-            // TODO: 实现DDS支持（需要Pfim库）
-            return CreatePlaceholderImage("DDS", "需要安装 Pfim 库");
-        }
-
-        private BitmapSource LoadPsdImage(string filePath)
-        {
-            // TODO: 实现PSD支持（需要ImageSharp库）
-            return CreatePlaceholderImage("PSD", "需要安装 ImageSharp 库");
-        }
-
-        private BitmapSource LoadWebPImage(string filePath)
-        {
-            // TODO: 实现WebP支持
-            return CreatePlaceholderImage("WebP", "需要安装 WebP 支持库");
-        }
-
-        private BitmapSource LoadAFileImage(string filePath)
-        {
-            // 原有的.a文件处理
-            byte[] fileBytes = File.ReadAllBytes(filePath);
-            using (var stream = new MemoryStream(fileBytes))
-            {
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.StreamSource = stream;
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.EndInit();
-                return bitmap;
-            }
-        }
-
-        private BitmapSource CreatePlaceholderImage(string format, string message)
-        {
-            var visual = new DrawingVisual();
-            using (var context = visual.RenderOpen())
-            {
-                context.DrawRectangle(System.Windows.Media.Brushes.LightGray, null, new Rect(0, 0, 400, 300));
-                
-                var text = new FormattedText($"{format} 格式\n\n{message}",
-                    System.Globalization.CultureInfo.CurrentCulture,
-                    FlowDirection.LeftToRight,
-                    new Typeface("Microsoft YaHei"),
-                    16, System.Windows.Media.Brushes.Black, 96);
-                
-                context.DrawText(text, new System.Windows.Point(200 - text.Width / 2, 150 - text.Height / 2));
-            }
-
-            var bitmap = new RenderTargetBitmap(400, 300, 96, 96, PixelFormats.Pbgra32);
-            bitmap.Render(visual);
-            return bitmap;
-        }
-
-        #endregion
 
         #region 背景控制
 
@@ -370,7 +286,7 @@ namespace ImageViewerWPF
             {
                 try
                 {
-                    backgroundImageSource = new BitmapImage(new Uri(dialog.FileName));
+                    backgroundImageSource = ImageLoader.LoadBackgroundImage(dialog.FileName);
                     currentBackground = ImageBackground.ImageFile;
                     UpdateImageBackground();
                 }
@@ -388,7 +304,7 @@ namespace ImageViewerWPF
             {
                 try
                 {
-                    backgroundImageSource = new BitmapImage(new Uri(bgPath));
+                    backgroundImageSource = ImageLoader.LoadBackgroundImage(bgPath);
                     currentBackground = ImageBackground.ImageFile;
                     UpdateImageBackground();
                 }
@@ -505,7 +421,7 @@ namespace ImageViewerWPF
             if (Directory.Exists(directory))
             {
                 currentDirectoryImages = Directory.GetFiles(directory)
-                    .Where(f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                    .Where(f => ImageLoader.IsSupportedExtension(Path.GetExtension(f)))
                     .OrderBy(f => f)
                     .ToList();
 
@@ -587,7 +503,8 @@ namespace ImageViewerWPF
                 var rotatedBitmap = new TransformedBitmap(currentImageSource, new RotateTransform(angle));
                 currentImageSource = rotatedBitmap;
                 MainImage.Source = currentImageSource;
-                
+                RefreshChannelBitmap();
+
                 // 更新通道显示
                 if (isChannelViewEnabled)
                 {
@@ -645,8 +562,17 @@ namespace ImageViewerWPF
             try
             {
                 // 转换为Bitmap以便处理通道
-                var bitmap = BitmapSourceToBitmap(currentImageSource);
-                
+                if (currentChannelBitmap == null)
+                {
+                    RefreshChannelBitmap();
+                }
+
+                var bitmap = currentChannelBitmap;
+                if (bitmap == null)
+                {
+                    return;
+                }
+
                 // 添加主图
                 var mainImageControl = new System.Windows.Controls.Image
                 {
@@ -725,6 +651,7 @@ namespace ImageViewerWPF
             newWindow.Title = $"高级图片预览器 - {title}";
             newWindow.MainImage.Source = imageSource;
             newWindow.currentImageSource = imageSource;
+            newWindow.RefreshChannelBitmap();
             newWindow.UpdateUI();
             newWindow.Show();
         }
@@ -968,20 +895,6 @@ namespace ImageViewerWPF
             return ((byte)(r * 255), (byte)(g * 255), (byte)(b * 255));
         }
 
-        // 图片处理辅助方法
-        private System.Drawing.Bitmap BitmapSourceToBitmap(BitmapSource bitmapSource)
-        {
-            System.Drawing.Bitmap bitmap;
-            using (var outStream = new MemoryStream())
-            {
-                BitmapEncoder enc = new BmpBitmapEncoder();
-                enc.Frames.Add(BitmapFrame.Create(bitmapSource));
-                enc.Save(outStream);
-                bitmap = new System.Drawing.Bitmap(outStream);
-            }
-            return bitmap;
-        }
-
         private enum ColorChannel { Red, Green, Blue, Alpha }
 
         private BitmapSource ExtractChannel(System.Drawing.Bitmap bitmap, ColorChannel channel)
@@ -1029,5 +942,12 @@ namespace ImageViewerWPF
         }
 
         #endregion
+
+        protected override void OnClosed(EventArgs e)
+        {
+            currentChannelBitmap?.Dispose();
+            currentChannelBitmap = null;
+            base.OnClosed(e);
+        }
     }
-} 
+}
