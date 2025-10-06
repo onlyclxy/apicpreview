@@ -1175,6 +1175,10 @@ namespace PicViewEx
             {
                 isDragging = false;
                 mainImage.ReleaseMouseCapture();
+                
+                // 拖拽完成后打印图片信息
+                PrintImageInfo("拖拽");
+                
                 e.Handled = true;
             }
         }
@@ -1498,6 +1502,21 @@ namespace PicViewEx
         {
             if (mainImage?.Source != null)
             {
+                Console.WriteLine($"=== 旋转操作开始 ===");
+                Console.WriteLine($"旋转角度: {angle}度");
+                
+                // 记录旋转前的状态
+                var source = mainImage.Source as BitmapSource;
+                if (source != null)
+                {
+                    Console.WriteLine($"原始图片尺寸: {source.PixelWidth} x {source.PixelHeight}");
+                    Console.WriteLine($"当前缩放: {currentZoom}");
+                    Console.WriteLine($"缩放后尺寸: {source.PixelWidth * currentZoom} x {source.PixelHeight * currentZoom}");
+                }
+                
+                Console.WriteLine($"旋转前图片位置: ({imagePosition.X}, {imagePosition.Y})");
+                Console.WriteLine($"旋转前变换: {currentTransform}");
+                
                 RotateTransform rotate = new RotateTransform(angle);
                 if (currentTransform == Transform.Identity)
                 {
@@ -1512,6 +1531,14 @@ namespace PicViewEx
                 }
 
                 mainImage.RenderTransform = currentTransform;
+                
+                Console.WriteLine($"旋转后变换: {currentTransform}");
+                Console.WriteLine($"旋转后图片位置: ({imagePosition.X}, {imagePosition.Y})");
+
+                // 旋转后将图片重新居中
+                CenterImageInContainer();
+
+                Console.WriteLine($"=== 旋转操作结束 ===");
             }
         }
 
@@ -1940,9 +1967,10 @@ namespace PicViewEx
                 effectiveWidth = Math.Max(100, containerWidth - 305); // 确保至少有100像素显示区域
             }
 
-            // 计算缩放后的图片尺寸（使用source的像素尺寸和当前缩放）
-            var scaledWidth = source.PixelWidth * currentZoom;
-            var scaledHeight = source.PixelHeight * currentZoom;
+            // 计算旋转后的实际边界框尺寸
+            var (actualWidth, actualHeight) = GetRotatedImageBounds(source.PixelWidth, source.PixelHeight);
+            var scaledWidth = actualWidth * currentZoom;
+            var scaledHeight = actualHeight * currentZoom;
 
             // 定义最小可见区域（图片必须至少有这么多像素在屏幕内）
             var minVisibleWidth = Math.Min(scaledWidth * 0.3, 200); // 至少30%或200像素可见
@@ -1957,6 +1985,54 @@ namespace PicViewEx
             // 应用约束
             imagePosition.X = Math.Max(minX, Math.Min(maxX, imagePosition.X));
             imagePosition.Y = Math.Max(minY, Math.Min(maxY, imagePosition.Y));
+        }
+
+        // 新增方法：计算旋转后的图片边界框
+        private (double width, double height) GetRotatedImageBounds(double originalWidth, double originalHeight)
+        {
+            double totalRotation = GetCurrentRotationAngle();
+            
+            // 将角度转换为弧度
+            double radians = totalRotation * Math.PI / 180.0;
+            
+            // 计算旋转后的边界框
+            double cosAngle = Math.Abs(Math.Cos(radians));
+            double sinAngle = Math.Abs(Math.Sin(radians));
+            
+            double rotatedWidth = originalWidth * cosAngle + originalHeight * sinAngle;
+            double rotatedHeight = originalWidth * sinAngle + originalHeight * cosAngle;
+            
+            return (rotatedWidth, rotatedHeight);
+        }
+
+        // 旋转或缩放后将图片以旋转边界框居中到容器
+        private void CenterImageInContainer()
+        {
+            if (mainImage?.Source == null || imageContainer == null) return;
+            var source = mainImage.Source as BitmapSource;
+            if (source == null) return;
+
+            double containerWidth = imageContainer.ActualWidth;
+            double containerHeight = imageContainer.ActualHeight;
+            if (containerWidth <= 0 || containerHeight <= 0) return;
+
+            // 计算有效显示区域宽度
+            double effectiveWidth = containerWidth;
+            if (showChannels && channelPanel != null && channelPanel.Visibility == Visibility.Visible)
+            {
+                effectiveWidth = Math.Max(100, containerWidth - 305);
+            }
+
+            var (actualWidth, actualHeight) = GetRotatedImageBounds(source.PixelWidth, source.PixelHeight);
+            double scaledWidth = actualWidth * currentZoom;
+            double scaledHeight = actualHeight * currentZoom;
+
+            imagePosition.X = (effectiveWidth - scaledWidth) / 2.0;
+            imagePosition.Y = (containerHeight - scaledHeight) / 2.0;
+
+            Console.WriteLine($"[CenterImageInContainer] 有效宽度={effectiveWidth}, 位置=({imagePosition.X}, {imagePosition.Y})");
+
+            UpdateImagePosition();
         }
 
         private void UpdateImageTransform()
