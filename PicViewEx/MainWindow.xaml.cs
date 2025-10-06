@@ -194,28 +194,8 @@ namespace PicViewEx
         /// </summary>
         private double GetCurrentRotationAngle()
         {
-            double totalAngle = 0;
-            
-            if (currentTransform is RotateTransform rotate)
-            {
-                totalAngle = rotate.Angle;
-            }
-            else if (currentTransform is TransformGroup group)
-            {
-                foreach (var transform in group.Children)
-                {
-                    if (transform is RotateTransform r)
-                    {
-                        totalAngle += r.Angle;
-                    }
-                }
-            }
-            
-            // 将角度标准化到0-360度范围
-            totalAngle = totalAngle % 360;
-            if (totalAngle < 0) totalAngle += 360;
-            
-            return totalAngle;
+            // 直接返回全局旋转角度变量
+            return rotationAngle;
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -1293,6 +1273,7 @@ namespace PicViewEx
                     currentTransform = Transform.Identity;
                     currentZoom = 1.0;
                     imagePosition = new Point(0, 0);
+                    rotationAngle = 0.0; // 重置旋转角度
 
                     // 检查图片尺寸是否超过窗口尺寸
                     if (imageContainer != null)
@@ -1516,26 +1497,25 @@ namespace PicViewEx
                 
                 Console.WriteLine($"旋转前图片位置: ({imagePosition.X}, {imagePosition.Y})");
                 Console.WriteLine($"旋转前变换: {currentTransform}");
+                Console.WriteLine($"旋转前角度: {rotationAngle}度");
                 
-                RotateTransform rotate = new RotateTransform(angle);
-                // 2. 设置旋转中心为图片控件的中心
-                // 使用 ActualWidth 和 ActualHeight 来获取图片在界面上渲染后的实际大小
+                // 累积旋转角度
+                rotationAngle += angle;
+                
+                // 将角度标准化到0-360度范围
+                rotationAngle = rotationAngle % 360;
+                if (rotationAngle < 0) rotationAngle += 360;
+                
+                Console.WriteLine($"累积后角度: {rotationAngle}度");
+                
+                // 创建新的旋转变换，使用累积的角度
+                RotateTransform rotate = new RotateTransform(rotationAngle);
+                // 设置旋转中心为图片控件的中心
                 rotate.CenterX = mainImage.ActualWidth / 2;
                 rotate.CenterY = mainImage.ActualHeight / 2;
 
-
-                if (currentTransform == null || currentTransform == Transform.Identity)
-                {
-                    currentTransform = rotate;
-                }
-                else
-                {
-                    TransformGroup group = new TransformGroup();
-                    group.Children.Add(currentTransform);
-                    group.Children.Add(rotate);
-                    currentTransform = group;
-                }
-
+                // 直接设置旋转变换，而不是累积多个变换
+                currentTransform = rotate;
                 mainImage.RenderTransform = currentTransform;
                 
                 Console.WriteLine($"旋转后变换: {currentTransform}");
@@ -4009,6 +3989,7 @@ namespace PicViewEx
                 currentTransform = Transform.Identity;
                 currentZoom = 1.0;
                 imagePosition = new Point(0, 0);
+                rotationAngle = 0.0; // 重置旋转角度
 
                 // 检查图片尺寸是否超过窗口尺寸，决定是否自动适应
                 if (imageContainer != null)
