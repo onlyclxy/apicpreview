@@ -151,7 +151,7 @@
             <Button x:Name="btnOpenLocation" Content="打开位置" Click="BtnOpenLocation_Click" Padding="10,5" ToolTip="在资源管理器中显示"/>
             <Separator/>
             <Button x:Name="btnSearch" Content="搜索" Click="BtnSearch_Click" Padding="10,5" ToolTip="Everything搜索"/>
-            <CheckBox x:Name="chkShowChannels" Content="显示通道" Checked="ChkShowChannels_Checked" Unchecked="ChkShowChannels_Unchecked" Margin="10,0"/>
+            <CheckBox x:Name="chkShowChannels" Content="显示通道" Checked="ChkShowChannels_Checked" Unchecked="ChkShowChannels_Unchecked" IsChecked="False" Margin="10,0"/>
         </ToolBar>
 
         <!-- 序列帧工具栏 -->
@@ -299,7 +299,7 @@
         <!-- 主显示区域 -->
         <Grid Grid.Row="6">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*" x:Name="mainImageColumn"/>
                 <ColumnDefinition Width="Auto" x:Name="channelSplitterColumn"/>
                 <ColumnDefinition Width="0" x:Name="channelColumn"/>
             </Grid.ColumnDefinitions>

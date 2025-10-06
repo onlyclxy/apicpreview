@@ -802,13 +802,23 @@ namespace PicViewEx
 
         private void ChkShowChannels_Checked(object sender, RoutedEventArgs e)
         {
+            Console.WriteLine("显示通道面板");
             RecordToolUsage("ShowChannels");
+            if (chkShowChannels != null) chkShowChannels.Content = "关闭通道";
+
             showChannels = true;
             if (channelPanel != null && channelSplitter != null && channelColumn != null)
             {
                 channelPanel.Visibility = Visibility.Visible;
                 channelSplitter.Visibility = Visibility.Visible;
-                // 设置通道列为300像素宽度，而不是*，这样主图区域会相应缩小
+
+                // 确保主图列恢复为星号宽度(自动填充)
+                if (mainImageColumn != null)
+                {
+                    mainImageColumn.Width = new GridLength(1, GridUnitType.Star);
+                }
+
+                // 设置通道列为300像素宽度
                 channelColumn.Width = new GridLength(300);
             }
 
@@ -824,14 +834,25 @@ namespace PicViewEx
 
         private void ChkShowChannels_Unchecked(object sender, RoutedEventArgs e)
         {
+            Console.WriteLine("隐藏通道面板");
             RecordToolUsage("HideChannels");
+            if (chkShowChannels != null) chkShowChannels.Content = "显示通道";
+
             showChannels = false;
             if (channelPanel != null && channelSplitter != null && channelColumn != null && channelStackPanel != null)
             {
                 channelPanel.Visibility = Visibility.Collapsed;
                 channelSplitter.Visibility = Visibility.Collapsed;
-                // 设置通道列宽度为0，主图区域恢复全宽
+
+                // 设置通道列宽度为0
                 channelColumn.Width = new GridLength(0);
+
+                // 确保主图列恢复为星号宽度(占据全部空间)
+                if (mainImageColumn != null)
+                {
+                    mainImageColumn.Width = new GridLength(1, GridUnitType.Star);
+                }
+
                 channelStackPanel.Children.Clear();
             }
 
@@ -1705,15 +1726,17 @@ namespace PicViewEx
             try
             {
                 if (channelStackPanel == null) return;
+                
+                // 每次加载前都清空面板，防止重复添加
                 channelStackPanel.Children.Clear();
 
                 // 检查是否可以使用缓存
                 if (imagePath == currentChannelCachePath && channelCache.Count > 0)
                 {
                     // 直接使用缓存的通道图片
-                    foreach (var (name, image) in channelCache)
+                    foreach (var channelTuple in channelCache)
                     {
-                        CreateChannelControl(name, image);
+                        CreateChannelControl(channelTuple.Item1, channelTuple.Item2);
                     }
 
                     if (statusText != null)
@@ -1727,16 +1750,14 @@ namespace PicViewEx
 
                 if (statusText != null)
                     statusText.Text = $"正在生成通道...";
-                var channels = imageLoader.LoadChannels(imagePath);
-                channelCache.AddRange(channels);
-                currentChannelCachePath = imagePath;
-
+                
+                // 只调用一次LoadChannels方法
                 var loadedChannels = imageLoader.LoadChannels(imagePath);
 
-                foreach (var (name, channelImage) in loadedChannels)
+                foreach (var channelTuple in loadedChannels)
                 {
-                    channelCache.Add(Tuple.Create(name, channelImage));
-                    CreateChannelControl(name, channelImage);
+                    channelCache.Add(channelTuple);
+                    CreateChannelControl(channelTuple.Item1, channelTuple.Item2);
                 }
 
                 currentChannelCachePath = imagePath;
@@ -2670,6 +2691,12 @@ namespace PicViewEx
                 if (appSettings.IsMaximized)
                     this.WindowState = WindowState.Maximized;
 
+                // 恢复显示通道状态
+                if (appSettings.ShowChannels)
+                {
+                    chkShowChannels.IsChecked = true;
+                }
+
                 // 延迟恢复控件状态，确保所有控件都已初始化
                 this.Dispatcher.BeginInvoke(new Action(() =>
                 {
@@ -3088,8 +3115,76 @@ namespace PicViewEx
 
         private void MenuShowChannels_Click(object sender, RoutedEventArgs e)
         {
+            if (menuShowChannels == null) return;
+
+            // 根据当前显示状态决定操作，而不是菜单的IsChecked状态
+            // 因为IsCheckable菜单项的IsChecked会在Click事件触发前自动切换
+            bool currentlyShowing = showChannels && channelPanel != null && channelPanel.Visibility == Visibility.Visible;
+            bool shouldShow = !currentlyShowing; // 切换状态
+
+            // 同步菜单状态
+            menuShowChannels.IsChecked = shouldShow;
+
+            // 同步到复选框(不会触发事件,因为我们手动执行逻辑)
             if (chkShowChannels != null)
-                chkShowChannels.IsChecked = menuShowChannels?.IsChecked ?? false;
+            {
+                // 临时移除事件处理器
+                chkShowChannels.Checked -= ChkShowChannels_Checked;
+                chkShowChannels.Unchecked -= ChkShowChannels_Unchecked;
+
+                chkShowChannels.IsChecked = shouldShow;
+
+                // 恢复事件处理器
+                chkShowChannels.Checked += ChkShowChannels_Checked;
+                chkShowChannels.Unchecked += ChkShowChannels_Unchecked;
+            }
+
+            // 执行显示/隐藏逻辑
+            if (shouldShow)
+            {
+                RecordToolUsage("ShowChannels");
+                showChannels = true;
+                if (channelPanel != null && channelSplitter != null && channelColumn != null)
+                {
+                    channelPanel.Visibility = Visibility.Visible;
+                    channelSplitter.Visibility = Visibility.Visible;
+
+                    // 确保主图列恢复为星号宽度(自动填充)
+                    if (mainImageColumn != null)
+                    {
+                        mainImageColumn.Width = new GridLength(1, GridUnitType.Star);
+                    }
+
+                    // 设置通道列为300像素宽度
+                    channelColumn.Width = new GridLength(300);
+                }
+
+                if (!string.IsNullOrEmpty(currentImagePath))
+                {
+                    LoadImageChannels(currentImagePath);
+                }
+            }
+            else
+            {
+                RecordToolUsage("HideChannels");
+                showChannels = false;
+                if (channelPanel != null && channelSplitter != null && channelColumn != null && channelStackPanel != null)
+                {
+                    channelPanel.Visibility = Visibility.Collapsed;
+                    channelSplitter.Visibility = Visibility.Collapsed;
+
+                    // 设置通道列宽度为0
+                    channelColumn.Width = new GridLength(0);
+
+                    // 确保主图列恢复为星号宽度(占据全部空间)
+                    if (mainImageColumn != null)
+                    {
+                        mainImageColumn.Width = new GridLength(1, GridUnitType.Star);
+                    }
+
+                    channelStackPanel.Children.Clear();
+                }
+            }
         }
 
         private void MenuPrevious_Click(object sender, RoutedEventArgs e)
