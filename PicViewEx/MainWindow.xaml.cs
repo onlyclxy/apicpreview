@@ -1518,7 +1518,13 @@ namespace PicViewEx
                 Console.WriteLine($"旋转前变换: {currentTransform}");
                 
                 RotateTransform rotate = new RotateTransform(angle);
-                if (currentTransform == Transform.Identity)
+                // 2. 设置旋转中心为图片控件的中心
+                // 使用 ActualWidth 和 ActualHeight 来获取图片在界面上渲染后的实际大小
+                rotate.CenterX = mainImage.ActualWidth / 2;
+                rotate.CenterY = mainImage.ActualHeight / 2;
+
+
+                if (currentTransform == null || currentTransform == Transform.Identity)
                 {
                     currentTransform = rotate;
                 }
@@ -2143,9 +2149,12 @@ namespace PicViewEx
                 effectiveWidth = Math.Max(100, containerWidth - 305); // 确保至少有100像素显示区域
             }
 
-            // 计算适应窗口的缩放比例 - 使用有效区域
-            double scaleX = effectiveWidth / source.PixelWidth;
-            double scaleY = containerHeight / source.PixelHeight;
+            // 计算旋转后的实际边界框尺寸
+            var (rotatedWidth, rotatedHeight) = GetRotatedImageBounds(source.PixelWidth, source.PixelHeight);
+
+            // 计算适应窗口的缩放比例 - 使用旋转后的边界框尺寸和有效区域
+            double scaleX = effectiveWidth / rotatedWidth;
+            double scaleY = containerHeight / rotatedHeight;
             double scale = Math.Min(scaleX, scaleY) * 0.95; // 留一点边距
 
             currentZoom = Math.Max(0.1, scale);
@@ -2193,9 +2202,10 @@ namespace PicViewEx
                 effectiveWidth = Math.Max(100, containerWidth - 305); // 确保至少有100像素显示区域
             }
 
-            // 计算缩放后的图片尺寸（使用source的像素尺寸）
-            var imageWidth = source.PixelWidth * currentZoom;
-            var imageHeight = source.PixelHeight * currentZoom;
+            // 计算旋转后的实际边界框尺寸，然后应用缩放
+            var (rotatedWidth, rotatedHeight) = GetRotatedImageBounds(source.PixelWidth, source.PixelHeight);
+            var imageWidth = rotatedWidth * currentZoom;
+            var imageHeight = rotatedHeight * currentZoom;
 
             // 精确计算居中位置 - 在有效区域内居中
             imagePosition.X = Math.Round((effectiveWidth - imageWidth) / 2.0);
