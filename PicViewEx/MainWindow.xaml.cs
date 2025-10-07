@@ -1381,8 +1381,13 @@ namespace PicViewEx
                     }
                     
                     // 启用控制按钮
-                    if (btnGifPlay != null) btnGifPlay.IsEnabled = true;
-                    if (btnGifPause != null) btnGifPause.IsEnabled = true;
+                    if (btnGifPlayPause != null) 
+                    {
+                        btnGifPlayPause.IsEnabled = true;
+                        // 先设置为播放状态，稍后会在开始播放后更新
+                        btnGifPlayPause.Content = "▶";
+                        btnGifPlayPause.ToolTip = "播放";
+                    }
                     if (btnGifReset != null) btnGifReset.IsEnabled = true;
                     if (btnGifPrevFrame != null) btnGifPrevFrame.IsEnabled = true;
                     if (btnGifNextFrame != null) btnGifNextFrame.IsEnabled = true;
@@ -1395,9 +1400,27 @@ namespace PicViewEx
                     // 开始播放
                     gifWebpPlayer.Play();
                     
+                    // 更新按钮状态以反映自动播放状态
+                    if (btnGifPlayPause != null) 
+                    {
+                        btnGifPlayPause.Content = "⏸";
+                        btnGifPlayPause.ToolTip = "暂停";
+                    }
+                    
+                    // 更新状态文本
+                    if (txtGifInfo != null)
+                        txtGifInfo.Text = "播放中...";
+                    
                     // 更新状态
                     if (statusText != null)
                         statusText.Text = $"已加载: {Path.GetFileName(filePath)}";
+                    
+                    // 更新图片信息状态栏，显示文件大小
+                    if (imageInfoText != null)
+                    {
+                        long fileSize = new FileInfo(filePath).Length;
+                        imageInfoText.Text = $"GIF/WebP | {FormatFileSize(fileSize)}";
+                    }
                         
                     // 完全重置变换和缩放状态
                     currentTransform = Transform.Identity;
@@ -1460,8 +1483,7 @@ namespace PicViewEx
             }
             
             // 禁用控制按钮
-            if (btnGifPlay != null) btnGifPlay.IsEnabled = false;
-            if (btnGifPause != null) btnGifPause.IsEnabled = false;
+            if (btnGifPlayPause != null) btnGifPlayPause.IsEnabled = false;
             if (btnGifReset != null) btnGifReset.IsEnabled = false;
             if (btnGifPrevFrame != null) btnGifPrevFrame.IsEnabled = false;
             if (btnGifNextFrame != null) btnGifNextFrame.IsEnabled = false;
@@ -1552,33 +1574,40 @@ namespace PicViewEx
         }
 
         // GIF/WebP 控制按钮事件处理
-        private void BtnGifPlay_Click(object sender, RoutedEventArgs e)
+        private void BtnGifPlayPause_Click(object sender, RoutedEventArgs e)
         {
             if (gifWebpPlayer != null)
             {
-                gifWebpPlayer.Play();
-                
-                // 更新按钮状态
-                if (btnGifPlay != null) btnGifPlay.IsEnabled = false;
-                if (btnGifPause != null) btnGifPause.IsEnabled = true;
-                
-                if (txtGifInfo != null)
-                    txtGifInfo.Text = "播放中...";
-            }
-        }
-
-        private void BtnGifPause_Click(object sender, RoutedEventArgs e)
-        {
-            if (gifWebpPlayer != null)
-            {
-                gifWebpPlayer.Pause();
-                
-                // 更新按钮状态
-                if (btnGifPlay != null) btnGifPlay.IsEnabled = true;
-                if (btnGifPause != null) btnGifPause.IsEnabled = false;
-                
-                if (txtGifInfo != null)
-                    txtGifInfo.Text = "已暂停";
+                if (gifWebpPlayer.IsPlaying)
+                {
+                    // 当前正在播放，切换到暂停
+                    gifWebpPlayer.Pause();
+                    
+                    // 更新按钮状态
+                    if (btnGifPlayPause != null)
+                    {
+                        btnGifPlayPause.Content = "▶";
+                        btnGifPlayPause.ToolTip = "播放";
+                    }
+                    
+                    if (txtGifInfo != null)
+                        txtGifInfo.Text = "已暂停";
+                }
+                else
+                {
+                    // 当前已暂停，切换到播放
+                    gifWebpPlayer.Play();
+                    
+                    // 更新按钮状态
+                    if (btnGifPlayPause != null)
+                    {
+                        btnGifPlayPause.Content = "⏸";
+                        btnGifPlayPause.ToolTip = "暂停";
+                    }
+                    
+                    if (txtGifInfo != null)
+                        txtGifInfo.Text = "播放中...";
+                }
             }
         }
 
@@ -1593,8 +1622,11 @@ namespace PicViewEx
                     txtGifInfo.Text = "已重置到第一帧";
                     
                 // 更新按钮状态
-                if (btnGifPlay != null) btnGifPlay.IsEnabled = true;
-                if (btnGifPause != null) btnGifPause.IsEnabled = false;
+                if (btnGifPlayPause != null) 
+                {
+                    btnGifPlayPause.Content = "▶";
+                    btnGifPlayPause.ToolTip = "播放";
+                }
             }
         }
 
@@ -1606,8 +1638,11 @@ namespace PicViewEx
                 
                 // 暂停播放并更新按钮状态
                 gifWebpPlayer.Pause();
-                if (btnGifPlay != null) btnGifPlay.IsEnabled = true;
-                if (btnGifPause != null) btnGifPause.IsEnabled = false;
+                if (btnGifPlayPause != null) 
+                {
+                    btnGifPlayPause.Content = "▶";
+                    btnGifPlayPause.ToolTip = "播放";
+                }
                 
                 if (txtGifInfo != null)
                     txtGifInfo.Text = "已暂停";
@@ -1622,8 +1657,11 @@ namespace PicViewEx
                 
                 // 暂停播放并更新按钮状态
                 gifWebpPlayer.Pause();
-                if (btnGifPlay != null) btnGifPlay.IsEnabled = true;
-                if (btnGifPause != null) btnGifPause.IsEnabled = false;
+                if (btnGifPlayPause != null) 
+                {
+                    btnGifPlayPause.Content = "▶";
+                    btnGifPlayPause.ToolTip = "播放";
+                }
                 
                 if (txtGifInfo != null)
                     txtGifInfo.Text = "已暂停";
@@ -1650,8 +1688,11 @@ namespace PicViewEx
                     gifWebpPlayer.SeekToFrame(frameIndex);
                     
                     // 更新按钮状态
-                    if (btnGifPlay != null) btnGifPlay.IsEnabled = true;
-                    if (btnGifPause != null) btnGifPause.IsEnabled = false;
+                    if (btnGifPlayPause != null) 
+                    {
+                        btnGifPlayPause.Content = "▶";
+                        btnGifPlayPause.ToolTip = "播放";
+                    }
                     
                     if (txtGifInfo != null)
                         txtGifInfo.Text = $"已跳转到第 {frameNumber} 帧";

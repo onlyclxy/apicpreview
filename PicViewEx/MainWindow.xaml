@@ -225,8 +225,7 @@
         <Expander Grid.Row="3" Header="GIF/WebP 动画播放器" IsExpanded="False" x:Name="gifWebpExpander" Background="#E8F4FD" Visibility="Collapsed">
             <ToolBar Height="40" Background="Transparent">
                 <!-- 播放控制按钮 -->
-                <Button x:Name="btnGifPlay" Content="▶" Click="BtnGifPlay_Click" Width="30" Height="30" Margin="2" ToolTip="播放" IsEnabled="False"/>
-                <Button x:Name="btnGifPause" Content="⏸" Click="BtnGifPause_Click" Width="30" Height="30" Margin="2" ToolTip="暂停" IsEnabled="False"/>
+                <Button x:Name="btnGifPlayPause" Content="▶" Click="BtnGifPlayPause_Click" Width="30" Height="30" Margin="2" ToolTip="播放/暂停" IsEnabled="False"/>
                 <Button x:Name="btnGifReset" Content="🔄" Click="BtnGifReset_Click" Width="30" Height="30" Margin="2" ToolTip="重置" IsEnabled="False"/>
                 
                 <Separator Margin="5,0"/>

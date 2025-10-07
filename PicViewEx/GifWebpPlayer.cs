@@ -299,6 +299,13 @@ namespace PicViewEx
             _isPlaying = false;
             _timer.Stop();
             
+            // 如果已经是第一帧，循环到最后一帧
+            if (_currentFrameIndex == 0)
+            {
+                SeekToFrame(_totalFrames - 1);
+                return;
+            }
+            
             if (GetPreviousFrame(_handle, out IntPtr data, out uint width, out uint height, out uint delayMs) == 0)
             {
                 UpdateBitmap(data, width, height);
@@ -314,12 +321,16 @@ namespace PicViewEx
         {
             if (_handle == 0) return;
             
-            // 添加边界检查，防止超出最大帧数
-            if (_currentFrameIndex >= _totalFrames - 1) return;
-            
             _manualControl = true;
             _isPlaying = false;
             _timer.Stop();
+            
+            // 如果已经是最后一帧，循环到第一帧
+            if (_currentFrameIndex >= _totalFrames - 1)
+            {
+                SeekToFrame(0);
+                return;
+            }
             
             if (GetNextFrame(_handle, out IntPtr data, out uint width, out uint height, out uint delayMs) == 0)
             {
