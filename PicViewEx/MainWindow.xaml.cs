@@ -82,6 +82,7 @@ namespace PicViewEx
         private DateTime _lastFrameTime = DateTime.Now;
         private DateTime _fpsStartTime = DateTime.Now;
         private int _frameCount = 0;
+        private bool _needsInitialPositioning = false;
 
         public MainWindow()
         {
@@ -1398,11 +1399,26 @@ namespace PicViewEx
                     if (statusText != null)
                         statusText.Text = $"已加载: {Path.GetFileName(filePath)}";
                         
-                    // 重置变换和缩放
+                    // 完全重置变换和缩放状态
                     currentTransform = Transform.Identity;
                     currentZoom = 1.0;
                     imagePosition = new Point(0, 0);
                     rotationAngle = 0.0;
+                    
+                    // 重置图片显示变换，确保新GIF不继承上一个图片的缩放
+                    if (mainImage != null)
+                    {
+                        mainImage.RenderTransform = Transform.Identity;
+                        mainImage.Stretch = Stretch.Uniform;
+                        mainImage.StretchDirection = StretchDirection.Both;
+                    }
+                    
+                    // 重置FPS计算相关字段
+                    _frameCount = 0;
+                    _fpsStartTime = DateTime.Now;
+                    
+                    // 标记需要在第一帧加载后进行位置调整
+                    _needsInitialPositioning = true;
                 }
                 else
                 {
@@ -1459,6 +1475,15 @@ namespace PicViewEx
                 if (mainImage != null && e.Bitmap != null)
                 {
                     mainImage.Source = e.Bitmap;
+                    
+                    // 如果需要初始位置调整，在第一帧加载后执行
+                    if (_needsInitialPositioning)
+                    {
+                        _needsInitialPositioning = false;
+                        
+                        // 应用与普通图片相同的位置和缩放逻辑
+                        ApplyGifInitialPositioning((int)e.Width, (int)e.Height);
+                    }
                 }
                 
                 // 更新状态栏信息
@@ -1601,6 +1626,53 @@ namespace PicViewEx
                 {
                     MessageBox.Show("请输入有效的帧索引数字！", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
+            }
+        }
+
+        #endregion
+
+        #region GIF/WebP 初始位置调整
+
+        /// <summary>
+        /// 为GIF/WebP应用初始位置调整逻辑，与普通图片相同
+        /// </summary>
+        private void ApplyGifInitialPositioning(int imageWidth, int imageHeight)
+        {
+            if (imageContainer == null) return;
+
+            var containerWidth = imageContainer.ActualWidth;
+            var containerHeight = imageContainer.ActualHeight;
+
+            if (containerWidth <= 0 || containerHeight <= 0)
+            {
+                // 如果容器尺寸还未确定，异步重试
+                this.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    ApplyGifInitialPositioning(imageWidth, imageHeight);
+                }), System.Windows.Threading.DispatcherPriority.Background);
+                return;
+            }
+
+            // 计算有效显示区域宽度
+            double effectiveWidth = containerWidth;
+            if (showChannels && channelPanel != null && channelPanel.Visibility == Visibility.Visible)
+            {
+                effectiveWidth = Math.Max(100, containerWidth - 305); // 确保至少有100像素显示区域
+            }
+
+            // 如果图片尺寸超过容器的80%，自动适应窗口
+            if (imageWidth > effectiveWidth * 0.8 || imageHeight > containerHeight * 0.8)
+            {
+                FitToWindow();
+                PrintImageInfo("GIF加载 - 自动适应窗口");
+                if (statusText != null)
+                    statusText.Text = statusText.Text + " (已自动适应窗口)";
+            }
+            else
+            {
+                // 否则居中显示
+                CenterImage();
+                PrintImageInfo("GIF加载 - 居中显示");
             }
         }
 
