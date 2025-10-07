@@ -14,6 +14,7 @@
     <WarningLevel>4</WarningLevel>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationIcon>ico.ico</ApplicationIcon>
     <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
     <RuntimeIdentifiers>win-x86;win-x64;win</RuntimeIdentifiers>
@@ -80,6 +81,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="EverythingSearch.cs" />
+    <Compile Include="GifWebpPlayer.cs" />
     <Compile Include="ImageLoader.cs" />
     <Compile Include="MainWindow.xaml.剪贴板粘贴功能.cs" />
     <Compile Include="MainWindow.xaml.序列帧播放功能.cs" />
@@ -98,6 +100,9 @@
     <Compile Include="MainWindow.xaml.UI输入与控件事件.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="gifplayer.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="ico.ico" />
     <Content Include="magick.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

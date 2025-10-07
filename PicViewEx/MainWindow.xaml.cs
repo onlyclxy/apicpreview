@@ -76,6 +76,10 @@ namespace PicViewEx
         private Size displayImageSize = new Size(0, 0);      // 显示图片尺寸（缩放后）
         private double rotationAngle = 0.0;                  // 旋转角度
 
+        // GIF/WebP 播放器相关
+        private GifWebpPlayer gifWebpPlayer;
+        private bool isGifWebpMode = false;
+
         public MainWindow()
         {
             try
@@ -420,20 +424,23 @@ namespace PicViewEx
                 if (statusText != null)
                     statusText.Text = $"加载中: {Path.GetFileName(imagePath)}";
 
+                string extension = Path.GetExtension(imagePath).ToLower();
+                
+                // 检查是否是GIF或WebP文件，如果是则使用专用播放器
+                if (extension == ".gif" || extension == ".webp")
+                {
+                    LoadGifWebpFile(imagePath);
+                    return;
+                }
+
+                // 对于其他格式，使用原有逻辑
                 BitmapImage bitmap = imageLoader.LoadImage(imagePath);
                 if (bitmap != null && mainImage != null)
                 {
-                    // 检查是否是GIF文件，如果是则启用动画
-                    if (Path.GetExtension(imagePath).ToLower() == ".gif")
-                    {
-                        LoadGifAnimation(imagePath);
-                    }
-                    else
-                    {
-                        // 清除可能的GIF动画
-                        WpfAnimatedGif.ImageBehavior.SetAnimatedSource(mainImage, null);
-                        mainImage.Source = bitmap;
-                    }
+                    // 清除可能的GIF动画和GIF/WebP播放器
+                    WpfAnimatedGif.ImageBehavior.SetAnimatedSource(mainImage, null);
+                    CleanupGifWebpPlayer();
+                    mainImage.Source = bitmap;
 
                     // 重置变换和缩放
                     currentTransform = Transform.Identity;
@@ -1320,11 +1327,228 @@ namespace PicViewEx
         {
             // 清理临时文件
             CleanupTemporaryFile();
+            
+            // 清理GIF/WebP播放器
+            CleanupGifWebpPlayer();
 
             SaveAppSettings();
         }
- 
 
+        #region GIF/WebP 播放器相关方法
+
+        private void LoadGifWebpFile(string filePath)
+        {
+            try
+            {
+                // 清理之前的播放器
+                CleanupGifWebpPlayer();
+
+                // 创建新的播放器实例
+                gifWebpPlayer = new GifWebpPlayer();
+                
+                // 加载文件
+                if (gifWebpPlayer.LoadFile(filePath))
+                {
+                    isGifWebpMode = true;
+                    
+                    // 显示GIF/WebP控制面板
+                    if (gifWebpExpander != null)
+                    {
+                        gifWebpExpander.Visibility = Visibility.Visible;
+                        gifWebpExpander.IsExpanded = true;
+                    }
+                    
+                    // 显示GIF状态栏
+                    if (gifStatusItem != null)
+                    {
+                        gifStatusItem.Visibility = Visibility.Visible;
+                    }
+                    
+                    // 启用控制按钮
+                    if (btnGifPlay != null) btnGifPlay.IsEnabled = true;
+                    if (btnGifPause != null) btnGifPause.IsEnabled = true;
+                    if (btnGifReset != null) btnGifReset.IsEnabled = true;
+                    if (btnGifPrevFrame != null) btnGifPrevFrame.IsEnabled = true;
+                    if (btnGifNextFrame != null) btnGifNextFrame.IsEnabled = true;
+                    if (btnGifSeek != null) btnGifSeek.IsEnabled = true;
+                    
+                    // 设置事件处理
+                    gifWebpPlayer.FrameUpdated += OnGifWebpFrameUpdated;
+                    gifWebpPlayer.StatusUpdated += OnGifWebpStatusUpdated;
+                    
+                    // 开始播放
+                    gifWebpPlayer.Play();
+                    
+                    // 更新状态
+                    if (statusText != null)
+                        statusText.Text = $"已加载: {Path.GetFileName(filePath)}";
+                        
+                    // 重置变换和缩放
+                    currentTransform = Transform.Identity;
+                    currentZoom = 1.0;
+                    imagePosition = new Point(0, 0);
+                    rotationAngle = 0.0;
+                }
+                else
+                {
+                    MessageBox.Show($"无法加载文件: {filePath}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    if (statusText != null)
+                        statusText.Text = "加载失败";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"加载GIF/WebP文件失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                if (statusText != null)
+                    statusText.Text = "加载失败";
+            }
+        }
+
+        private void CleanupGifWebpPlayer()
+        {
+            if (gifWebpPlayer != null)
+            {
+                gifWebpPlayer.FrameUpdated -= OnGifWebpFrameUpdated;
+                gifWebpPlayer.StatusUpdated -= OnGifWebpStatusUpdated;
+                gifWebpPlayer.Dispose();
+                gifWebpPlayer = null;
+            }
+            
+            isGifWebpMode = false;
+            
+            // 隐藏GIF/WebP控制面板
+            if (gifWebpExpander != null)
+            {
+                gifWebpExpander.Visibility = Visibility.Collapsed;
+            }
+            
+            // 隐藏GIF状态栏
+            if (gifStatusItem != null)
+            {
+                gifStatusItem.Visibility = Visibility.Collapsed;
+            }
+            
+            // 禁用控制按钮
+            if (btnGifPlay != null) btnGifPlay.IsEnabled = false;
+            if (btnGifPause != null) btnGifPause.IsEnabled = false;
+            if (btnGifReset != null) btnGifReset.IsEnabled = false;
+            if (btnGifPrevFrame != null) btnGifPrevFrame.IsEnabled = false;
+            if (btnGifNextFrame != null) btnGifNextFrame.IsEnabled = false;
+            if (btnGifSeek != null) btnGifSeek.IsEnabled = false;
+        }
+
+        private void OnGifWebpFrameUpdated(object sender, FrameUpdatedEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (mainImage != null && e.Bitmap != null)
+                {
+                    mainImage.Source = e.Bitmap;
+                }
+            });
+        }
+
+        private void OnGifWebpStatusUpdated(object sender, StatusUpdatedEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (txtGifInfo != null)
+                {
+                    txtGifInfo.Text = e.Status;
+                }
+            });
+        }
+
+        // GIF/WebP 控制按钮事件处理
+        private void BtnGifPlay_Click(object sender, RoutedEventArgs e)
+        {
+            if (gifWebpPlayer != null)
+            {
+                gifWebpPlayer.Play();
+                
+                // 更新按钮状态
+                if (btnGifPlay != null) btnGifPlay.IsEnabled = false;
+                if (btnGifPause != null) btnGifPause.IsEnabled = true;
+                
+                if (txtGifInfo != null)
+                    txtGifInfo.Text = "播放中...";
+            }
+        }
+
+        private void BtnGifPause_Click(object sender, RoutedEventArgs e)
+        {
+            if (gifWebpPlayer != null)
+            {
+                gifWebpPlayer.Pause();
+                
+                // 更新按钮状态
+                if (btnGifPlay != null) btnGifPlay.IsEnabled = true;
+                if (btnGifPause != null) btnGifPause.IsEnabled = false;
+                
+                if (txtGifInfo != null)
+                    txtGifInfo.Text = "已暂停";
+            }
+        }
+
+        private void BtnGifReset_Click(object sender, RoutedEventArgs e)
+        {
+            if (gifWebpPlayer != null && gifWebpPlayer.Handle != 0)
+            {
+                // 调用ResetToFirstFrame方法重置到第一帧
+                gifWebpPlayer.ResetToFirstFrame();
+                
+                if (txtGifInfo != null)
+                    txtGifInfo.Text = "已重置到第一帧";
+                    
+                // 更新按钮状态
+                if (btnGifPlay != null) btnGifPlay.IsEnabled = true;
+                if (btnGifPause != null) btnGifPause.IsEnabled = false;
+            }
+        }
+
+        private void BtnGifPrevFrame_Click(object sender, RoutedEventArgs e)
+        {
+            if (gifWebpPlayer != null)
+                gifWebpPlayer.PreviousFrame();
+        }
+
+        private void BtnGifNextFrame_Click(object sender, RoutedEventArgs e)
+        {
+            if (gifWebpPlayer != null)
+                gifWebpPlayer.NextFrame();
+        }
+
+        private void BtnGifSeek_Click(object sender, RoutedEventArgs e)
+        {
+            if (gifWebpPlayer != null && txtGifFrameIndex != null && gifWebpPlayer.Handle != 0)
+            {
+                if (uint.TryParse(txtGifFrameIndex.Text, out uint frameIndex))
+                {
+                    if (frameIndex >= gifWebpPlayer.TotalFrames)
+                    {
+                        MessageBox.Show($"帧索引超出范围！有效范围: 0-{gifWebpPlayer.TotalFrames - 1}", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+                    
+                    // 暂停播放并跳转到指定帧
+                    gifWebpPlayer.Pause();
+                    gifWebpPlayer.SeekToFrame(frameIndex);
+                    
+                    // 更新按钮状态
+                    if (btnGifPlay != null) btnGifPlay.IsEnabled = true;
+                    if (btnGifPause != null) btnGifPause.IsEnabled = false;
+                    
+                    if (txtGifInfo != null)
+                        txtGifInfo.Text = $"已跳转到第 {frameIndex + 1} 帧";
+                }
+                else
+                {
+                    MessageBox.Show("请输入有效的帧索引数字！", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+        }
+
+        #endregion
 
     }
 }

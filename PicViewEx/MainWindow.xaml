@@ -221,6 +221,34 @@
             </ToolBar>
         </Expander>
 
+        <!-- GIF/WebP 动画播放控制工具栏 -->
+        <Expander Grid.Row="3" Header="GIF/WebP 动画播放器" IsExpanded="False" x:Name="gifWebpExpander" Background="#E8F4FD" Visibility="Collapsed">
+            <ToolBar Height="40" Background="Transparent">
+                <!-- 播放控制按钮 -->
+                <Button x:Name="btnGifPlay" Content="▶" Click="BtnGifPlay_Click" Width="30" Height="30" Margin="2" ToolTip="播放" IsEnabled="False"/>
+                <Button x:Name="btnGifPause" Content="⏸" Click="BtnGifPause_Click" Width="30" Height="30" Margin="2" ToolTip="暂停" IsEnabled="False"/>
+                <Button x:Name="btnGifReset" Content="⏹" Click="BtnGifReset_Click" Width="30" Height="30" Margin="2" ToolTip="重置" IsEnabled="False"/>
+                
+                <Separator Margin="5,0"/>
+                
+                <!-- 帧控制按钮 -->
+                <Button x:Name="btnGifPrevFrame" Content="⏪" Click="BtnGifPrevFrame_Click" Width="30" Height="30" Margin="2" ToolTip="上一帧" IsEnabled="False"/>
+                <Button x:Name="btnGifNextFrame" Content="⏩" Click="BtnGifNextFrame_Click" Width="30" Height="30" Margin="2" ToolTip="下一帧" IsEnabled="False"/>
+                
+                <Separator Margin="5,0"/>
+                
+                <!-- 跳转控制 -->
+                <TextBlock Text="跳转到:" VerticalAlignment="Center" Margin="5,0"/>
+                <TextBox x:Name="txtGifFrameIndex" Width="50" Height="25" VerticalContentAlignment="Center" Margin="2" ToolTip="输入帧号"/>
+                <Button x:Name="btnGifSeek" Content="跳转" Click="BtnGifSeek_Click" Width="40" Height="30" Margin="2" ToolTip="跳转到指定帧" IsEnabled="False"/>
+                
+                <Separator Margin="10,0"/>
+                
+                <!-- 状态信息 -->
+                <TextBlock x:Name="txtGifInfo" Text="未加载动画" VerticalAlignment="Center" Margin="10,0" FontSize="12" Foreground="Gray"/>
+            </ToolBar>
+        </Expander>
+
         <!-- Everything 搜索栏 -->
         <Grid Grid.Row="4" x:Name="searchPanel" Visibility="Collapsed" Background="#F0F0F0" Height="40">
             <Grid.ColumnDefinitions>
@@ -348,6 +376,16 @@
             <Separator/>
             <StatusBarItem>
                 <TextBlock x:Name="imageInfoText"/>
+            </StatusBarItem>
+            <Separator/>
+            <!-- GIF/WebP 动画状态信息 -->
+            <StatusBarItem x:Name="gifStatusItem" Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="gifFpsText" Text="FPS: 0" Margin="0,0,10,0"/>
+                    <TextBlock x:Name="gifDelayText" Text="延迟: 0ms" Margin="0,0,10,0"/>
+                    <TextBlock x:Name="gifSizeText" Text="大小: 0x0" Margin="0,0,10,0"/>
+                    <TextBlock x:Name="gifFrameText" Text="帧: 0/0"/>
+                </StackPanel>
             </StatusBarItem>
         </StatusBar>
     </Grid>
