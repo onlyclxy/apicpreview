@@ -314,9 +314,9 @@
                     MouseWheel="ImageContainer_MouseWheel"
                     MouseLeftButtonDown="ImageContainer_MouseLeftButtonDown">
                 <Canvas x:Name="imageCanvas">
-                    <Image x:Name="mainImage" 
+                    <Image x:Name="mainImage"
                            RenderOptions.BitmapScalingMode="HighQuality"
-                           Stretch="None"
+                           Stretch="Fill"
                            MouseLeftButtonDown="MainImage_MouseLeftButtonDown"
                            MouseLeftButtonUp="MainImage_MouseLeftButtonUp"
                            MouseMove="MainImage_MouseMove"/>
