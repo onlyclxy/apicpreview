@@ -44,6 +44,7 @@
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Core" />
@@ -80,11 +81,21 @@
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="EverythingSearch.cs" />
     <Compile Include="ImageLoader.cs" />
+    <Compile Include="MainWindow.xaml.剪贴板粘贴功能.cs" />
+    <Compile Include="MainWindow.xaml.序列帧播放功能.cs" />
+    <Compile Include="MainWindow.xaml.引擎切换菜单事件.cs" />
+    <Compile Include="MainWindow.xaml.控制台打印事件.cs" />
+    <Compile Include="MainWindow.xaml.文件操作方法.cs" />
+    <Compile Include="MainWindow.xaml.工具栏按钮处理程序.cs" />
+    <Compile Include="MainWindow.xaml.窗口控件保存配置事件.cs" />
+    <Compile Include="MainWindow.xaml.窗口背景显示事件.cs" />
+    <Compile Include="MainWindow.xaml.菜单事件处理.cs" />
     <Compile Include="OpenWithManagerWindow.xaml.cs">
       <DependentUpon>OpenWithManagerWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Settings.cs" />
     <None Include="App.config" />
+    <Compile Include="MainWindow.xaml.UI输入与控件事件.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="ico.ico" />
