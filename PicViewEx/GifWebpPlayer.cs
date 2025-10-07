@@ -394,14 +394,23 @@ namespace PicViewEx
             {
                 _bitmap.Lock();
                 
-                // 计算字节数
-                int stride = (int)width * 4; // BGRA32 = 4 bytes per pixel
-                int totalBytes = stride * (int)height;
-                
-                // 复制数据
+                // 计算数据大小
+                int dataSize = (int)(width * height * 4); // RGBA
+
+                // 复制数据到 bitmap 并进行颜色格式转换
                 unsafe
                 {
-                    Buffer.MemoryCopy(data.ToPointer(), _bitmap.BackBuffer.ToPointer(), totalBytes, totalBytes);
+                    byte* srcPtr = (byte*)data.ToPointer();
+                    byte* dstPtr = (byte*)_bitmap.BackBuffer.ToPointer();
+                    
+                    // RGBA 转 BGRA
+                    for (int i = 0; i < dataSize; i += 4)
+                    {
+                        dstPtr[i] = srcPtr[i + 2];     // B
+                        dstPtr[i + 1] = srcPtr[i + 1]; // G
+                        dstPtr[i + 2] = srcPtr[i];     // R  
+                        dstPtr[i + 3] = srcPtr[i + 3]; // A
+                    }
                 }
                 
                 _bitmap.AddDirtyRect(new Int32Rect(0, 0, (int)width, (int)height));
@@ -421,6 +430,10 @@ namespace PicViewEx
                 UpdateBitmap(data, width, height);
                 GetCurrentFrameIndex(_handle, out _currentFrameIndex);
                 OnFrameUpdated(_bitmap, delayMs);
+                
+                // 根据帧延迟设置下一帧的定时器间隔
+                uint actualDelay = Math.Max(delayMs, 16); // 最少 16ms (60fps)
+                _timer.Interval = TimeSpan.FromMilliseconds(actualDelay);
             }
         }
 

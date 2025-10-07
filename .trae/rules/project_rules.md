@@ -1,0 +1,2 @@
+这是一个Framework4.8的项目,构建请用Framework的构建方式
+构建完成需要运行exe文件

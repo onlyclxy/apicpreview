@@ -76,9 +76,10 @@ namespace PicViewEx
         private Size displayImageSize = new Size(0, 0);      // 显示图片尺寸（缩放后）
         private double rotationAngle = 0.0;                  // 旋转角度
 
-        // GIF/WebP 播放器相关
+        // GIF/WebP 播放器相关字段
         private GifWebpPlayer gifWebpPlayer;
         private bool isGifWebpMode = false;
+        private DateTime _lastFrameTime = DateTime.Now;
 
         public MainWindow()
         {
@@ -1444,6 +1445,40 @@ namespace PicViewEx
                 if (mainImage != null && e.Bitmap != null)
                 {
                     mainImage.Source = e.Bitmap;
+                }
+                
+                // 更新状态栏信息
+                if (gifFpsText != null)
+                {
+                    // 计算FPS
+                    var now = DateTime.Now;
+                    if ((now - _lastFrameTime).TotalMilliseconds > 0)
+                    {
+                        double fps = 1000.0 / (now - _lastFrameTime).TotalMilliseconds;
+                        gifFpsText.Text = $"FPS: {fps:F1}";
+                    }
+                    _lastFrameTime = now;
+                }
+                
+                if (gifDelayText != null)
+                {
+                    gifDelayText.Text = $"延迟: {e.DelayMs}ms";
+                }
+                
+                if (gifSizeText != null)
+                {
+                    gifSizeText.Text = $"大小: {e.Width}x{e.Height}";
+                }
+                
+                if (gifFrameText != null)
+                {
+                    gifFrameText.Text = $"帧: {e.CurrentFrame + 1}/{e.TotalFrames}";
+                }
+                
+                // 显示GIF状态栏
+                if (gifStatusItem != null)
+                {
+                    gifStatusItem.Visibility = Visibility.Visible;
                 }
             });
         }
