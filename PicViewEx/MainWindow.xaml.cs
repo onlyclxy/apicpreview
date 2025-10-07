@@ -301,12 +301,12 @@ namespace PicViewEx
                 double scaleX = newSize.Width / lastWindowSize.Width;
                 double scaleY = newSize.Height / lastWindowSize.Height;
 
-                // 获取当前图片的尺寸
+                // 获取当前图片的尺寸（使用DPI调整后的尺寸）
                 var source = mainImage.Source as BitmapSource;
                 if (source == null) return;
 
-                double imageWidth = source.PixelWidth * currentZoom;
-                double imageHeight = source.PixelHeight * currentZoom;
+                double imageWidth = source.Width * currentZoom;
+                double imageHeight = source.Height * currentZoom;
 
                 // 计算图片在旧窗口中的中心点
                 Point oldImageCenter = new Point(
@@ -675,10 +675,11 @@ namespace PicViewEx
                 Console.WriteLine($"累积后角度: {rotationAngle}度");
                 
                 // 创建新的旋转变换，使用累积的角度
-                // 关键修改:以原始图片像素尺寸的中心为旋转中心
+                // 关键修改:以原始图片的实际渲染尺寸（考虑DPI）的中心为旋转中心
+                // 使用 Width/Height 而不是 PixelWidth/PixelHeight，因为前者已经包含了DPI缩放
                 RotateTransform rotate = new RotateTransform(rotationAngle);
-                rotate.CenterX = source.PixelWidth / 2.0;
-                rotate.CenterY = source.PixelHeight / 2.0;
+                rotate.CenterX = source.Width / 2.0;
+                rotate.CenterY = source.Height / 2.0;
 
                 // 直接设置旋转变换，而不是累积多个变换
                 currentTransform = rotate;
@@ -997,8 +998,8 @@ namespace PicViewEx
                 effectiveWidth = Math.Max(100, containerWidth - 305); // 确保至少有100像素显示区域
             }
 
-            // 计算旋转后的实际边界框尺寸
-            var (actualWidth, actualHeight) = GetRotatedImageBounds(source.PixelWidth, source.PixelHeight);
+            // 计算旋转后的实际边界框尺寸（使用DPI调整后的尺寸）
+            var (actualWidth, actualHeight) = GetRotatedImageBounds(source.Width, source.Height);
             var scaledWidth = actualWidth * currentZoom;
             var scaledHeight = actualHeight * currentZoom;
 
@@ -1053,14 +1054,14 @@ namespace PicViewEx
                 effectiveWidth = Math.Max(100, containerWidth - 305);
             }
 
-            // 计算旋转后的边界框尺寸并应用缩放
-            var (rotatedWidth, rotatedHeight) = GetRotatedImageBounds(source.PixelWidth, source.PixelHeight);
+            // 计算旋转后的边界框尺寸并应用缩放（使用DPI调整后的尺寸）
+            var (rotatedWidth, rotatedHeight) = GetRotatedImageBounds(source.Width, source.Height);
             double scaledRotatedWidth = rotatedWidth * currentZoom;
             double scaledRotatedHeight = rotatedHeight * currentZoom;
 
-            // 原始图片尺寸(缩放后)
-            double scaledOriginalWidth = source.PixelWidth * currentZoom;
-            double scaledOriginalHeight = source.PixelHeight * currentZoom;
+            // 原始图片尺寸(缩放后) - 使用 Width/Height 以考虑 DPI
+            double scaledOriginalWidth = source.Width * currentZoom;
+            double scaledOriginalHeight = source.Height * currentZoom;
 
             // 期望的旋转后边界框中心位置
             double desiredCenterX = effectiveWidth / 2.0;
@@ -1137,9 +1138,9 @@ namespace PicViewEx
             var source = mainImage.Source as BitmapSource;
             if (source != null)
             {
-                // 使用source的像素尺寸计算当前显示尺寸
-                var currentWidth = source.PixelWidth * currentZoom;
-                var currentHeight = source.PixelHeight * currentZoom;
+                // 使用source的实际渲染尺寸（考虑DPI）计算当前显示尺寸
+                var currentWidth = source.Width * currentZoom;
+                var currentHeight = source.Height * currentZoom;
 
                 var centerX = imagePosition.X + currentWidth / 2;
                 var centerY = imagePosition.Y + currentHeight / 2;
@@ -1148,8 +1149,8 @@ namespace PicViewEx
                 currentZoom = newZoom;
 
                 // 重新计算位置，保持中心点不变
-                var newWidth = source.PixelWidth * currentZoom;
-                var newHeight = source.PixelHeight * currentZoom;
+                var newWidth = source.Width * currentZoom;
+                var newHeight = source.Height * currentZoom;
 
                 imagePosition.X = centerX - newWidth / 2;
                 imagePosition.Y = centerY - newHeight / 2;
@@ -1185,8 +1186,8 @@ namespace PicViewEx
                 effectiveWidth = Math.Max(100, containerWidth - 305); // 确保至少有100像素显示区域
             }
 
-            // 计算旋转后的实际边界框尺寸
-            var (rotatedWidth, rotatedHeight) = GetRotatedImageBounds(source.PixelWidth, source.PixelHeight);
+            // 计算旋转后的实际边界框尺寸（使用DPI调整后的尺寸）
+            var (rotatedWidth, rotatedHeight) = GetRotatedImageBounds(source.Width, source.Height);
 
             // 计算适应窗口的缩放比例 - 使用旋转后的边界框尺寸和有效区域
             double scaleX = effectiveWidth / rotatedWidth;
@@ -1238,9 +1239,9 @@ namespace PicViewEx
                 effectiveWidth = Math.Max(100, containerWidth - 305); // 确保至少有100像素显示区域
             }
 
-            // 原始图片尺寸(缩放后)
-            double scaledOriginalWidth = source.PixelWidth * currentZoom;
-            double scaledOriginalHeight = source.PixelHeight * currentZoom;
+            // 原始图片尺寸(缩放后) - 使用 Width/Height 以考虑 DPI
+            double scaledOriginalWidth = source.Width * currentZoom;
+            double scaledOriginalHeight = source.Height * currentZoom;
 
             // 期望的中心位置
             double desiredCenterX = effectiveWidth / 2.0;
