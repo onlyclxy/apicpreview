@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -232,7 +232,7 @@ namespace PicViewEx
 			}
 
 			SaveFileDialog dialog = new SaveFileDialog();
-			dialog.Filter = "PNG|*.png|JPEG|*.jpg|BMP|*.bmp|TIFF|*.tiff|GIF|*.gif";
+			dialog.Filter = "PNG|*.png|JPEG|*.jpg|BMP|*.bmp|TIFF|*.tiff|GIF|*.gif|DDS|*.dds";
 
 			// 设置默认文件名
 			if (!string.IsNullOrEmpty(currentImagePath))
@@ -268,6 +268,14 @@ namespace PicViewEx
 				if (source == null)
 				{
 					throw new InvalidOperationException("图片格式不支持保存");
+				}
+
+				// 检查是否为DDS格式
+				string extension = Path.GetExtension(fileName).ToLower();
+				if (extension == ".dds")
+				{
+					SaveAsDds(source, fileName);
+					return;
 				}
 
 				// 如果有原始文件路径且没有旋转变换，直接使用 ImageMagick 处理原文件
@@ -839,6 +847,33 @@ namespace PicViewEx
             RecordToolUsage("ResetSequence");
         }
 
+        /// <summary>
+        /// 显示DDS保存成功对话框并提供打开选项
+        /// </summary>
+        private void ShowDdsSaveSuccessDialog(string ddsFilePath)
+        {
+            try
+            {
+                var result = MessageBox.Show(
+                    $"DDS文件保存成功！\n\n文件路径：{ddsFilePath}\n\n是否要打开文件所在位置？",
+                    "DDS保存成功",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Information
+                );
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    // 打开文件所在文件夹并选中文件
+                    string argument = $"/select, \"{ddsFilePath}\"";
+                    System.Diagnostics.Process.Start("explorer.exe", argument);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"显示DDS成功对话框时发生错误: {ex.Message}");
+            }
+        }
+
         private void ManageOpenWithApps_Click(object sender, RoutedEventArgs e)
         {
             var manageWindow = new OpenWithManagerWindow(openWithApps);
@@ -923,6 +958,317 @@ namespace PicViewEx
 
 
         /// <summary>
+        /// 保存为DDS格式
+        /// </summary>
+        private void SaveAsDds(BitmapSource source, string fileName)
+        {
+            string tempPngFile = null;
+            try
+            {
+                Console.WriteLine("=== 开始DDS保存流程 ===");
+                Console.WriteLine($"目标DDS文件: {fileName}");
+                
+                // 应用当前的旋转变换到图片
+                BitmapSource finalSource = source;
+                if (currentTransform != Transform.Identity)
+                {
+                    Console.WriteLine("应用图片旋转变换");
+                    var transformedBitmap = new TransformedBitmap(source, currentTransform);
+                    finalSource = transformedBitmap;
+                }
+
+                // 生成临时PNG文件名（使用不常见的扩展名防止用户误用）
+                string tempDir = Path.GetTempPath();
+                string tempFileName = $"nvtt_temp_{Guid.NewGuid():N}.tmp_png";
+                tempPngFile = Path.Combine(tempDir, tempFileName);
+                
+                Console.WriteLine($"临时PNG文件路径: {tempPngFile}");
+
+                // 保存为临时PNG文件
+                Console.WriteLine("开始保存临时PNG文件...");
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(finalSource));
+                using (var fileStream = new FileStream(tempPngFile, FileMode.Create))
+                {
+                    encoder.Save(fileStream);
+                }
+                
+                Console.WriteLine($"临时PNG文件保存成功，大小: {new FileInfo(tempPngFile).Length} 字节");
+
+                // 显示DDS预设选择对话框
+                Console.WriteLine("显示DDS预设选择对话框...");
+                var presetDialog = new DdsPresetDialog();
+                var result = presetDialog.ShowDialog();
+                
+                if (result == true)
+                {
+                    if (presetDialog.IsCustomPanelSelected)
+                    {
+                        // 用户选择自定义面板
+                        Console.WriteLine("用户选择自定义面板");
+                        Console.WriteLine("注意: 临时文件将保留，供NVIDIA Texture Tools使用");
+                        Console.WriteLine($"临时文件位置: {tempPngFile}");
+                        Console.WriteLine("请在NVIDIA Texture Tools中完成转换后手动清理临时文件（如需要）");
+                        
+                        OpenNvttCustomPanel(tempPngFile);
+                        
+                        // 对于自定义面板，我们不删除临时文件，因为用户可能还在使用
+                        // 显示提示信息
+                        MessageBox.Show($"NVIDIA Texture Tools已启动。\n\n临时文件位置：\n{tempPngFile}\n\n请在完成转换后关闭工具。", 
+                                      "自定义面板已启动", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return; // 直接返回，不删除临时文件
+                    }
+                    else if (presetDialog.SelectedPreset != null)
+                    {
+                        // 用户选择了预设
+                        Console.WriteLine($"用户选择了预设: {presetDialog.SelectedPreset.Name}");
+                        
+						if (string.IsNullOrEmpty(fileName))
+						{
+                            // 生成默认输出文件名（与原图同目录，扩展名改为.dds）
+                            fileName = Path.ChangeExtension(currentImagePath, ".dds");
+                            
+
+                        }
+                        Console.WriteLine($"默认输出路径: {fileName}");
+
+                        // 直接使用预设进行静默转换，不弹出保存对话框
+                        ConvertToDdsWithPreset(tempPngFile, fileName, presetDialog.SelectedPreset.FilePath);
+
+
+
+						ShowDdsSaveSuccessDialog(fileName);
+
+
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("用户取消了DDS保存操作");
+                    return; // 用户取消，直接返回
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"DDS保存过程中发生错误: {ex.Message}");
+                Console.WriteLine($"错误堆栈: {ex.StackTrace}");
+                throw new Exception($"DDS保存失败: {ex.Message}");
+            }
+            finally
+            {
+                // 清理临时文件（仅在非自定义面板模式下）
+                // 注意：如果用户选择了自定义面板，临时文件已经在上面的代码中通过return跳过了这里
+                if (!string.IsNullOrEmpty(tempPngFile) && File.Exists(tempPngFile))
+                {
+                    try
+                    {
+                        Console.WriteLine($"清理临时文件: {tempPngFile}");
+                        File.Delete(tempPngFile);
+                        Console.WriteLine("临时文件清理完成");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"删除临时文件失败: {ex.Message}");
+                    }
+                }
+                Console.WriteLine("=== DDS保存流程结束 ===");
+            }
+        }
+
+        /// <summary>
+        /// 使用nvtt_export.exe转换PNG为DDS
+        private void OpenNvttCustomPanel(string inputPngFile)
+        {
+            try
+            {
+                Console.WriteLine("--- OpenNvttCustomPanel 开始 ---");
+                Console.WriteLine($"输入PNG文件: {inputPngFile}");
+                
+                // 获取nvtt_export.exe的路径
+                string exeDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) 
+                    ?? AppDomain.CurrentDomain.BaseDirectory;
+                string nvttPath = Path.Combine(exeDirectory, "NVIDIA Texture Tools", "nvtt_export.exe");
+                
+                Console.WriteLine($"nvtt_export.exe路径: {nvttPath}");
+
+                if (!File.Exists(nvttPath))
+                {
+                    Console.WriteLine($"错误: nvtt_export.exe文件不存在!");
+                    throw new FileNotFoundException($"找不到NVIDIA Texture Tools: {nvttPath}");
+                }
+
+                // 直接启动nvtt_export.exe并传入图片文件，让用户自定义设置
+                Console.WriteLine("启动NVIDIA Texture Tools自定义面板...");
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = nvttPath,
+                    Arguments = $"\"{inputPngFile}\"",  // 只传入图片文件，让用户自己设置
+                    UseShellExecute = true,  // 使用Shell执行，这样可以正常显示GUI
+                    CreateNoWindow = false,
+                    WorkingDirectory = Path.GetDirectoryName(nvttPath)
+                };
+
+                System.Diagnostics.Process.Start(processInfo);
+                Console.WriteLine("NVIDIA Texture Tools自定义面板已启动");
+                Console.WriteLine("--- OpenNvttCustomPanel 完成 ---");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"OpenNvttCustomPanel发生错误: {ex.Message}");
+                Console.WriteLine($"错误堆栈: {ex.StackTrace}");
+                MessageBox.Show($"打开NVIDIA Texture Tools自定义面板时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 使用nvtt_export.exe转换PNG为DDS
+        /// </summary>
+        private void ConvertToDds(string inputPngFile, string outputDdsFile)
+        {
+            try
+            {
+                Console.WriteLine("--- ConvertToDds 开始 ---");
+                Console.WriteLine($"输入PNG文件: {inputPngFile}");
+                Console.WriteLine($"输出DDS文件: {outputDdsFile}");
+                
+                // 获取nvtt_export.exe的路径
+                string exeDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) 
+                    ?? AppDomain.CurrentDomain.BaseDirectory;
+                string nvttPath = Path.Combine(exeDirectory, "NVIDIA Texture Tools", "nvtt_export.exe");
+                
+                Console.WriteLine($"应用程序目录: {exeDirectory}");
+                Console.WriteLine($"nvtt_export.exe路径: {nvttPath}");
+
+                if (!File.Exists(nvttPath))
+                {
+                    Console.WriteLine($"错误: nvtt_export.exe文件不存在!");
+                    throw new FileNotFoundException($"找不到NVIDIA Texture Tools: {nvttPath}");
+                }
+                
+                Console.WriteLine("nvtt_export.exe文件存在，继续处理...");
+
+                // 构建基本命令行参数：输入PNG文件 -> 输出DDS文件
+                var args = new List<string>();
+                args.Add($"\"{inputPngFile}\"");  // 输入的临时PNG文件
+                args.Add("-o");
+                args.Add($"\"{outputDdsFile}\""); // 输出的DDS文件
+                
+                Console.WriteLine("开始加载TOML配置...");
+                
+                // 加载TOML配置并添加额外参数
+                var config = NvttConfigManager.LoadConfig();
+                string selectedPresetName = NvttConfigManager.GetSelectedPresetName(config);
+                
+                Console.WriteLine($"选择的预设: {selectedPresetName}");
+                
+                if (config.Presets.ContainsKey(selectedPresetName))
+                {
+                    var preset = config.Presets[selectedPresetName];
+                    Console.WriteLine("找到预设配置，添加参数:");
+                    
+                    // 添加格式参数
+                    if (!string.IsNullOrEmpty(preset.Format))
+                    {
+                        args.Add("-f");
+                        args.Add(preset.Format);
+                        Console.WriteLine($"  格式: {preset.Format}");
+                    }
+                    
+                    // 添加质量参数
+                    if (!string.IsNullOrEmpty(preset.Quality))
+                    {
+                        args.Add("-q");
+                        args.Add(preset.Quality);
+                        Console.WriteLine($"  质量: {preset.Quality}");
+                    }
+                    
+                    // 添加mipmap参数
+                    if (preset.GenerateMipmaps)
+                    {
+                        args.Add("--mips");
+                        Console.WriteLine("  启用mipmap生成");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"警告: 未找到预设 '{selectedPresetName}'，使用默认参数");
+                }
+
+                string commandArgs = string.Join(" ", args);
+                Console.WriteLine($"完整命令行: \"{nvttPath}\" {commandArgs}");
+
+                // 启动进程
+                Console.WriteLine("启动nvtt_export.exe进程...");
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = $"\"{nvttPath}\"",  // 给exe路径加引号，防止空格问题
+                    Arguments = commandArgs,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    WorkingDirectory = Path.GetDirectoryName(nvttPath)
+                };
+
+                using (var process = System.Diagnostics.Process.Start(processInfo))
+                {
+                    if (process == null)
+                    {
+                        Console.WriteLine("错误: 无法启动进程!");
+                        throw new Exception("无法启动nvtt_export.exe进程");
+                    }
+
+                    Console.WriteLine($"进程已启动，PID: {process.Id}");
+                    Console.WriteLine("等待进程完成...");
+
+                    // 等待进程完成
+                    process.WaitForExit();
+
+                    Console.WriteLine($"进程已退出，退出代码: {process.ExitCode}");
+
+                    // 读取输出
+                    string standardOutput = process.StandardOutput.ReadToEnd();
+                    string errorOutput = process.StandardError.ReadToEnd();
+                    
+                    if (!string.IsNullOrEmpty(standardOutput))
+                    {
+                        Console.WriteLine($"标准输出:\n{standardOutput}");
+                    }
+                    
+                    if (!string.IsNullOrEmpty(errorOutput))
+                    {
+                        Console.WriteLine($"错误输出:\n{errorOutput}");
+                    }
+
+                    // 检查退出代码
+                    if (process.ExitCode != 0)
+                    {
+                        throw new Exception($"nvtt_export.exe执行失败 (退出代码: {process.ExitCode})\n错误输出: {errorOutput}\n标准输出: {standardOutput}");
+                    }
+
+                    // 验证输出文件是否生成
+                    Console.WriteLine("检查输出文件是否生成...");
+                    if (!File.Exists(outputDdsFile))
+                    {
+                        Console.WriteLine("错误: DDS文件未生成!");
+                        throw new Exception("DDS文件未成功生成");
+                    }
+                    
+                    var outputFileInfo = new FileInfo(outputDdsFile);
+                    Console.WriteLine($"DDS文件生成成功! 大小: {outputFileInfo.Length} 字节");
+                }
+                
+                Console.WriteLine("--- ConvertToDds 完成 ---");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ConvertToDds发生错误: {ex.Message}");
+                Console.WriteLine($"错误堆栈: {ex.StackTrace}");
+                throw;
+            }
+        }
+
+        /// <summary>
         /// 解析相对路径为绝对路径（相对于程序exe所在目录）
         /// </summary>
         /// <param name="path">可能是相对路径或绝对路径的路径</param>
@@ -967,6 +1313,241 @@ namespace PicViewEx
             if (sequenceExpander != null && menuShowSequenceToolbar != null)
             {
                 sequenceExpander.Visibility = menuShowSequenceToolbar.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+
+
+        private string ExecuteCommand(string command, string arguments, string workingDirectory = null)
+        {
+            try
+            {
+                // 检查 command 是否包含空格且没有明显路径分离
+                string fileName = command;
+                string args = arguments ?? string.Empty;
+
+                // 如果 arguments 为空且 command 本身看起来像一整串命令，则拆分
+                if (string.IsNullOrWhiteSpace(arguments) && command.Contains(" "))
+                {
+                    int firstSpace = command.IndexOf(' ');
+                    fileName = command.Substring(0, firstSpace).Trim('"');
+                    args = command.Substring(firstSpace + 1);
+                }
+
+                Console.WriteLine($"执行程序: {fileName}");
+                Console.WriteLine($"参数: {args}");
+
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = fileName,
+                    Arguments = args,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    WorkingDirectory = workingDirectory ?? Environment.CurrentDirectory,
+                    StandardOutputEncoding = System.Text.Encoding.UTF8,
+                    StandardErrorEncoding = System.Text.Encoding.UTF8
+                };
+
+                using (var process = System.Diagnostics.Process.Start(psi))
+                {
+                    if (process == null)
+                        throw new Exception("无法启动进程");
+
+                    string output = process.StandardOutput.ReadToEnd();
+                    string error = process.StandardError.ReadToEnd();
+                    process.WaitForExit();
+
+                    Console.WriteLine($"退出代码: {process.ExitCode}");
+                    if (!string.IsNullOrEmpty(output))
+                        Console.WriteLine($"标准输出:\n{output}");
+                    if (!string.IsNullOrEmpty(error))
+                        Console.WriteLine($"错误输出:\n{error}");
+
+                    return output + (string.IsNullOrEmpty(error) ? "" : "\nERROR:\n" + error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"执行命令时发生错误: {ex.Message}");
+                throw;
+            }
+        }
+
+
+
+        /// <summary>
+        /// 执行CMD命令并获取实时输出
+        /// </summary>
+        /// <param name="command">要执行的命令</param>
+        /// <param name="arguments">命令参数</param>
+        /// <param name="workingDirectory">工作目录</param>
+        /// <returns>命令输出结果</returns>
+        private string ExecuteCommand2(string command, string arguments, string workingDirectory = null)
+        {
+            try
+            {
+                Console.WriteLine($"执行命令: {command} {arguments}");
+                
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c \"{command}\" {arguments}",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    RedirectStandardInput = true,
+                    CreateNoWindow = true,
+                    WorkingDirectory = workingDirectory ?? Environment.CurrentDirectory
+                };
+
+                using (var process = System.Diagnostics.Process.Start(processInfo))
+                {
+                    if (process == null)
+                    {
+                        throw new Exception("无法启动命令进程");
+                    }
+
+                    // 发送回车键（如果需要的话）
+                    //process.StandardInput.WriteLine();
+                    //process.StandardInput.Close();
+
+                    // 读取所有输出
+                    string output = process.StandardOutput.ReadToEnd();
+                    string error = process.StandardError.ReadToEnd();
+                    
+                    process.WaitForExit();
+                    
+                    Console.WriteLine($"命令执行完成，退出代码: {process.ExitCode}");
+                    
+                    if (!string.IsNullOrEmpty(output))
+                    {
+                        Console.WriteLine($"标准输出:\n{output}");
+                    }
+                    
+                    if (!string.IsNullOrEmpty(error))
+                    {
+                        Console.WriteLine($"错误输出:\n{error}");
+                    }
+
+                    // 返回合并的输出
+                    return output + (string.IsNullOrEmpty(error) ? "" : "\nERROR:\n" + error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"执行命令时发生错误: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 使用预设文件将PNG转换为DDS格式
+        /// </summary>
+        /// <param name="inputPngFile">输入的PNG文件路径</param>
+        /// <param name="outputDdsFile">输出的DDS文件路径（可选，如果为空则让用户选择）</param>
+        /// <param name="presetPath">预设文件路径</param>
+        private void ConvertToDdsWithPreset(string inputPngFile, string outputDdsFile, string presetPath)
+        {
+            try
+            {
+                Console.WriteLine("--- ConvertToDdsWithPreset 开始 ---");
+                Console.WriteLine($"输入PNG文件: {inputPngFile}");
+                Console.WriteLine($"输出DDS文件: {outputDdsFile}");
+                Console.WriteLine($"预设文件: {presetPath}");
+
+                // nvtt_export.exe 路径
+                string exeDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)
+                                      ?? AppDomain.CurrentDomain.BaseDirectory;
+                string nvttPath = Path.Combine(exeDirectory, "NVIDIA Texture Tools", "nvtt_export.exe");
+
+                Console.WriteLine($"应用程序目录: {exeDirectory}");
+                Console.WriteLine($"nvtt_export.exe路径: {nvttPath}");
+
+                if (!File.Exists(nvttPath))
+                    throw new FileNotFoundException($"找不到 NVIDIA Texture Tools: {nvttPath}");
+
+                // 若未指定输出路径，让用户选择一次
+                if (string.IsNullOrWhiteSpace(outputDdsFile))
+                {
+                    var saveDialog = new Microsoft.Win32.SaveFileDialog
+                    {
+                        Title = "保存DDS文件",
+                        Filter = "DDS文件 (*.dds)|*.dds",
+                        DefaultExt = ".dds"
+                    };
+                    if (saveDialog.ShowDialog() != true)
+                    {
+                        Console.WriteLine("用户取消了保存操作");
+                        return;
+                    }
+                    outputDdsFile = saveDialog.FileName; //这个是保存对话框
+                }
+
+                // 确保目标目录存在
+
+                Directory.CreateDirectory(Path.GetDirectoryName(outputDdsFile));
+
+                // 临时目录（规避中文/空格）
+                string tempDir = Path.Combine(Path.GetTempPath(), "nvtt_temp_" + Guid.NewGuid().ToString("N").Substring(0, 8));
+                Directory.CreateDirectory(tempDir);
+                Console.WriteLine($"创建临时目录: {tempDir}");
+
+                // 复制 preset / 输入 到临时目录（只为输入稳定性；输出直写到最终路径）
+                string tempPresetPath = Path.Combine(tempDir, Path.GetFileName(presetPath));
+                File.Copy(presetPath, tempPresetPath, true);
+                Console.WriteLine($"预设文件复制到: {tempPresetPath}");
+
+                // 直接把 --output 指向最终输出
+                string arguments = $"\"{inputPngFile}\" --preset \"{tempPresetPath}\" --output \"{outputDdsFile}\"";
+                Console.WriteLine($"完整命令: {nvttPath} {arguments}");
+
+                // 不用 cmd，直接启动；注意 FileName 不要加引号
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = nvttPath,
+                    Arguments = arguments,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    WorkingDirectory = tempDir,
+                    StandardOutputEncoding = System.Text.Encoding.UTF8,
+                    StandardErrorEncoding = System.Text.Encoding.UTF8
+                };
+
+                string stdOut, stdErr;
+                int exitCode;
+                using (var p = System.Diagnostics.Process.Start(psi))
+                {
+                    if (p == null) throw new InvalidOperationException("无法启动 nvtt_export 进程。");
+                    stdOut = p.StandardOutput.ReadToEnd();
+                    stdErr = p.StandardError.ReadToEnd();
+                    p.WaitForExit();
+                    exitCode = p.ExitCode;
+                }
+
+                Console.WriteLine($"退出代码: {exitCode}");
+                if (!string.IsNullOrEmpty(stdOut)) Console.WriteLine("[STDOUT]\n" + stdOut);
+                if (!string.IsNullOrEmpty(stdErr)) Console.WriteLine("[STDERR]\n" + stdErr);
+
+                // 成功条件：退出码==0 且 目标文件存在
+                if (exitCode != 0 || !File.Exists(outputDdsFile))
+                    throw new Exception($"nvtt_export 失败或未生成输出文件：{outputDdsFile}");
+
+                var fi = new FileInfo(outputDdsFile);
+                Console.WriteLine($"DDS生成成功：{fi.FullName}（{fi.Length} 字节）");
+
+                // 清理临时目录
+                try { Directory.Delete(tempDir, true); Console.WriteLine("临时目录清理完成"); } catch { /* 忽略 */ }
+
+                Console.WriteLine("--- ConvertToDdsWithPreset 完成 ---");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ConvertToDdsWithPreset发生错误: {ex.Message}");
+                Console.WriteLine($"错误堆栈: {ex.StackTrace}");
+                throw;
             }
         }
 
