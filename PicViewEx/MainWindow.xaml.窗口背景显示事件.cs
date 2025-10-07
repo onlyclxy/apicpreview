@@ -1,10 +1,12 @@
 ﻿using System;
-using System.IO;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace PicViewEx
 {
@@ -296,6 +298,154 @@ namespace PicViewEx
                 // 设置整个窗口背景为透明
                 this.Background = System.Windows.Media.Brushes.Transparent;
             }
+        }
+
+        private void EnableWindowTransparency()
+        {
+            try
+            {
+                // 设置窗口为可穿透点击（可选）
+                // 这样可以让鼠标点击穿透到下面的窗口
+                // 但会影响窗口的交互，所以暂时注释
+                // WindowInteropHelper helper = new WindowInteropHelper(this);
+                // SetWindowLong(helper.Handle, GWL_EXSTYLE, GetWindowLong(helper.Handle, GWL_EXSTYLE) | WS_EX_TRANSPARENT);
+
+                if (statusText != null)
+                    statusText.Text = "窗口透明模式已启用 - 图片将悬浮显示";
+            }
+            catch (Exception ex)
+            {
+                if (statusText != null)
+                    statusText.Text = $"启用透明模式失败: {ex.Message}";
+            }
+        }
+
+        private void DisableWindowTransparency()
+        {
+            try
+            {
+                if (statusText != null)
+                    statusText.Text = "窗口透明模式已禁用";
+            }
+            catch (Exception ex)
+            {
+                if (statusText != null)
+                    statusText.Text = $"禁用透明模式失败: {ex.Message}";
+            }
+        }
+
+        private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (!isWindowInitialized || mainImage?.Source == null) return;
+
+            var newSize = e.NewSize;
+
+            // 检查新尺寸是否有效
+            if (newSize.Width <= 0 || newSize.Height <= 0 ||
+                lastWindowSize.Width <= 0 || lastWindowSize.Height <= 0)
+                return;
+
+            try
+            {
+                // 计算窗口大小变化的比例
+                double scaleX = newSize.Width / lastWindowSize.Width;
+                double scaleY = newSize.Height / lastWindowSize.Height;
+
+                // 获取当前图片的尺寸（使用像素尺寸，不受DPI影响）
+                var source = mainImage.Source as BitmapSource;
+                if (source == null) return;
+
+                double imageWidth = source.PixelWidth * currentZoom;
+                double imageHeight = source.PixelHeight * currentZoom;
+
+                // 计算图片在旧窗口中的中心点
+                Point oldImageCenter = new Point(
+                    imagePosition.X + imageWidth / 2,
+                    imagePosition.Y + imageHeight / 2
+                );
+
+                // 计算旧窗口的有效显示区域中心（减去工具栏等UI元素）
+                Point oldWindowCenter = new Point(
+                    lastWindowSize.Width / 2,
+                    (lastWindowSize.Height - 140) / 2 + 140  // 140是大概的工具栏高度
+                );
+
+                // 计算新窗口的有效显示区域中心
+                Point newWindowCenter = new Point(
+                    newSize.Width / 2,
+                    (newSize.Height - 140) / 2 + 140
+                );
+
+                // 如果有通道面板显示，需要调整有效区域中心
+                if (showChannels && channelPanel != null && channelPanel.Visibility == Visibility.Visible)
+                {
+                    // 旧窗口的有效宽度（减去通道面板）
+                    double oldEffectiveWidth = lastWindowSize.Width - 305;
+                    if (oldEffectiveWidth < 100) oldEffectiveWidth = 100;
+
+                    // 新窗口的有效宽度（减去通道面板）
+                    double newEffectiveWidth = newSize.Width - 305;
+                    if (newEffectiveWidth < 100) newEffectiveWidth = 100;
+
+                    // 重新计算有效区域中心（只影响X坐标）
+                    oldWindowCenter.X = oldEffectiveWidth / 2;
+                    newWindowCenter.X = newEffectiveWidth / 2;
+                }
+
+                // 计算图片中心相对于窗口中心的偏移
+                Vector offsetFromWindowCenter = oldImageCenter - oldWindowCenter;
+
+                // 如果图片几乎居中（偏移很小），则保持居中
+                if (Math.Abs(offsetFromWindowCenter.X) < 50 && Math.Abs(offsetFromWindowCenter.Y) < 50)
+                {
+                    // 保持居中
+                    this.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        CenterImage();
+                    }), System.Windows.Threading.DispatcherPriority.Background);
+                }
+                else
+                {
+                    // 按窗口缩放比例调整图片位置
+                    // 这里使用较小的缩放比例来模拟对角位移效果
+                    double avgScale = Math.Min(scaleX, scaleY);
+
+                    // 计算新的图片中心位置
+                    Point newImageCenter = newWindowCenter + (offsetFromWindowCenter * avgScale);
+
+                    // 计算新的图片左上角位置
+                    imagePosition.X = newImageCenter.X - imageWidth / 2;
+                    imagePosition.Y = newImageCenter.Y - imageHeight / 2;
+
+                    // 确保位置值是有效的
+                    if (double.IsNaN(imagePosition.X) || double.IsInfinity(imagePosition.X))
+                        imagePosition.X = 0;
+                    if (double.IsNaN(imagePosition.Y) || double.IsInfinity(imagePosition.Y))
+                        imagePosition.Y = 0;
+
+                    UpdateImagePosition();
+                }
+            }
+            catch (Exception ex)
+            {
+                // 如果出现任何异常，就简单地居中图片
+                if (statusText != null)
+                    statusText.Text = $"窗口调整时出现问题，已重置图片位置: {ex.Message}";
+
+                this.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        CenterImage();
+                    }
+                    catch
+                    {
+                        // 最后的保护措施
+                    }
+                }), System.Windows.Threading.DispatcherPriority.Background);
+            }
+
+            lastWindowSize = newSize;
         }
 
     }
