@@ -87,6 +87,7 @@
     <Compile Include="EverythingSearch.cs" />
     <Compile Include="GifWebpPlayer.cs" />
     <Compile Include="ImageLoader.cs" />
+    <Compile Include="MainWindow.xaml.GIF播放器事件.cs" />
     <Compile Include="MainWindow.xaml.剪贴板粘贴功能.cs" />
     <Compile Include="MainWindow.xaml.序列帧播放功能.cs" />
     <Compile Include="MainWindow.xaml.引擎切换菜单事件.cs" />
