@@ -42,7 +42,7 @@ namespace PicViewEx
         private SolidColorBrush currentBackgroundBrush = new SolidColorBrush(Colors.Gray); // 默认中性灰
         private ImageBrush backgroundImageBrush;
         private EverythingSearch everythingSearch;
-        private readonly ImageLoader imageLoader;
+        private ImageLoader imageLoader; // 移除readonly修饰符
 
         // 拖拽相关
         private bool isDragging = false;
@@ -78,12 +78,15 @@ namespace PicViewEx
 
         public MainWindow()
         {
-            InitializeComponent();
+            try
+            {
+                InitializeComponent();
 
-            imageLoader = new ImageLoader();
+                // 加载设置
+                LoadAppSettings();
 
-            // 加载设置
-            LoadAppSettings();
+                // 根据设置初始化ImageLoader
+                InitializeImageLoader();
 
             InitializeBackgroundSettings();
             UpdateZoomText();
@@ -109,6 +112,13 @@ namespace PicViewEx
 
             if (statusText != null)
                 statusText.Text = "就绪 - 请打开图片文件或拖拽图片到窗口";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"应用程序初始化失败: {ex.Message}\n\n详细信息:\n{ex.StackTrace}", 
+                    "初始化错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                Application.Current.Shutdown();
+            }
         }
 
         private void InitializeBackgroundSettings()
@@ -2754,6 +2764,62 @@ namespace PicViewEx
             }
         }
 
+        /// <summary>
+        /// 根据设置初始化ImageLoader
+        /// </summary>
+        private void InitializeImageLoader()
+        {
+            try
+            {
+                // 根据设置确定引擎类型
+                ImageLoader.ImageEngine engine = ImageLoader.ImageEngine.Magick; // 默认使用Magick
+                
+                // 根据设置选择引擎，但会自动检测可用性
+                if (appSettings != null && !string.IsNullOrEmpty(appSettings.ImageEngine))
+                {
+                    if (appSettings.ImageEngine.Equals("Leadtools", StringComparison.OrdinalIgnoreCase))
+                    {
+                        engine = ImageLoader.ImageEngine.Leadtools;
+                    }
+                }
+
+                // 初始化ImageLoader（会自动检测引擎可用性并回退）
+                imageLoader = new ImageLoader(0.3, engine);
+
+                // 更新菜单状态
+                UpdateEngineMenuState();
+
+                if (statusText != null)
+                {
+                    string engineName = imageLoader.GetCurrentEngine() == ImageLoader.ImageEngine.Leadtools ? "LEADTOOLS" : "ImageMagick";
+                    statusText.Text = $"图像引擎已初始化: {engineName}";
+                }
+            }
+            catch (Exception ex)
+            {
+                // 如果初始化失败，使用默认的Magick引擎
+                imageLoader = new ImageLoader(0.3, ImageLoader.ImageEngine.Magick);
+                
+                if (statusText != null)
+                {
+                    statusText.Text = $"引擎初始化失败，使用默认引擎: {ex.Message}";
+                }
+            }
+        }
+
+        /// <summary>
+        /// 更新引擎菜单状态
+        /// </summary>
+        private void UpdateEngineMenuState()
+        {
+            if (imageLoader != null && menuEngineMagick != null && menuEngineLeadtools != null)
+            {
+                var currentEngine = imageLoader.GetCurrentEngine();
+                menuEngineMagick.IsChecked = (currentEngine == ImageLoader.ImageEngine.Magick);
+                menuEngineLeadtools.IsChecked = (currentEngine == ImageLoader.ImageEngine.Leadtools);
+            }
+        }
+
         // 按正确优先级恢复背景设置
         private void RestoreBackgroundSettingsWithPriority()
         {
@@ -4351,5 +4417,67 @@ namespace PicViewEx
                 sequenceExpander.Visibility = menuShowSequenceToolbar.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             }
         }
+
+        #region 引擎切换菜单事件
+
+        private void MenuEngineMagick_Click(object sender, RoutedEventArgs e)
+        {
+            if (menuEngineMagick != null && menuEngineLeadtools != null)
+            {
+                // 设置菜单状态
+                menuEngineMagick.IsChecked = true;
+                menuEngineLeadtools.IsChecked = false;
+
+                // 切换引擎
+                if (imageLoader != null)
+                {
+                    imageLoader.SwitchEngine(ImageLoader.ImageEngine.Magick);
+                }
+
+                // 保存设置
+                if (appSettings != null)
+                {
+                    appSettings.ImageEngine = "Magick";
+                    SettingsManager.SaveSettings(appSettings);
+                }
+
+                // 更新状态栏
+                if (statusText != null)
+                {
+                    statusText.Text = "已切换到 ImageMagick 引擎";
+                }
+            }
+        }
+
+        private void MenuEngineLeadtools_Click(object sender, RoutedEventArgs e)
+        {
+            if (menuEngineMagick != null && menuEngineLeadtools != null)
+            {
+                // 设置菜单状态
+                menuEngineMagick.IsChecked = false;
+                menuEngineLeadtools.IsChecked = true;
+
+                // 切换引擎
+                if (imageLoader != null)
+                {
+                    imageLoader.SwitchEngine(ImageLoader.ImageEngine.Leadtools);
+                }
+
+                // 保存设置
+                if (appSettings != null)
+                {
+                    appSettings.ImageEngine = "Leadtools";
+                    SettingsManager.SaveSettings(appSettings);
+                }
+
+                // 更新状态栏
+                if (statusText != null)
+                {
+                    statusText.Text = "已切换到 LEADTOOLS 引擎";
+                }
+            }
+        }
+
+        #endregion
     }
 }

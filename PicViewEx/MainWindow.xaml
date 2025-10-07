@@ -103,6 +103,11 @@
             <MenuItem Header="设置(_S)">
                 <MenuItem Header="保存设置(_S)" Click="MenuSaveSettings_Click" InputGestureText="Ctrl+Shift+S"/>
                 <MenuItem Header="还原默认设置(_R)" Click="MenuResetSettings_Click"/>
+                <Separator/>
+                <MenuItem Header="图像引擎(_E)">
+                    <MenuItem Header="ImageMagick" x:Name="menuEngineMagick" IsCheckable="True" IsChecked="True" Click="MenuEngineMagick_Click"/>
+                    <MenuItem Header="LEADTOOLS" x:Name="menuEngineLeadtools" IsCheckable="True" IsChecked="False" Click="MenuEngineLeadtools_Click"/>
+                </MenuItem>
             </MenuItem>
             <MenuItem Header="工具(_T)">
                 <MenuItem Header="显示背景工具栏(_B)" x:Name="menuShowBgToolbar" IsCheckable="True" IsChecked="True" Click="MenuShowBgToolbar_Click"/>

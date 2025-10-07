@@ -2,9 +2,13 @@ using ImageMagick;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Leadtools;
+using Leadtools.Codecs;
+using Leadtools.Pdf;
 
 namespace PicViewEx
 {
@@ -13,21 +17,234 @@ namespace PicViewEx
     /// </summary>
     public class ImageLoader
     {
-        private readonly double backgroundOpacity;
+        /// <summary>
+        /// 图像引擎类型枚举
+        /// </summary>
+        public enum ImageEngine
+        {
+            Magick,
+            Leadtools
+        }
 
-        public ImageLoader(double backgroundOpacity = 0.3)
+        private readonly double backgroundOpacity;
+        private ImageEngine currentEngine;
+        private RasterCodecs leadtoolsCodecs;
+
+        public ImageLoader(double backgroundOpacity = 0.3, ImageEngine engine = ImageEngine.Magick)
         {
             this.backgroundOpacity = backgroundOpacity;
+            
+            // 智能选择引擎：如果指定的引擎不可用，自动回退到可用的引擎
+            if (engine == ImageEngine.Leadtools && !IsLeadtoolsAvailable())
+            {
+                System.Diagnostics.Debug.WriteLine("LEADTOOLS not available, falling back to ImageMagick");
+                this.currentEngine = ImageEngine.Magick;
+            }
+            else
+            {
+                this.currentEngine = engine;
+            }
+            
+            if (this.currentEngine == ImageEngine.Leadtools)
+            {
+                if (!InitializeLeadtools())
+                {
+                    // 如果LEADTOOLS初始化失败，回退到Magick
+                    this.currentEngine = ImageEngine.Magick;
+                }
+            }
         }
 
         /// <summary>
-        /// 加载常规图片资源，优先使用 ImageMagick 以获得更好的格式兼容性。
+        /// 切换图像引擎
+        /// </summary>
+        public void SwitchEngine(ImageEngine engine)
+        {
+            if (currentEngine == engine) return;
+
+            // 检查目标引擎是否可用
+            if (engine == ImageEngine.Leadtools && !IsLeadtoolsAvailable())
+            {
+                System.Diagnostics.Debug.WriteLine("Cannot switch to LEADTOOLS: not available");
+                return;
+            }
+
+            // 清理旧引擎资源
+            if (currentEngine == ImageEngine.Leadtools && leadtoolsCodecs != null)
+            {
+                leadtoolsCodecs.Dispose();
+                leadtoolsCodecs = null;
+            }
+
+            currentEngine = engine;
+
+            // 初始化新引擎
+            if (engine == ImageEngine.Leadtools)
+            {
+                InitializeLeadtools();
+            }
+        }
+
+        /// <summary>
+        /// 检查LEADTOOLS DLL是否存在
+        /// </summary>
+        private bool IsLeadtoolsAvailable()
+        {
+            try
+            {
+                // 检查核心LEADTOOLS DLL是否存在
+                string[] requiredDlls = {
+                    "Leadtools.dll",
+                    "Leadtools.Codecs.dll",
+                    "Ltkrnx.dll"
+                };
+
+                foreach (string dll in requiredDlls)
+                {
+                    if (!File.Exists(dll))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"LEADTOOLS DLL not found: {dll}");
+                        return false;
+                    }
+                }
+
+                // 尝试加载Leadtools程序集
+                Assembly.LoadFrom("Leadtools.dll");
+                Assembly.LoadFrom("Leadtools.Codecs.dll");
+                
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LEADTOOLS availability check failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 获取可用的引擎列表
+        /// </summary>
+        public List<ImageEngine> GetAvailableEngines()
+        {
+            var engines = new List<ImageEngine> { ImageEngine.Magick }; // ImageMagick总是可用
+            
+            if (IsLeadtoolsAvailable())
+            {
+                engines.Add(ImageEngine.Leadtools);
+            }
+            
+            return engines;
+        }
+
+        /// <summary>
+        /// 获取当前使用的引擎
+        /// </summary>
+        public ImageEngine GetCurrentEngine()
+        {
+            return currentEngine;
+        }
+        /// <summary>
+        /// 初始化LEADTOOLS
+        /// </summary>
+        private bool InitializeLeadtools()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("Starting LEADTOOLS initialization...");
+                
+                // 检查许可证文件是否存在
+                string keyPath = "full_license.key";
+                string licPath = "full_license.lic";
+                
+                if (File.Exists(keyPath) && File.Exists(licPath))
+                {
+                    System.Diagnostics.Debug.WriteLine("License files found, loading license...");
+                    try
+                    {
+                        var key = File.ReadAllText(keyPath);
+                        var lic = File.ReadAllBytes(licPath);
+                        RasterSupport.SetLicense(lic, key);
+                        System.Diagnostics.Debug.WriteLine("License loaded successfully");
+                    }
+                    catch (Exception licEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"License loading failed: {licEx.Message}");
+                        // 继续尝试初始化，可能在评估模式下工作
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("License files not found, running in evaluation mode");
+                }
+
+                System.Diagnostics.Debug.WriteLine("Creating RasterCodecs instance...");
+                leadtoolsCodecs = new RasterCodecs();
+                
+                System.Diagnostics.Debug.WriteLine("Setting codec options...");
+                leadtoolsCodecs.Options.Load.AllPages = true;
+                leadtoolsCodecs.Options.RasterizeDocument.Load.XResolution = 300;
+                leadtoolsCodecs.Options.RasterizeDocument.Load.YResolution = 300;
+                
+                System.Diagnostics.Debug.WriteLine("LEADTOOLS initialization completed successfully");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LEADTOOLS initialization failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 加载常规图片资源，根据当前引擎选择加载方式。
         /// </summary>
         public BitmapImage LoadImage(string imagePath)
         {
             if (string.IsNullOrWhiteSpace(imagePath))
                 throw new ArgumentException("imagePath 不能为空", nameof(imagePath));
 
+            if (currentEngine == ImageEngine.Leadtools)
+            {
+                return LoadImageWithLeadtools(imagePath);
+            }
+            else
+            {
+                return LoadImageWithMagick(imagePath);
+            }
+        }
+
+        /// <summary>
+        /// 使用LEADTOOLS加载图片
+        /// </summary>
+        private BitmapImage LoadImageWithLeadtools(string imagePath)
+        {
+            try
+            {
+                if (leadtoolsCodecs == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("LEADTOOLS codecs not initialized, falling back to ImageMagick");
+                    return LoadImageWithMagick(imagePath);
+                }
+
+                using (var rasterImage = leadtoolsCodecs.Load(imagePath))
+                {
+                    return ConvertRasterImageToBitmapImage(rasterImage);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LEADTOOLS failed to load {imagePath}: {ex.Message}");
+                // 如果LEADTOOLS加载失败，回退到Magick
+                return LoadImageWithMagick(imagePath);
+            }
+        }
+
+        /// <summary>
+        /// 使用ImageMagick加载图片
+        /// </summary>
+        private BitmapImage LoadImageWithMagick(string imagePath)
+        {
             try
             {
                 using (var magickImage = new MagickImage(imagePath))
@@ -44,6 +261,46 @@ namespace PicViewEx
                 catch (Exception ex)
                 {
                     throw new InvalidOperationException($"无法加载图片: {imagePath}", ex);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 将LEADTOOLS RasterImage转换为BitmapImage
+        /// </summary>
+        private BitmapImage ConvertRasterImageToBitmapImage(RasterImage rasterImage)
+        {
+            try
+            {
+                using (var ms = new MemoryStream())
+                {
+                    leadtoolsCodecs.Save(rasterImage, ms, RasterImageFormat.Png, 0);
+                    ms.Position = 0;
+
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.StreamSource = ms;
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+                    return bitmap;
+                }
+            }
+            catch
+            {
+                // 如果PNG格式失败，尝试BMP格式
+                using (var ms = new MemoryStream())
+                {
+                    leadtoolsCodecs.Save(rasterImage, ms, RasterImageFormat.Bmp, 24);
+                    ms.Position = 0;
+
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.StreamSource = ms;
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+                    return bitmap;
                 }
             }
         }
@@ -263,6 +520,20 @@ namespace PicViewEx
                 encoder.Save(ms);
                 return ms.ToArray();
             }
+        }
+
+        /// <summary>
+        /// 释放资源
+        /// </summary>
+        public void Dispose()
+        {
+            /*
+            if (leadtoolsCodecs != null)
+            {
+                leadtoolsCodecs.Dispose();
+                leadtoolsCodecs = null;
+            }
+            */
         }
     }
 

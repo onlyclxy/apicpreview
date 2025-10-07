@@ -19,7 +19,7 @@
     <RuntimeIdentifiers>win-x86;win-x64;win</RuntimeIdentifiers>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -104,20 +104,91 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
+  <PropertyGroup>
+    <LEADTOOLS_BIN>C:\LEADTOOLS 19\Bin\Dotnet4\x64</LEADTOOLS_BIN>
+  </PropertyGroup>
   <ItemGroup>
     <!-- JSON 序列化（替代 System.Text.Json） -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <!-- 图片格式支持 - 使用兼容 .NET Framework 4.8 的版本 -->
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
     <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.8.2" />
     <!-- UI 相关 -->
     <PackageReference Include="Extended.Wpf.Toolkit" Version="5.0.0" />
+    <!-- WPF动画GIF支持 -->
+    <PackageReference Include="WpfAnimatedGif" Version="2.0.2" />
     <!-- System.Drawing for some legacy support -->
     <PackageReference Include="System.Drawing.Common" Version="9.0.9" />
     <!-- Microsoft VisualBasic for InputBox -->
     <PackageReference Include="Microsoft.VisualBasic" Version="10.3.0" />
-    <!-- GIF动画支持 -->
-    <PackageReference Include="WpfAnimatedGif" Version="2.0.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- LEADTOOLS 引用 -->
+    <Reference Include="Leadtools">
+      <HintPath>$(LEADTOOLS_BIN)\Leadtools.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <Reference Include="Leadtools.Codecs">
+      <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <Reference Include="Leadtools.Drawing">
+      <HintPath>$(LEADTOOLS_BIN)\Leadtools.Drawing.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <!-- 主要编解码器 -->
+    <Reference Include="Leadtools.Codecs.Bmp">
+      <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Bmp.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <Reference Include="Leadtools.Codecs.Cmp">
+      <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Cmp.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <Reference Include="Leadtools.Codecs.Fax">
+      <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Fax.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <Reference Include="Leadtools.Codecs.Gif">
+      <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Gif.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <Reference Include="Leadtools.Codecs.Jpg">
+      <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Jpg.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <Reference Include="Leadtools.Codecs.Png">
+      <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Png.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <Reference Include="Leadtools.Codecs.Tif">
+      <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Tif.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <Reference Include="Leadtools.Pdf">
+      <HintPath>$(LEADTOOLS_BIN)\Leadtools.Pdf.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <Reference Include="Leadtools.PdfEngine">
+      <HintPath>$(LEADTOOLS_BIN)\Leadtools.PdfEngine.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <Reference Include="Leadtools.Codecs.Psd">
+      <HintPath>$(LEADTOOLS_BIN)\Leadtools.Codecs.Psd.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

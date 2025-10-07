@@ -72,6 +72,9 @@ namespace PicViewEx
         public int LastSequenceFPS { get; set; } = 10;
         public string LastGridPreset { get; set; } = "3×3";
 
+        // 图像引擎设置
+        public string ImageEngine { get; set; } = "Magick"; // Magick, Leadtools
+
         // 控件状态字典 - 存储所有控件的状态
         public Dictionary<string, Dictionary<string, object>> ControlStates { get; set; }
     = new Dictionary<string, Dictionary<string, object>>();
