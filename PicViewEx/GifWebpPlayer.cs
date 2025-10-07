@@ -163,7 +163,7 @@ namespace PicViewEx
                 // 获取总帧数
                 if (GetTotalFrames(_handle, out _totalFrames) != 0)
                 {
-                    _totalFrames = 1;
+                    _totalFrames = 0; // 初始设为0，表示未知，等待索引构建完成后更新
                 }
 
                 // 重置帧索引
@@ -376,9 +376,17 @@ namespace PicViewEx
                 OnIndexStatusChanged(isReady, progress, isBuilding);
             }
 
-            // 如果索引构建完成，停止检查定时器
+            // 如果索引构建完成，重新获取总帧数并停止检查定时器
             if (isReady && !isBuilding)
             {
+                // 重新获取准确的总帧数
+                if (GetTotalFrames(_handle, out uint newTotalFrames) == 0)
+                {
+                    _totalFrames = newTotalFrames;
+                    // 触发帧更新事件以刷新状态栏显示
+                    OnFrameUpdated(_bitmap, 0);
+                }
+                
                 if (_indexCheckTimer != null)
                 {
                     _indexCheckTimer.Stop();

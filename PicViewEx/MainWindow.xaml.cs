@@ -80,6 +80,8 @@ namespace PicViewEx
         private GifWebpPlayer gifWebpPlayer;
         private bool isGifWebpMode = false;
         private DateTime _lastFrameTime = DateTime.Now;
+        private DateTime _fpsStartTime = DateTime.Now;
+        private int _frameCount = 0;
 
         public MainWindow()
         {
@@ -447,7 +449,19 @@ namespace PicViewEx
                     currentTransform = Transform.Identity;
                     currentZoom = 1.0;
                     imagePosition = new Point(0, 0);
-                    rotationAngle = 0.0; // 重置旋转角度
+                    rotationAngle = 0.0;
+                    
+                    // 重置图片显示变换，确保新GIF不继承上一个图片的缩放
+                    if (mainImage != null)
+                    {
+                        mainImage.RenderTransform = Transform.Identity;
+                        mainImage.Stretch = Stretch.Uniform;
+                        mainImage.StretchDirection = StretchDirection.Both;
+                    }
+                    
+                    // 重置FPS计算相关字段
+                    _frameCount = 0;
+                    _fpsStartTime = DateTime.Now; // 重置旋转角度
 
                     // 检查图片尺寸是否超过窗口尺寸
                     if (imageContainer != null)
@@ -1450,14 +1464,19 @@ namespace PicViewEx
                 // 更新状态栏信息
                 if (gifFpsText != null)
                 {
-                    // 计算FPS
+                    // 使用更平滑的FPS计算方法
+                    _frameCount++;
                     var now = DateTime.Now;
-                    if ((now - _lastFrameTime).TotalMilliseconds > 0)
+                    var elapsed = (now - _fpsStartTime).TotalSeconds;
+                    
+                    // 每秒更新一次FPS显示
+                    if (elapsed >= 1.0)
                     {
-                        double fps = 1000.0 / (now - _lastFrameTime).TotalMilliseconds;
+                        double fps = _frameCount / elapsed;
                         gifFpsText.Text = $"FPS: {fps:F1}";
+                        _frameCount = 0;
+                        _fpsStartTime = now;
                     }
-                    _lastFrameTime = now;
                 }
                 
                 if (gifDelayText != null)
@@ -1467,12 +1486,14 @@ namespace PicViewEx
                 
                 if (gifSizeText != null)
                 {
+                    // 使用GifWebpPlayer获取的实际尺寸
                     gifSizeText.Text = $"大小: {e.Width}x{e.Height}";
                 }
                 
                 if (gifFrameText != null)
                 {
-                    gifFrameText.Text = $"帧: {e.CurrentFrame + 1}/{e.TotalFrames}";
+                    string totalFramesText = e.TotalFrames == 0 ? "-" : e.TotalFrames.ToString();
+                    gifFrameText.Text = $"帧: {e.CurrentFrame + 1}/{totalFramesText}";
                 }
                 
                 // 显示GIF状态栏
