@@ -240,6 +240,8 @@
                 <!-- 跳转控制 -->
                 <TextBlock Text="跳转到:" VerticalAlignment="Center" Margin="5,0"/>
                 <TextBox x:Name="txtGifFrameIndex" Width="50" Height="25" VerticalContentAlignment="Center" Margin="2" ToolTip="输入帧号"/>
+                <TextBlock Text="/" VerticalAlignment="Center" Margin="2,0"/>
+                <TextBlock x:Name="txtGifTotalFrames" Text="-" VerticalAlignment="Center" Margin="2,0" FontWeight="Bold" ToolTip="总帧数"/>
                 <Button x:Name="btnGifSeek" Content="跳转" Click="BtnGifSeek_Click" Width="40" Height="30" Margin="2" ToolTip="跳转到指定帧" IsEnabled="False"/>
                 
                 <Separator Margin="10,0"/>

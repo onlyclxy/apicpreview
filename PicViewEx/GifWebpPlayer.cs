@@ -314,6 +314,9 @@ namespace PicViewEx
         {
             if (_handle == 0) return;
             
+            // 添加边界检查，防止超出最大帧数
+            if (_currentFrameIndex >= _totalFrames - 1) return;
+            
             _manualControl = true;
             _isPlaying = false;
             _timer.Stop();
@@ -383,8 +386,14 @@ namespace PicViewEx
                 if (GetTotalFrames(_handle, out uint newTotalFrames) == 0)
                 {
                     _totalFrames = newTotalFrames;
-                    // 触发帧更新事件以刷新状态栏显示
-                    OnFrameUpdated(_bitmap, 0);
+                    
+                    // 确保显示第一帧（索引0）
+                    if (GetFrame(_handle, 0, out IntPtr data, out uint width, out uint height, out uint delayMs) == 0)
+                    {
+                        UpdateBitmap(data, width, height);
+                        _currentFrameIndex = 0;
+                        OnFrameUpdated(_bitmap, delayMs);
+                    }
                 }
                 
                 if (_indexCheckTimer != null)

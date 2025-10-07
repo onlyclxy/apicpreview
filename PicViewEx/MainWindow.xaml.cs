@@ -1521,6 +1521,17 @@ namespace PicViewEx
                     gifFrameText.Text = $"帧: {e.CurrentFrame + 1}/{totalFramesText}";
                 }
                 
+                // 更新工具栏的跳转编辑框和总帧数显示
+                if (txtGifFrameIndex != null)
+                {
+                    txtGifFrameIndex.Text = (e.CurrentFrame + 1).ToString();
+                }
+                
+                if (txtGifTotalFrames != null)
+                {
+                    txtGifTotalFrames.Text = e.TotalFrames == 0 ? "-" : e.TotalFrames.ToString();
+                }
+                
                 // 显示GIF状态栏
                 if (gifStatusItem != null)
                 {
@@ -1590,26 +1601,49 @@ namespace PicViewEx
         private void BtnGifPrevFrame_Click(object sender, RoutedEventArgs e)
         {
             if (gifWebpPlayer != null)
+            {
                 gifWebpPlayer.PreviousFrame();
+                
+                // 暂停播放并更新按钮状态
+                gifWebpPlayer.Pause();
+                if (btnGifPlay != null) btnGifPlay.IsEnabled = true;
+                if (btnGifPause != null) btnGifPause.IsEnabled = false;
+                
+                if (txtGifInfo != null)
+                    txtGifInfo.Text = "已暂停";
+            }
         }
 
         private void BtnGifNextFrame_Click(object sender, RoutedEventArgs e)
         {
             if (gifWebpPlayer != null)
+            {
                 gifWebpPlayer.NextFrame();
+                
+                // 暂停播放并更新按钮状态
+                gifWebpPlayer.Pause();
+                if (btnGifPlay != null) btnGifPlay.IsEnabled = true;
+                if (btnGifPause != null) btnGifPause.IsEnabled = false;
+                
+                if (txtGifInfo != null)
+                    txtGifInfo.Text = "已暂停";
+            }
         }
 
         private void BtnGifSeek_Click(object sender, RoutedEventArgs e)
         {
             if (gifWebpPlayer != null && txtGifFrameIndex != null && gifWebpPlayer.Handle != 0)
             {
-                if (uint.TryParse(txtGifFrameIndex.Text, out uint frameIndex))
+                if (uint.TryParse(txtGifFrameIndex.Text, out uint frameNumber))
                 {
-                    if (frameIndex >= gifWebpPlayer.TotalFrames)
+                    // 用户输入的是帧号（从1开始），需要转换为索引（从0开始）
+                    if (frameNumber < 1 || frameNumber > gifWebpPlayer.TotalFrames)
                     {
-                        MessageBox.Show($"帧索引超出范围！有效范围: 0-{gifWebpPlayer.TotalFrames - 1}", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        MessageBox.Show($"帧号超出范围！有效范围: 1-{gifWebpPlayer.TotalFrames}", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
                         return;
                     }
+                    
+                    uint frameIndex = frameNumber - 1; // 转换为从0开始的索引
                     
                     // 暂停播放并跳转到指定帧
                     gifWebpPlayer.Pause();
@@ -1620,11 +1654,11 @@ namespace PicViewEx
                     if (btnGifPause != null) btnGifPause.IsEnabled = false;
                     
                     if (txtGifInfo != null)
-                        txtGifInfo.Text = $"已跳转到第 {frameIndex + 1} 帧";
+                        txtGifInfo.Text = $"已跳转到第 {frameNumber} 帧";
                 }
                 else
                 {
-                    MessageBox.Show("请输入有效的帧索引数字！", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("请输入有效的帧号数字！", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
             }
         }
