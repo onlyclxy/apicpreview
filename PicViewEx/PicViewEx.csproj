@@ -84,7 +84,6 @@
     <Compile Include="DdsPresetDialog.xaml.cs">
       <DependentUpon>DdsPresetDialog.xaml</DependentUpon>
     </Compile>
-    <Compile Include="EverythingSearch.cs" />
     <Compile Include="GifWebpPlayer.cs" />
     <Compile Include="ImageLoader.cs" />
     <Compile Include="MainWindow.xaml.GIF播放器事件.cs" />

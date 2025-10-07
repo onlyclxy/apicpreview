@@ -1,19 +1,13 @@
 using ImageMagick;
-using Microsoft.VisualBasic;
-using Microsoft.Win32;
-using PicViewEx;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using WpfAnimatedGif;
+
 
 namespace PicViewEx
 {
@@ -41,7 +35,6 @@ namespace PicViewEx
         private bool showChannels = false;
         private SolidColorBrush currentBackgroundBrush = new SolidColorBrush(Colors.Gray); // 默认中性灰
         private ImageBrush backgroundImageBrush;
-        private EverythingSearch everythingSearch;
         private ImageLoader imageLoader; // 移除readonly修饰符
 
         // 拖拽相关
@@ -103,17 +96,7 @@ namespace PicViewEx
             this.SizeChanged += MainWindow_SizeChanged;
             this.Loaded += MainWindow_Loaded;
             this.Closing += MainWindow_Closing;
-
-            // 初始化Everything搜索（如果失败也不影响其他功能）
-            try
-            {
-                everythingSearch = new EverythingSearch(supportedFormats);
-            }
-            catch (Exception ex)
-            {
-                if (statusText != null)
-                    statusText.Text = $"搜索功能初始化失败: {ex.Message}";
-            }
+                 
 
             // 初始化窗口透明功能
             InitializeWindowTransparency();
@@ -318,44 +301,6 @@ namespace PicViewEx
             if (!string.IsNullOrEmpty(directoryPath))
             {
                 LoadDirectoryImages(directoryPath);
-            }
-        }
-
-        private void LoadGifAnimation(string gifPath)
-        {
-            try
-            {
-                var image = imageLoader.LoadGifAnimationSource(gifPath);
-
-                // 使用WpfAnimatedGif库来播放GIF动画
-                WpfAnimatedGif.ImageBehavior.SetAnimatedSource(mainImage, image);
-
-                if (statusText != null)
-                    statusText.Text = $"已加载GIF动画: {Path.GetFileName(gifPath)}";
-            }
-            catch (Exception ex)
-            {
-                // 如果GIF加载失败，尝试普通图片加载
-                if (statusText != null)
-                    statusText.Text = $"GIF动画加载失败，尝试静态显示: {ex.Message}";
-
-                var bitmap = LoadImageWithMagick(gifPath);
-                if (bitmap != null)
-                {
-                    mainImage.Source = bitmap;
-                }
-            }
-        }
-
-        private BitmapImage LoadImageWithMagick(string imagePath)
-        {
-            try
-            {
-                return imageLoader.LoadImage(imagePath);
-            }
-            catch
-            {
-                return null;
             }
         }
 
@@ -731,45 +676,6 @@ namespace PicViewEx
             border.Child = stackPanel;
 
             channelStackPanel.Children.Add(border);
-        }
-
-        private void PerformEverythingSearch(string searchQuery)
-        {
-            try
-            {
-                if (statusText != null)
-                    statusText.Text = "正在搜索...";
-
-                if (everythingSearch == null)
-                {
-                    if (statusText != null)
-                        statusText.Text = "搜索功能不可用";
-                    return;
-                }
-
-                var searchResults = everythingSearch.Search(searchQuery, 500);
-
-                if (searchResults.Count > 0)
-                {
-                    currentImageList = searchResults;
-                    currentImageIndex = 0;
-                    LoadImage(currentImageList[0]);
-
-                    string searchMode = everythingSearch.IsEverythingAvailable ? "Everything" : "文件系统";
-                    if (statusText != null)
-                        statusText.Text = $"找到 {searchResults.Count} 个结果 (使用{searchMode}搜索)";
-                }
-                else
-                {
-                    if (statusText != null)
-                        statusText.Text = "未找到匹配的图片";
-                }
-            }
-            catch (Exception ex)
-            {
-                if (statusText != null)
-                    statusText.Text = $"搜索失败: {ex.Message}";
-            }
         }
 
         #endregion

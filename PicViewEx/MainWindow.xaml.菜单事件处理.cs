@@ -32,11 +32,6 @@ namespace PicViewEx
             BtnOpenLocation_Click(sender, e);
         }
 
-        private void MenuSearch_Click(object sender, RoutedEventArgs e)
-        {
-            BtnSearch_Click(sender, e);
-        }
-
         private void MenuExit_Click(object sender, RoutedEventArgs e)
         {
             this.Close();
@@ -276,7 +271,6 @@ namespace PicViewEx
                 "Ctrl+O - 打开文件\n" +
                 "Ctrl+S - 另存为\n" +
                 "Ctrl+V - 粘贴图片 (NEW!)\n" +
-                "Ctrl+F - 搜索图片\n\n" +
                 "图片浏览:\n" +
                 "Left/Right - 上一张/下一张\n" +
                 "F - 适应窗口\n" +

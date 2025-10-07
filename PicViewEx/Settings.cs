@@ -61,9 +61,6 @@ namespace PicViewEx
         public int MaxRecentFiles { get; set; } = 10; // 最大最近文件数
         public int MaxRecentTools { get; set; } = 5; // 最大最近工具数
 
-        // 搜索设置
-        public string LastSearchQuery { get; set; } = "";
-        public bool RememberLastSearch { get; set; } = true;
 
         // 序列帧播放设置
         public bool SequencePlayerExpanded { get; set; } = false;
@@ -112,8 +109,6 @@ namespace PicViewEx
     { "channelPanel", new List<string> { "Visibility" } },
     { "channelColumn", new List<string> { "Width" } },
 
-    // 搜索框
-    { "txtSearch", new List<string> { "Text" } },
 
     // 序列帧控件
     { "txtGridWidth", new List<string> { "Text" } },

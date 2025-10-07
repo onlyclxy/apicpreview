@@ -70,7 +70,6 @@
                 <MenuItem Header="粘贴图片(_V)" Click="MenuPasteImage_Click" InputGestureText="Ctrl+V"/>
                 <Separator/>
                 <MenuItem Header="打开位置(_L)" Click="MenuOpenLocation_Click"/>
-                <MenuItem Header="搜索图片(_R)" Click="MenuSearch_Click" InputGestureText="Ctrl+F"/>
                 <Separator/>
                 <MenuItem Header="退出(_X)" Click="MenuExit_Click" InputGestureText="Alt+F4"/>
             </MenuItem>
@@ -155,7 +154,6 @@
             </Button>
             <Button x:Name="btnOpenLocation" Content="打开位置" Click="BtnOpenLocation_Click" Padding="10,5" ToolTip="在资源管理器中显示"/>
             <Separator/>
-            <Button x:Name="btnSearch" Content="搜索" Click="BtnSearch_Click" Padding="10,5" ToolTip="Everything搜索"/>
             <CheckBox x:Name="chkShowChannels" Content="显示通道" Checked="ChkShowChannels_Checked" Unchecked="ChkShowChannels_Unchecked" IsChecked="False" Margin="10,0"/>
         </ToolBar>
 
@@ -250,17 +248,6 @@
             </ToolBar>
         </Expander>
 
-        <!-- Everything 搜索栏 -->
-        <Grid Grid.Row="4" x:Name="searchPanel" Visibility="Collapsed" Background="#F0F0F0" Height="40">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" Text="搜索:" VerticalAlignment="Center" Margin="10,0"/>
-            <TextBox x:Name="txtSearch" Grid.Column="1" Margin="5" VerticalAlignment="Center" KeyDown="TxtSearch_KeyDown"/>
-            <Button x:Name="btnCloseSearch" Grid.Column="2" Content="✕" Click="BtnCloseSearch_Click" Margin="5" Width="30"/>
-        </Grid>
 
         <!-- 背景控制工具栏 -->
         <Expander Grid.Row="5" Header="背景设置" IsExpanded="True" x:Name="backgroundExpander">

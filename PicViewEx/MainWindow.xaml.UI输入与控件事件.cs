@@ -33,8 +33,6 @@ namespace PicViewEx
 						FitToWindow();
 						PrintImageInfo("适应窗口 (快捷键F)");
 					}
-					else if (e.KeyboardDevice.Modifiers == ModifierKeys.Control)
-						BtnSearch_Click(sender, e);
 					break;
 				case Key.D1:
 					if (e.KeyboardDevice.Modifiers == ModifierKeys.None)
@@ -358,34 +356,6 @@ namespace PicViewEx
 			}
 		}
 
-		private void BtnSearch_Click(object sender, RoutedEventArgs e)
-		{
-			RecordToolUsage("Search");
-			if (searchPanel != null && txtSearch != null)
-			{
-				searchPanel.Visibility = searchPanel.Visibility == Visibility.Visible ?
-					Visibility.Collapsed : Visibility.Visible;
-
-				if (searchPanel.Visibility == Visibility.Visible)
-				{
-					txtSearch.Focus();
-				}
-			}
-		}
-
-		private void BtnCloseSearch_Click(object sender, RoutedEventArgs e)
-		{
-			if (searchPanel != null)
-				searchPanel.Visibility = Visibility.Collapsed;
-		}
-
-		private void TxtSearch_KeyDown(object sender, KeyEventArgs e)
-		{
-			if (e.Key == Key.Enter && txtSearch != null)
-			{
-				PerformEverythingSearch(txtSearch.Text);
-			}
-		}
 
 		private void ChkShowChannels_Checked(object sender, RoutedEventArgs e)
 		{
