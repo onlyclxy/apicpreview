@@ -387,65 +387,85 @@ namespace PicViewEx
 
         private void NavigatePrevious()
         {
-            if (currentImageList.Count > 0 && currentImageIndex > 0)
+            if (currentImageList.Count > 0)
             {
-                // 如果当前有序列帧在播放，自动停止并重置到正常图片模式
-                if (hasSequenceLoaded)
+                if (currentImageIndex > 0)
                 {
-                    // 停止播放
-                    if (isSequencePlaying)
+                    // 如果当前有序列帧在播放，自动停止并重置到正常图片模式
+                    if (hasSequenceLoaded)
                     {
-                        PauseSequence();
+                        // 停止播放
+                        if (isSequencePlaying)
+                        {
+                            PauseSequence();
+                        }
+
+                        // 重置序列帧状态
+                        hasSequenceLoaded = false;
+                        sequenceFrames.Clear();
+                        currentFrameIndex = 0;
+                        originalImage = null;
+
+                        // 禁用序列控件
+                        EnableSequenceControls(false);
+                        UpdateFrameDisplay();
+
+                        if (statusText != null)
+                            UpdateStatusText("序列帧播放已停止，切换到上一张图片");
                     }
 
-                    // 重置序列帧状态
-                    hasSequenceLoaded = false;
-                    sequenceFrames.Clear();
-                    currentFrameIndex = 0;
-                    originalImage = null;
-
-                    // 禁用序列控件
-                    EnableSequenceControls(false);
-                    UpdateFrameDisplay();
-
-                    if (statusText != null)
-                        UpdateStatusText("序列帧播放已停止，切换到上一张图片");
+                    currentImageIndex--;
+                    LoadImage(currentImageList[currentImageIndex]);
                 }
-
-                currentImageIndex--;
-                LoadImage(currentImageList[currentImageIndex]);
+                else
+                {
+                    // 已经是第一张图片，显示提示
+                    MessageBox.Show("已经是第一张图片了！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    if (statusText != null)
+                        UpdateStatusText("已经是第一张图片");
+                }
             }
         }
 
         private void NavigateNext()
         {
-            if (currentImageList.Count > 0 && currentImageIndex < currentImageList.Count - 1)
+            if (currentImageList.Count > 0)
             {
-                // 如果当前有序列帧在播放，自动停止并重置到正常图片模式
-                if (hasSequenceLoaded)
+                if (currentImageIndex < currentImageList.Count - 1)
                 {
-                    // 停止播放
-                    if (isSequencePlaying)
+                    // 如果当前有序列帧在播放，自动停止并重置到正常图片模式
+                    if (hasSequenceLoaded)
                     {
-                        PauseSequence();
+                        // 停止播放
+                        if (isSequencePlaying)
+                        {
+                            PauseSequence();
+                        }
+
+                        // 重置序列帧状态
+                        hasSequenceLoaded = false;
+                        sequenceFrames.Clear();
+                        currentFrameIndex = 0;
+                        originalImage = null;
+
+                        // 禁用序列控件
+                        EnableSequenceControls(false);
+                        UpdateFrameDisplay();
+
+                        if (statusText != null)
+                            UpdateStatusText("序列帧播放已停止，切换到下一张图片");
                     }
 
-                    // 重置序列帧状态
-                    hasSequenceLoaded = false;
-                    sequenceFrames.Clear();
-                    currentFrameIndex = 0;
-                    originalImage = null;
-
-                    // 禁用序列控件
-                    EnableSequenceControls(false);
-                    UpdateFrameDisplay();
-
-                    if (statusText != null)
-                        UpdateStatusText("序列帧播放已停止，切换到下一张图片");
+                    currentImageIndex++;
+                    LoadImage(currentImageList[currentImageIndex]);
                 }
-
-                currentImageIndex++;
-                LoadImage(currentImageList[currentImageIndex]);
+                else
+                {
+                    // 已经是最后一张图片，显示提示
+                    MessageBox.Show("已经是最后一张图片了！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    if (statusText != null)
+                        UpdateStatusText("已经是最后一张图片");
+                }
             }
         }
 
