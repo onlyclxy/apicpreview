@@ -106,6 +106,7 @@
                 <MenuItem Header="图像引擎(_E)">
                     <MenuItem Header="ImageMagick" x:Name="menuEngineMagick" IsCheckable="True" IsChecked="True" Click="MenuEngineMagick_Click"/>
                     <MenuItem Header="LEADTOOLS" x:Name="menuEngineLeadtools" IsCheckable="True" IsChecked="False" Click="MenuEngineLeadtools_Click"/>
+                    <MenuItem Header="STBImageSharp" x:Name="menuEngineSTBImageSharp" IsCheckable="True" IsChecked="False" Click="MenuEngineSTBImageSharp_Click"/>
                 </MenuItem>
             </MenuItem>
             <MenuItem Header="工具(_T)">

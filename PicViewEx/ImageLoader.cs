@@ -9,6 +9,7 @@ using System.Windows.Media.Imaging;
 using Leadtools;
 using Leadtools.Codecs;
 using Leadtools.Pdf;
+using StbImageSharp;
 
 namespace PicViewEx
 {
@@ -23,7 +24,8 @@ namespace PicViewEx
         public enum ImageEngine
         {
             Magick,
-            Leadtools
+            Leadtools,
+            STBImageSharp
         }
 
         private readonly double backgroundOpacity;
@@ -126,7 +128,7 @@ namespace PicViewEx
         /// </summary>
         public List<ImageEngine> GetAvailableEngines()
         {
-            var engines = new List<ImageEngine> { ImageEngine.Magick }; // ImageMagick总是可用
+            var engines = new List<ImageEngine> { ImageEngine.Magick, ImageEngine.STBImageSharp }; // ImageMagick和STBImageSharp总是可用
             
             if (IsLeadtoolsAvailable())
             {
@@ -208,6 +210,10 @@ namespace PicViewEx
             {
                 return LoadImageWithLeadtools(imagePath);
             }
+            else if (currentEngine == ImageEngine.STBImageSharp)
+            {
+                return LoadImageWithSTBImageSharp(imagePath);
+            }
             else
             {
                 return LoadImageWithMagick(imagePath);
@@ -237,6 +243,93 @@ namespace PicViewEx
                 System.Diagnostics.Debug.WriteLine($"LEADTOOLS failed to load {imagePath}: {ex.Message}");
                 // 如果LEADTOOLS加载失败，回退到Magick
                 return LoadImageWithMagick(imagePath);
+            }
+        }
+
+        /// <summary>
+        /// 使用STBImageSharp加载图片
+        /// </summary>
+        private BitmapImage LoadImageWithSTBImageSharp(string imagePath)
+        {
+            try
+            {
+                byte[] imageData = File.ReadAllBytes(imagePath);
+                ImageResult result = ImageResult.FromMemory(imageData, ColorComponents.RedGreenBlueAlpha);
+                
+                return ConvertSTBImageToBitmapImage(result);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"STBImageSharp failed to load {imagePath}: {ex.Message}");
+                // 如果STBImageSharp加载失败，回退到Magick
+                return LoadImageWithMagick(imagePath);
+            }
+        }
+
+        /// <summary>
+        /// 将STBImageSharp的ImageResult转换为BitmapImage
+        /// </summary>
+        private BitmapImage ConvertSTBImageToBitmapImage(ImageResult result)
+        {
+            try
+            {
+                // 创建WriteableBitmap
+                var writeableBitmap = new WriteableBitmap(result.Width, result.Height, 96, 96, PixelFormats.Bgra32, null);
+                
+                // 锁定位图进行写入
+                writeableBitmap.Lock();
+                try
+                {
+                    unsafe
+                    {
+                        byte* pixels = (byte*)writeableBitmap.BackBuffer.ToPointer();
+                        int stride = writeableBitmap.BackBufferStride;
+                        
+                        // STBImageSharp返回RGBA格式，需要转换为BGRA格式
+                        for (int y = 0; y < result.Height; y++)
+                        {
+                            for (int x = 0; x < result.Width; x++)
+                            {
+                                int srcIndex = (y * result.Width + x) * 4;
+                                int dstIndex = y * stride + x * 4;
+                                
+                                // RGBA -> BGRA
+                                pixels[dstIndex] = result.Data[srcIndex + 2];     // B
+                                pixels[dstIndex + 1] = result.Data[srcIndex + 1]; // G
+                                pixels[dstIndex + 2] = result.Data[srcIndex];     // R
+                                pixels[dstIndex + 3] = result.Data[srcIndex + 3]; // A
+                            }
+                        }
+                    }
+                    
+                    writeableBitmap.AddDirtyRect(new Int32Rect(0, 0, result.Width, result.Height));
+                }
+                finally
+                {
+                    writeableBitmap.Unlock();
+                }
+                
+                // 转换为BitmapImage
+                using (var ms = new MemoryStream())
+                {
+                    var encoder = new PngBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(writeableBitmap));
+                    encoder.Save(ms);
+                    ms.Position = 0;
+                    
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.StreamSource = ms;
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+                    return bitmap;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"STBImageSharp conversion failed: {ex.Message}");
+                throw;
             }
         }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,11 +13,12 @@ namespace PicViewEx
 
         private void MenuEngineMagick_Click(object sender, RoutedEventArgs e)
         {
-            if (menuEngineMagick != null && menuEngineLeadtools != null)
+            if (menuEngineMagick != null && menuEngineLeadtools != null && menuEngineSTBImageSharp != null)
             {
                 // 设置菜单状态
                 menuEngineMagick.IsChecked = true;
                 menuEngineLeadtools.IsChecked = false;
+                menuEngineSTBImageSharp.IsChecked = false;
 
                 // 切换引擎
                 if (imageLoader != null)
@@ -42,11 +43,12 @@ namespace PicViewEx
 
         private void MenuEngineLeadtools_Click(object sender, RoutedEventArgs e)
         {
-            if (menuEngineMagick != null && menuEngineLeadtools != null)
+            if (menuEngineMagick != null && menuEngineLeadtools != null && menuEngineSTBImageSharp != null)
             {
                 // 设置菜单状态
                 menuEngineMagick.IsChecked = false;
                 menuEngineLeadtools.IsChecked = true;
+                menuEngineSTBImageSharp.IsChecked = false;
 
                 // 切换引擎
                 if (imageLoader != null)
@@ -69,6 +71,36 @@ namespace PicViewEx
             }
         }
 
+        private void MenuEngineSTBImageSharp_Click(object sender, RoutedEventArgs e)
+        {
+            if (menuEngineMagick != null && menuEngineLeadtools != null && menuEngineSTBImageSharp != null)
+            {
+                // 设置菜单状态
+                menuEngineMagick.IsChecked = false;
+                menuEngineLeadtools.IsChecked = false;
+                menuEngineSTBImageSharp.IsChecked = true;
+
+                // 切换引擎
+                if (imageLoader != null)
+                {
+                    imageLoader.SwitchEngine(ImageLoader.ImageEngine.STBImageSharp);
+                }
+
+                // 保存设置
+                if (appSettings != null)
+                {
+                    appSettings.ImageEngine = "STBImageSharp";
+                    SettingsManager.SaveSettings(appSettings);
+                }
+
+                // 更新状态栏
+                if (statusText != null)
+                {
+                    statusText.Text = "已切换到 STBImageSharp 引擎";
+                }
+            }
+        }
+
         #endregion
 
         /// <summary>
@@ -76,11 +108,12 @@ namespace PicViewEx
         /// </summary>
         private void UpdateEngineMenuState()
         {
-            if (imageLoader != null && menuEngineMagick != null && menuEngineLeadtools != null)
+            if (imageLoader != null && menuEngineMagick != null && menuEngineLeadtools != null && menuEngineSTBImageSharp != null)
             {
                 var currentEngine = imageLoader.GetCurrentEngine();
                 menuEngineMagick.IsChecked = (currentEngine == ImageLoader.ImageEngine.Magick);
                 menuEngineLeadtools.IsChecked = (currentEngine == ImageLoader.ImageEngine.Leadtools);
+                menuEngineSTBImageSharp.IsChecked = (currentEngine == ImageLoader.ImageEngine.STBImageSharp);
             }
         }
     }
