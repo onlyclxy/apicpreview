@@ -116,10 +116,10 @@ namespace PicViewEx
     { "txtFPS", new List<string> { "Text" } },
     { "cbGridPresets", new List<string> { "SelectedIndex" } },
 
-    // 打开方式按钮
-    { "btnOpenWith1", new List<string> { "Content", "Visibility" } },
-    { "btnOpenWith2", new List<string> { "Content", "Visibility" } },
-    { "btnOpenWith3", new List<string> { "Content", "Visibility" } },
+    // 打开方式按钮 - 只保存可见性，不保存Content避免循环引用
+    { "btnOpenWith1", new List<string> { "Visibility" } },
+    { "btnOpenWith2", new List<string> { "Visibility" } },
+    { "btnOpenWith3", new List<string> { "Visibility" } },
 
     // 菜单项
     { "menuShowBgToolbar", new List<string> { "IsChecked" } },
@@ -353,6 +353,13 @@ namespace PicViewEx
                                 {
                                     object value = property.GetValue(control);
 
+                                    // 跳过可能导致循环引用的Content属性（如果包含UI元素）
+                                    if (propertyName == "Content" && IsUIElement(value))
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"跳过UI元素Content: {controlName}.{propertyName}");
+                                        continue;
+                                    }
+
                                     // 转换特殊类型为可序列化的类型
                                     if (value is Color color)
                                     {
@@ -365,6 +372,11 @@ namespace PicViewEx
                                     else if (value is Visibility visibility)
                                     {
                                         value = visibility.ToString();
+                                    }
+                                    // 对于Content属性，只保存简单的字符串值
+                                    else if (propertyName == "Content" && value != null)
+                                    {
+                                        value = value.ToString();
                                     }
 
                                     controlStates[propertyName] = value;
@@ -572,6 +584,20 @@ namespace PicViewEx
                 System.Diagnostics.Debug.WriteLine($"[ConvertValue] Failed to convert '{value}' to '{targetType.Name}': {ex.Message}");
                 return targetType.IsValueType ? Activator.CreateInstance(targetType) : null;
             }
+        }
+
+        // 辅助方法：检查对象是否为UI元素
+        private static bool IsUIElement(object value)
+        {
+            if (value == null) return false;
+            
+            // 检查是否为WPF UI元素类型
+            return value is System.Windows.UIElement || 
+                   value is System.Windows.FrameworkElement ||
+                   value is System.Windows.Controls.Control ||
+                   value is System.Windows.Controls.Image ||
+                   value is System.Windows.Controls.TextBlock ||
+                   value is System.Windows.Controls.Panel;
         }
 
         // 添加或移除要保存的控件

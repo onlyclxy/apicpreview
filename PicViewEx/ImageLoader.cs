@@ -185,7 +185,7 @@ namespace PicViewEx
             // 初始化引擎白名单扩展名列表
             engineWhitelistExtensions = new Dictionary<ImageEngine, List<string>>
             {
-                [ImageEngine.STBImageSharp] = new List<string> { ".jpg", ".jpeg", ".png", ".bmp", ".tga",".psd" },
+                [ImageEngine.STBImageSharp] = new List<string> { ".jpg", ".jpeg", ".png", ".bmp", ".tga",".psd",".dds" },
                 //[ImageEngine.Leadtools] = new List<string> { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".psd" },
                 //[ImageEngine.Magick] = new List<string> { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp", ".tiff", ".tif", ".psd" }
             };
