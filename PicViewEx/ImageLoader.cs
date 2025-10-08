@@ -31,8 +31,18 @@ namespace PicViewEx
             
             foreach (var engine in engineOrder)
             {
-                // 检查是否应该跳过此引擎
-                if (engineSkipExtensions.ContainsKey(engine) && 
+                // 白名单逻辑：如果开关开启且白名单不为空，只使用白名单中的扩展名
+                if (useWhitelist && engineWhitelistExtensions.ContainsKey(engine) && 
+                    engineWhitelistExtensions[engine].Count > 0)
+                {
+                    if (!engineWhitelistExtensions[engine].Contains(extension))
+                    {
+                        Console.WriteLine($"跳过引擎 {engine}，扩展名 {extension} 不在白名单中");
+                        continue;
+                    }
+                }
+                // 原有的跳过逻辑：如果不使用白名单，则使用跳过列表
+                else if (!useWhitelist && engineSkipExtensions.ContainsKey(engine) && 
                     engineSkipExtensions[engine].Contains(extension))
                 {
                     Console.WriteLine($"跳过引擎 {engine}，扩展名 {extension} 在跳过列表中");
@@ -157,6 +167,8 @@ namespace PicViewEx
         private ImageEngine lastUsedAutoEngine; // 记录自动模式下最后使用的引擎
         private RasterCodecs leadtoolsCodecs;
         private readonly Dictionary<ImageEngine, List<string>> engineSkipExtensions;
+        private readonly Dictionary<ImageEngine, List<string>> engineWhitelistExtensions;
+        private bool useWhitelist = true; // 白名单开关，默认不使用
 
         public ImageLoader(double backgroundOpacity = 0.3, ImageEngine engine = ImageEngine.Auto)
         {
@@ -165,9 +177,17 @@ namespace PicViewEx
             // 初始化引擎跳过扩展名列表
             engineSkipExtensions = new Dictionary<ImageEngine, List<string>>
             {
-                [ImageEngine.STBImageSharp] = new List<string> { ".psd", ".tiff", ".tif", ".pdf" },
+                [ImageEngine.STBImageSharp] = new List<string> {  ".tiff", ".tif", ".pdf" },
                 [ImageEngine.Leadtools] = new List<string> { ".webp" },
                 [ImageEngine.Magick] = new List<string> { ".pdf" }
+            };
+            
+            // 初始化引擎白名单扩展名列表
+            engineWhitelistExtensions = new Dictionary<ImageEngine, List<string>>
+            {
+                [ImageEngine.STBImageSharp] = new List<string> { ".jpg", ".jpeg", ".png", ".bmp", ".tga",".psd" },
+                //[ImageEngine.Leadtools] = new List<string> { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".psd" },
+                //[ImageEngine.Magick] = new List<string> { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp", ".tiff", ".tif", ".psd" }
             };
             
             // 智能选择引擎：如果指定的引擎不可用，自动回退到可用的引擎
@@ -292,6 +312,23 @@ namespace PicViewEx
         {
             return lastUsedAutoEngine;
         }
+        
+        /// <summary>
+        /// 设置是否使用白名单
+        /// </summary>
+        public void SetUseWhitelist(bool useWhitelist)
+        {
+            this.useWhitelist = useWhitelist;
+        }
+        
+        /// <summary>
+        /// 获取当前是否使用白名单
+        /// </summary>
+        public bool GetUseWhitelist()
+        {
+            return useWhitelist;
+        }
+        
         /// <summary>
         /// 初始化LEADTOOLS
         /// </summary>

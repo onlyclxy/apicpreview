@@ -16,7 +16,7 @@ namespace PicViewEx
         public string Name { get; set; } = "";
         public string ExecutablePath { get; set; } = "";
         public string Arguments { get; set; } = "\"{0}\""; // {0} 将被替换为文件路径
-        public bool ShowText { get; set; } = true;
+        public bool ShowText { get; set; } = false; // 改为默认false，表示默认不勾选"工具栏只显示图标"
         public string IconPath { get; set; } = "";
     }
 

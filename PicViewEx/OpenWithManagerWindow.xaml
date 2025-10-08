@@ -88,9 +88,9 @@
                         <DataGridTextColumn Header="启动参数" Binding="{Binding Arguments}" 
                                             Width="100" CanUserResize="True"/>
                         
-                        <!-- 显示文字列 -->
-                        <DataGridCheckBoxColumn Header="显示文字" Binding="{Binding ShowText}" 
-                                                Width="70"/>
+                        <!-- 工具栏只显示图标列 -->
+                        <DataGridCheckBoxColumn Header="工具栏只显示图标" Binding="{Binding ShowText}" 
+                                                Width="100"/>
                     </DataGrid.Columns>
                     
                     <!-- 行号显示 -->
@@ -112,4 +112,4 @@
                     IsCancel="True" Padding="20,5" Margin="5"/>
         </StackPanel>
     </Grid>
-</Window> 
+</Window>

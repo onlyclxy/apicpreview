@@ -129,7 +129,7 @@ namespace PicViewEx
                         Name = appName,
                         ExecutablePath = finalExecutablePath,
                         Arguments = "\"{0}\"",
-                        ShowText = true,
+                        ShowText = false, // 改为默认false
                         IconPath = finalExecutablePath // 图标路径默认使用相同的路径
                     });
 
@@ -369,7 +369,7 @@ namespace PicViewEx
         private string _name = "";
         private string _executablePath = "";
         private string _arguments = "";
-        private bool _showText = true;
+        private bool _showText = false; // 改为默认false
         private string _iconPath = "";
         private BitmapImage _iconSource;
 

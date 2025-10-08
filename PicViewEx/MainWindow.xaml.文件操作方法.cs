@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace PicViewEx
@@ -226,7 +227,7 @@ namespace PicViewEx
                         Name = displayName.Trim(),
                         ExecutablePath = dialog.FileName,
                         Arguments = "\"{0}\"",
-                        ShowText = true,
+                        ShowText = false, // 改为默认false，表示默认不勾选"工具栏只显示图标"
                         IconPath = iconPath
                     };
 
@@ -351,9 +352,33 @@ namespace PicViewEx
                 {
                     if (i < openWithApps.Count)
                     {
-                        buttons[i].Content = openWithApps[i].Name;
+                        var app = openWithApps[i];
+                        
+                        if (app.ShowText) // ShowText=true 表示"工具栏只显示图标"
+                        {
+                            // 显示图标
+                            buttons[i].Content = null;
+                            
+                            // 尝试获取图标
+                            var iconImage = GetAppIcon(app);
+                            if (iconImage != null)
+                            {
+                                buttons[i].Content = iconImage;
+                            }
+                            else
+                            {
+                                // 如果没有图标，显示应用名称的首字母
+                                buttons[i].Content = !string.IsNullOrEmpty(app.Name) ? app.Name.Substring(0, 1).ToUpper() : "?";
+                            }
+                        }
+                        else
+                        {
+                            // 显示应用名称
+                            buttons[i].Content = app.Name;
+                        }
+                        
                         buttons[i].Visibility = Visibility.Visible;
-                        buttons[i].ToolTip = $"用 {openWithApps[i].Name} 打开";
+                        buttons[i].ToolTip = $"用 {app.Name} 打开";
                     }
                     else
                     {
@@ -361,6 +386,56 @@ namespace PicViewEx
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// 获取应用图标
+        /// </summary>
+        private System.Windows.Controls.Image GetAppIcon(OpenWithApp app)
+        {
+            try
+            {
+                string iconPath = !string.IsNullOrEmpty(app.IconPath) ? app.IconPath : app.ExecutablePath;
+                string resolvedPath = ResolveExecutablePath(iconPath);
+                
+                if (!File.Exists(resolvedPath)) return null;
+
+                // 从exe文件提取图标，使用与菜单相同的尺寸和处理方式
+                var icon = System.Drawing.Icon.ExtractAssociatedIcon(resolvedPath);
+                if (icon != null)
+                {
+                    using (icon)
+                    using (var bitmap = icon.ToBitmap())
+                    using (var memory = new MemoryStream())
+                    {
+                        bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Png);
+                        memory.Position = 0;
+
+                        var bitmapImage = new BitmapImage();
+                        bitmapImage.BeginInit();
+                        bitmapImage.StreamSource = memory;
+                        bitmapImage.DecodePixelWidth = 16; // 与菜单图标相同尺寸
+                        bitmapImage.DecodePixelHeight = 16;
+                        bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmapImage.EndInit();
+                        bitmapImage.Freeze();
+
+                        return new System.Windows.Controls.Image
+                        {
+                            Source = bitmapImage,
+                            Width = 16,  // 与菜单图标相同尺寸
+                            Height = 16,
+                            Stretch = Stretch.Uniform // 保持图标比例
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"获取应用图标失败 ({app.Name}): {ex.Message}");
+            }
+
+            return null;
         }
 
         private void UpdateOpenWithMenu()
@@ -376,7 +451,7 @@ namespace PicViewEx
                 var app = openWithApps[i];
                 var menuItem = new MenuItem
                 {
-                    Header = app.ShowText ? app.Name : "",
+                    Header = app.Name, // 菜单始终显示应用名称，不受ShowText影响
                     Tag = i
                 };
 
