@@ -261,7 +261,7 @@ namespace PicViewEx
                 if (bitmap != null && mainImage != null)
                 {
                     // 清除可能的GIF动画和GIF/WebP播放器
-                    WpfAnimatedGif.ImageBehavior.SetAnimatedSource(mainImage, null);
+                    
                     CleanupGifWebpPlayer();
                     mainImage.Source = bitmap;
 
@@ -722,7 +722,8 @@ namespace PicViewEx
                     Title = $"通道详细 - {channelName}",
                     Width = 600,
                     Height = 500,
-                    WindowStartupLocation = WindowStartupLocation.CenterScreen
+                    Owner = this,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
                 };
 
                 var fullImage = new System.Windows.Controls.Image

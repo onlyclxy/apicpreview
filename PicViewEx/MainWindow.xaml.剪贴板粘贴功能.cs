@@ -13,7 +13,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using WpfAnimatedGif;
+
 
 namespace PicViewEx
 {
@@ -134,7 +134,7 @@ namespace PicViewEx
                 currentImageIndex = -1;
 
                 // 清除可能的GIF动画
-                WpfAnimatedGif.ImageBehavior.SetAnimatedSource(mainImage, null);
+
 
                 // 设置图片源
                 mainImage.Source = clipboardImage;
