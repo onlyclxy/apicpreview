@@ -3,13 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36121.58
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "apicpreview", "apicpreview\apicpreview.csproj", "{58461F5F-9FA3-4B76-87F7-CB9845FD781A}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PicView", "PicView\PicView.csproj", "{68A19E2C-2415-45F1-ACBC-A1F532F504CC}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PicViewEx", "PicViewEx\PicViewEx.csproj", "{12345678-1234-5678-9ABC-123456789ABC}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "rustdll", "gifplayer\rustdll.csproj", "{B9BEC146-6BA5-6C62-CC22-F260498E44CD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PicView", "picview_old\PicView.csproj", "{DBA5229E-28D1-0C76-CF61-97BFF18325D9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,14 +15,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{58461F5F-9FA3-4B76-87F7-CB9845FD781A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{58461F5F-9FA3-4B76-87F7-CB9845FD781A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{58461F5F-9FA3-4B76-87F7-CB9845FD781A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{58461F5F-9FA3-4B76-87F7-CB9845FD781A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{68A19E2C-2415-45F1-ACBC-A1F532F504CC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{68A19E2C-2415-45F1-ACBC-A1F532F504CC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{68A19E2C-2415-45F1-ACBC-A1F532F504CC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{68A19E2C-2415-45F1-ACBC-A1F532F504CC}.Release|Any CPU.Build.0 = Release|Any CPU
 		{12345678-1234-5678-9ABC-123456789ABC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{12345678-1234-5678-9ABC-123456789ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{12345678-1234-5678-9ABC-123456789ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -33,6 +23,10 @@ Global
 		{B9BEC146-6BA5-6C62-CC22-F260498E44CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B9BEC146-6BA5-6C62-CC22-F260498E44CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B9BEC146-6BA5-6C62-CC22-F260498E44CD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DBA5229E-28D1-0C76-CF61-97BFF18325D9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DBA5229E-28D1-0C76-CF61-97BFF18325D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DBA5229E-28D1-0C76-CF61-97BFF18325D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DBA5229E-28D1-0C76-CF61-97BFF18325D9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
