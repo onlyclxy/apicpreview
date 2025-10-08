@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -37,7 +37,7 @@ namespace PicViewEx
             catch (Exception ex)
             {
                 if (statusText != null)
-                    statusText.Text = $"恢复背景设置失败: {ex.Message}";
+                    UpdateStatusText($"恢复背景设置失败: {ex.Message}");
             }
         }
 
@@ -195,7 +195,7 @@ namespace PicViewEx
                     appSettings.BackgroundImagePath = "";
 
                 if (statusText != null)
-                    statusText.Text = "背景图片路径无效，已恢复默认背景";
+                    UpdateStatusText("背景图片路径无效，已恢复默认背景");
 
                 ApplyDefaultBackgroundImage();
 
@@ -220,7 +220,7 @@ namespace PicViewEx
                 UpdateBackground();
 
                 if (statusText != null)
-                    statusText.Text = $"背景图片已设置: {Path.GetFileName(result.SourcePath ?? imagePath)}";
+                    UpdateStatusText($"背景图片已设置: {Path.GetFileName(result.SourcePath ?? imagePath)}");
             }
             catch (Exception ex)
             {
@@ -228,7 +228,7 @@ namespace PicViewEx
                     appSettings.BackgroundImagePath = "";
 
                 if (statusText != null)
-                    statusText.Text = $"加载背景图片失败，尝试使用默认图片: {ex.Message}";
+                    UpdateStatusText($"加载背景图片失败，尝试使用默认图片: {ex.Message}");
 
                 ApplyDefaultBackgroundImage();
 
@@ -311,12 +311,12 @@ namespace PicViewEx
                 // SetWindowLong(helper.Handle, GWL_EXSTYLE, GetWindowLong(helper.Handle, GWL_EXSTYLE) | WS_EX_TRANSPARENT);
 
                 if (statusText != null)
-                    statusText.Text = "窗口透明模式已启用 - 图片将悬浮显示";
+                    UpdateStatusText("窗口透明模式已启用 - 图片将悬浮显示");
             }
             catch (Exception ex)
             {
                 if (statusText != null)
-                    statusText.Text = $"启用透明模式失败: {ex.Message}";
+                    UpdateStatusText($"启用透明模式失败: {ex.Message}");
             }
         }
 
@@ -325,12 +325,12 @@ namespace PicViewEx
             try
             {
                 if (statusText != null)
-                    statusText.Text = "窗口透明模式已禁用";
+                    UpdateStatusText("窗口透明模式已禁用");
             }
             catch (Exception ex)
             {
                 if (statusText != null)
-                    statusText.Text = $"禁用透明模式失败: {ex.Message}";
+                    UpdateStatusText($"禁用透明模式失败: {ex.Message}");
             }
         }
 
@@ -430,7 +430,7 @@ namespace PicViewEx
             {
                 // 如果出现任何异常，就简单地居中图片
                 if (statusText != null)
-                    statusText.Text = $"窗口调整时出现问题，已重置图片位置: {ex.Message}";
+                    UpdateStatusText($"窗口调整时出现问题，已重置图片位置: {ex.Message}");
 
                 this.Dispatcher.BeginInvoke(new Action(() =>
                 {

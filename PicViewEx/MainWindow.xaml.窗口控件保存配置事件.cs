@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 
 
@@ -80,7 +80,7 @@ namespace PicViewEx
                     SynchronizeToolMenuStates();
 
                     if (statusText != null)
-                        statusText.Text = $"设置已加载 - 控件状态: {appSettings.ControlStates.Count} 项";
+                        UpdateStatusText($"设置已加载 - 控件状态: {appSettings.ControlStates.Count} 项");
 
                 }), System.Windows.Threading.DispatcherPriority.Loaded);
             }
@@ -89,7 +89,7 @@ namespace PicViewEx
                 isLoadingSettings = false;
                 appSettings = new AppSettings();
                 if (statusText != null)
-                    statusText.Text = $"加载设置失败，使用默认设置: {ex.Message}";
+                    UpdateStatusText($"加载设置失败，使用默认设置: {ex.Message}");
             }
         }
 
@@ -144,12 +144,12 @@ namespace PicViewEx
                 SettingsManager.SaveSettings(appSettings);
 
                 if (statusText != null)
-                    statusText.Text = $"设置已保存 - 控件状态: {appSettings.ControlStates.Count} 项";
+                    UpdateStatusText($"设置已保存 - 控件状态: {appSettings.ControlStates.Count} 项");
             }
             catch (Exception ex)
             {
                 if (statusText != null)
-                    statusText.Text = $"保存设置失败: {ex.Message}";
+                    UpdateStatusText($"保存设置失败: {ex.Message}");
             }
         }
 

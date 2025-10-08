@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -209,7 +209,7 @@ namespace PicViewEx
         {
             SaveAppSettings();
             if (statusText != null)
-                statusText.Text = "设置已手动保存";
+                UpdateStatusText("设置已手动保存");
         }
 
         private void MenuResetSettings_Click(object sender, RoutedEventArgs e)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -75,7 +75,7 @@ namespace PicViewEx
 
                     // 更新状态
                     if (statusText != null)
-                        statusText.Text = $"已加载: {Path.GetFileName(filePath)}";
+                        UpdateStatusText($"已加载: {Path.GetFileName(filePath)}");
 
                     // 更新图片信息状态栏，显示文件大小
                     if (imageInfoText != null)
@@ -109,14 +109,14 @@ namespace PicViewEx
                 {
                     MessageBox.Show($"无法加载文件: {filePath}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                     if (statusText != null)
-                        statusText.Text = "加载失败";
+                        UpdateStatusText("加载失败");
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"加载GIF/WebP文件失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 if (statusText != null)
-                    statusText.Text = "加载失败";
+                    UpdateStatusText("加载失败");
             }
         }
 
@@ -403,7 +403,13 @@ namespace PicViewEx
                 FitToWindow();
                 PrintImageInfo("GIF加载 - 自动适应窗口");
                 if (statusText != null)
-                    statusText.Text = statusText.Text + " (已自动适应窗口)";
+                {
+                    string currentText = statusText.Text;
+                    // 提取当前消息部分（去掉引擎信息）
+                    string message = currentText.Contains(" | 引擎:") ? 
+                        currentText.Substring(0, currentText.IndexOf(" | 引擎:")) : currentText;
+                    UpdateStatusText(message + " (已自动适应窗口)");
+                }
             }
             else
             {

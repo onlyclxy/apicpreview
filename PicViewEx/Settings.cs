@@ -70,7 +70,7 @@ namespace PicViewEx
         public string LastGridPreset { get; set; } = "3×3";
 
         // 图像引擎设置
-        public string ImageEngine { get; set; } = "Magick"; // Magick, Leadtools
+        public string ImageEngine { get; set; } = "Auto"; // Auto, STBImageSharp, Leadtools, Magick
 
         // 控件状态字典 - 存储所有控件的状态
         public Dictionary<string, Dictionary<string, object>> ControlStates { get; set; }

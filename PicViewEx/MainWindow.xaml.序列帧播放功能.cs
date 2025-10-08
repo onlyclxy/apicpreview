@@ -1,4 +1,4 @@
-﻿using ImageMagick;
+using ImageMagick;
 using Microsoft.VisualBasic;
 using Microsoft.Win32;
 using PicViewEx;
@@ -89,7 +89,7 @@ namespace PicViewEx
                 RecordToolUsage("ParseSequence");
 
                 if (statusText != null)
-                    statusText.Text = $"已解析为 {sequenceFrames.Count} 帧序列 ({gridWidth}×{gridHeight})";
+                    UpdateStatusText($"已解析为 {sequenceFrames.Count} 帧序列 ({gridWidth}×{gridHeight})");
             }
             catch (Exception ex)
             {
@@ -120,7 +120,7 @@ namespace PicViewEx
                 }
 
                 if (statusText != null)
-                    statusText.Text = $"正在解析 {gridWidth}×{gridHeight} 网格...";
+                    UpdateStatusText($"正在解析 {gridWidth}×{gridHeight} 网格...");
 
                 // 按网格切分图片
                 int totalFrames = gridWidth * gridHeight;
@@ -150,7 +150,7 @@ namespace PicViewEx
                         // 更新进度
                         int currentFrame = row * gridWidth + col + 1;
                         if (statusText != null)
-                            statusText.Text = $"正在解析帧 {currentFrame}/{totalFrames}...";
+                            UpdateStatusText($"正在解析帧 {currentFrame}/{totalFrames}...");
                     }
                 }
 
@@ -170,7 +170,7 @@ namespace PicViewEx
             catch (Exception ex)
             {
                 if (statusText != null)
-                    statusText.Text = $"序列解析失败: {ex.Message}";
+                    UpdateStatusText($"序列解析失败: {ex.Message}");
                 MessageBox.Show($"序列解析失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -253,7 +253,7 @@ namespace PicViewEx
                 btnPlay.Content = "⏸ 暂停";
 
             if (statusText != null)
-                statusText.Text = "序列播放中...";
+                UpdateStatusText("序列播放中...");
         }
 
         // 暂停播放
@@ -268,7 +268,7 @@ namespace PicViewEx
                 btnPlay.Content = "▶ 播放";
 
             if (statusText != null)
-                statusText.Text = "序列播放已暂停";
+                UpdateStatusText("序列播放已暂停");
         }
 
         // 停止播放按钮事件
@@ -294,7 +294,7 @@ namespace PicViewEx
             UpdateFrameDisplay();
 
             if (statusText != null)
-                statusText.Text = "序列播放已停止并重置";
+                UpdateStatusText("序列播放已停止并重置");
         }
 
         // 序列定时器事件
@@ -482,13 +482,13 @@ namespace PicViewEx
                     gifImage.Write(fileName);
 
                     if (statusText != null)
-                        statusText.Text = $"GIF动画已保存: {Path.GetFileName(fileName)} ({sequenceFrames.Count}帧, {fps}FPS)";
+                        UpdateStatusText($"GIF动画已保存: {Path.GetFileName(fileName)} ({sequenceFrames.Count}帧, {fps}FPS)");
                 }
             }
             catch (Exception ex)
             {
                 if (statusText != null)
-                    statusText.Text = $"保存GIF失败: {ex.Message}";
+                    UpdateStatusText($"保存GIF失败: {ex.Message}");
                 throw;
             }
         }
@@ -526,7 +526,7 @@ namespace PicViewEx
                 UpdateZoomText();
 
                 if (statusText != null)
-                    statusText.Text = "已恢复到原始图片";
+                    UpdateStatusText("已恢复到原始图片");
             }
         }
 

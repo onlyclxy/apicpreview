@@ -102,7 +102,10 @@ namespace PicViewEx
             InitializeWindowTransparency();
 
             if (statusText != null)
-                statusText.Text = "就绪 - 请打开图片文件或拖拽图片到窗口";
+            {
+                string engineName = GetEngineDisplayName(imageLoader?.GetCurrentEngine() ?? ImageLoader.ImageEngine.Auto);
+                statusText.Text = $"就绪 | 引擎: {engineName}";
+            }
             }
             catch (Exception ex)
             {
@@ -141,6 +144,38 @@ namespace PicViewEx
         }
 
  
+
+        /// <summary>
+        /// 更新状态栏文本，始终包含当前引擎信息
+        /// </summary>
+        private void UpdateStatusText(string message)
+        {
+            if (statusText != null)
+            {
+                string engineName = GetEngineDisplayName(imageLoader?.GetCurrentEngine() ?? ImageLoader.ImageEngine.Auto);
+                statusText.Text = $"{message} | 引擎: {engineName}";
+            }
+        }
+
+        /// <summary>
+        /// 获取引擎显示名称
+        /// </summary>
+        private string GetEngineDisplayName(ImageLoader.ImageEngine engine)
+        {
+            switch (engine)
+            {
+                case ImageLoader.ImageEngine.Auto:
+                    return "自动";
+                case ImageLoader.ImageEngine.STBImageSharp:
+                    return "STBImageSharp";
+                case ImageLoader.ImageEngine.Leadtools:
+                    return "LEADTOOLS";
+                case ImageLoader.ImageEngine.Magick:
+                    return "ImageMagick";
+                default:
+                    return "未知";
+            }
+        }
 
         /// <summary>
         /// 获取当前旋转角度
@@ -201,7 +236,7 @@ namespace PicViewEx
 
                 currentImagePath = imagePath;
                 if (statusText != null)
-                    statusText.Text = $"加载中: {Path.GetFileName(imagePath)}";
+                    UpdateStatusText($"加载中: {Path.GetFileName(imagePath)}");
 
                 string extension = Path.GetExtension(imagePath).ToLower();
                 
@@ -261,7 +296,7 @@ namespace PicViewEx
                                 FitToWindow();
                                 PrintImageInfo("图片加载 - 自动适应窗口");
                                 if (statusText != null)
-                                    statusText.Text = $"已加载并自动适应窗口: {Path.GetFileName(imagePath)}";
+                                    UpdateStatusText($"已加载并自动适应窗口: {Path.GetFileName(imagePath)}");
                             }), System.Windows.Threading.DispatcherPriority.Loaded);
                         }
                         else
@@ -283,14 +318,14 @@ namespace PicViewEx
                     }
 
                     if (statusText != null && !showChannels)
-                        statusText.Text = $"已加载: {Path.GetFileName(imagePath)}";
+                        UpdateStatusText($"已加载: {Path.GetFileName(imagePath)}");
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"加载图片失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 if (statusText != null)
-                    statusText.Text = "加载失败";
+                    UpdateStatusText("加载失败");
             }
         }
 
@@ -365,7 +400,7 @@ namespace PicViewEx
                     UpdateFrameDisplay();
 
                     if (statusText != null)
-                        statusText.Text = "序列帧播放已停止，切换到上一张图片";
+                        UpdateStatusText("序列帧播放已停止，切换到上一张图片");
                 }
 
                 currentImageIndex--;
@@ -397,7 +432,7 @@ namespace PicViewEx
                     UpdateFrameDisplay();
 
                     if (statusText != null)
-                        statusText.Text = "序列帧播放已停止，切换到下一张图片";
+                        UpdateStatusText("序列帧播放已停止，切换到下一张图片");
                 }
 
                 currentImageIndex++;
@@ -480,7 +515,7 @@ namespace PicViewEx
 
                     magickImage.Write(fileName);
                     if (statusText != null)
-                        statusText.Text = $"已保存: {Path.GetFileName(fileName)}";
+                        UpdateStatusText($"已保存: {Path.GetFileName(fileName)}");
                 }
             }
             catch (Exception ex)
@@ -586,7 +621,7 @@ namespace PicViewEx
                     }
 
                     if (statusText != null)
-                        statusText.Text = $"已从缓存加载通道 ({channelCache.Count}个) - {Path.GetFileName(imagePath)}";
+                        UpdateStatusText($"已从缓存加载通道 ({channelCache.Count}个) - {Path.GetFileName(imagePath)}");
                     return;
                 }
 
@@ -595,7 +630,7 @@ namespace PicViewEx
                 currentChannelCachePath = null;
 
                 if (statusText != null)
-                    statusText.Text = $"正在生成通道...";
+                    UpdateStatusText($"正在生成通道...");
                 
                 // 只调用一次LoadChannels方法
                 var loadedChannels = imageLoader.LoadChannels(imagePath);
@@ -608,7 +643,7 @@ namespace PicViewEx
 
                 currentChannelCachePath = imagePath;
                 if (statusText != null)
-                    statusText.Text = $"通道加载完成 ({channelCache.Count}个) - {Path.GetFileName(imagePath)}";
+                    UpdateStatusText($"通道加载完成 ({channelCache.Count}个) - {Path.GetFileName(imagePath)}");
             }
             catch (Exception ex)
             {
@@ -616,7 +651,7 @@ namespace PicViewEx
                 channelCache.Clear();
                 currentChannelCachePath = null;
                 if (statusText != null)
-                    statusText.Text = $"通道加载失败: {ex.Message}";
+                    UpdateStatusText($"通道加载失败: {ex.Message}");
             }
         }
 
@@ -1000,14 +1035,26 @@ namespace PicViewEx
             try
             {
                 // 根据设置确定引擎类型
-                ImageLoader.ImageEngine engine = ImageLoader.ImageEngine.Magick; // 默认使用Magick
+                ImageLoader.ImageEngine engine = ImageLoader.ImageEngine.Auto; // 默认使用Auto
                 
                 // 根据设置选择引擎，但会自动检测可用性
                 if (appSettings != null && !string.IsNullOrEmpty(appSettings.ImageEngine))
                 {
-                    if (appSettings.ImageEngine.Equals("Leadtools", StringComparison.OrdinalIgnoreCase))
+                    if (appSettings.ImageEngine.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+                    {
+                        engine = ImageLoader.ImageEngine.Auto;
+                    }
+                    else if (appSettings.ImageEngine.Equals("STBImageSharp", StringComparison.OrdinalIgnoreCase))
+                    {
+                        engine = ImageLoader.ImageEngine.STBImageSharp;
+                    }
+                    else if (appSettings.ImageEngine.Equals("Leadtools", StringComparison.OrdinalIgnoreCase))
                     {
                         engine = ImageLoader.ImageEngine.Leadtools;
+                    }
+                    else if (appSettings.ImageEngine.Equals("Magick", StringComparison.OrdinalIgnoreCase))
+                    {
+                        engine = ImageLoader.ImageEngine.Magick;
                     }
                 }
 
@@ -1019,8 +1066,8 @@ namespace PicViewEx
 
                 if (statusText != null)
                 {
-                    string engineName = imageLoader.GetCurrentEngine() == ImageLoader.ImageEngine.Leadtools ? "LEADTOOLS" : "ImageMagick";
-                    statusText.Text = $"图像引擎已初始化: {engineName}";
+                    string engineName = GetEngineDisplayName(imageLoader.GetCurrentEngine());
+                    UpdateStatusText($"图像引擎已初始化: {engineName}");
                 }
             }
             catch (Exception ex)
@@ -1030,7 +1077,7 @@ namespace PicViewEx
                 
                 if (statusText != null)
                 {
-                    statusText.Text = $"引擎初始化失败，使用默认引擎: {ex.Message}";
+                    UpdateStatusText($"引擎初始化失败，使用默认引擎: {ex.Message}");
                 }
             }
         } 

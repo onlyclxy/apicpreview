@@ -1,4 +1,4 @@
-﻿using ImageMagick;
+using ImageMagick;
 using Microsoft.VisualBasic;
 using Microsoft.Win32;
 using PicViewEx;
@@ -32,7 +32,7 @@ namespace PicViewEx
                 if (!Clipboard.ContainsImage() && !Clipboard.ContainsFileDropList())
                 {
                     if (statusText != null)
-                        statusText.Text = "剪贴板中没有检测到图像数据";
+                        UpdateStatusText("剪贴板中没有检测到图像数据");
                     return;
                 }
 
@@ -65,7 +65,7 @@ namespace PicViewEx
                 if (clipboardImage == null)
                 {
                     if (statusText != null)
-                        statusText.Text = "无法从剪贴板获取有效的图像数据";
+                        UpdateStatusText("无法从剪贴板获取有效的图像数据");
                     return;
                 }
 
@@ -84,7 +84,7 @@ namespace PicViewEx
                     MessageBoxButton.OK, MessageBoxImage.Error);
 
                 if (statusText != null)
-                    statusText.Text = $"粘贴失败: {ex.Message}";
+                    UpdateStatusText($"粘贴失败: {ex.Message}");
             }
         }
 
@@ -169,7 +169,7 @@ namespace PicViewEx
                             FitToWindow();
                             PrintImageInfo("剪贴板图片加载 - 自动适应窗口");
                             if (statusText != null)
-                                statusText.Text = $"已粘贴并自动适应窗口: {sourceInfo}";
+                                UpdateStatusText($"已粘贴并自动适应窗口: {sourceInfo}");
                         }), System.Windows.Threading.DispatcherPriority.Loaded);
                     }
                     else
@@ -180,7 +180,7 @@ namespace PicViewEx
                             CenterImage();
                             PrintImageInfo("剪贴板图片加载 - 居中显示");
                             if (statusText != null)
-                                statusText.Text = $"已粘贴: {sourceInfo}";
+                                UpdateStatusText($"已粘贴: {sourceInfo}");
                         }), System.Windows.Threading.DispatcherPriority.Loaded);
                     }
                 }
@@ -195,7 +195,7 @@ namespace PicViewEx
                 }
 
                 if (statusText != null && !showChannels)
-                    statusText.Text = $"已从剪贴板粘贴: {sourceInfo}";
+                    UpdateStatusText($"已从剪贴板粘贴: {sourceInfo}");
 
             }
             catch (Exception ex)
@@ -204,7 +204,7 @@ namespace PicViewEx
                     MessageBoxButton.OK, MessageBoxImage.Error);
 
                 if (statusText != null)
-                    statusText.Text = "剪贴板图片加载失败";
+                    UpdateStatusText("剪贴板图片加载失败");
             }
         }
 
@@ -235,7 +235,7 @@ namespace PicViewEx
                 currentChannelCachePath = null;
 
                 if (statusText != null)
-                    statusText.Text = "正在为剪贴板图片生成通道...";
+                    UpdateStatusText("正在为剪贴板图片生成通道...");
                 var channels = imageLoader.LoadChannels(image);
 
                 var loadedChannels = imageLoader.LoadChannels(image);
@@ -247,12 +247,12 @@ namespace PicViewEx
                 }
 
                 if (statusText != null)
-                    statusText.Text = $"剪贴板图片通道加载完成 ({channelStackPanel.Children.Count}个)";
+                    UpdateStatusText($"剪贴板图片通道加载完成 ({channelStackPanel.Children.Count}个)");
             }
             catch (Exception ex)
             {
                 if (statusText != null)
-                    statusText.Text = $"剪贴板图片通道生成失败: {ex.Message}";
+                    UpdateStatusText($"剪贴板图片通道生成失败: {ex.Message}");
             }
         }
 
@@ -283,14 +283,14 @@ namespace PicViewEx
                 SaveBitmapSource(source, temporaryImagePath);
 
                 if (statusText != null)
-                    statusText.Text = $"已创建临时文件用于打开方式: {Path.GetFileName(temporaryImagePath)}";
+                    UpdateStatusText($"已创建临时文件用于打开方式: {Path.GetFileName(temporaryImagePath)}");
 
                 return temporaryImagePath;
             }
             catch (Exception ex)
             {
                 if (statusText != null)
-                    statusText.Text = $"创建临时文件失败: {ex.Message}";
+                    UpdateStatusText($"创建临时文件失败: {ex.Message}");
                 throw;
             }
         }
@@ -306,7 +306,7 @@ namespace PicViewEx
                 {
                     File.Delete(temporaryImagePath);
                     if (statusText != null)
-                        statusText.Text = "已清理临时文件";
+                        UpdateStatusText("已清理临时文件");
                 }
                 catch (Exception ex)
                 {

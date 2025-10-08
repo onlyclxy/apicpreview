@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Globalization;
 using Leadtools;
 using Leadtools.Codecs;
 using Leadtools.Pdf;
@@ -19,22 +20,152 @@ namespace PicViewEx
     public class ImageLoader
     {
         /// <summary>
+        /// 自动引擎模式：按优先级尝试不同引擎加载图片
+        /// </summary>
+        private BitmapImage LoadImageWithAutoEngine(string imagePath)
+        {
+            string extension = Path.GetExtension(imagePath).ToLower();
+            
+            // 定义引擎尝试顺序
+            var engineOrder = new List<ImageEngine> { ImageEngine.STBImageSharp, ImageEngine.Leadtools, ImageEngine.Magick };
+            
+            foreach (var engine in engineOrder)
+            {
+                // 检查是否应该跳过此引擎
+                if (engineSkipExtensions.ContainsKey(engine) && 
+                    engineSkipExtensions[engine].Contains(extension))
+                {
+                    Console.WriteLine($"跳过引擎 {engine}，扩展名 {extension} 在跳过列表中");
+                    continue;
+                }
+                
+                // 检查引擎是否可用
+                if (engine == ImageEngine.Leadtools && !IsLeadtoolsAvailable())
+                {
+                    Console.WriteLine($"跳过引擎 {engine}，引擎不可用");
+                    continue;
+                }
+                
+                try
+                {
+                    Console.WriteLine($"尝试使用引擎 {engine} 加载图片: {Path.GetFileName(imagePath)}");
+                    
+                    BitmapImage result = null;
+                    switch (engine)
+                    {
+                        case ImageEngine.STBImageSharp:
+                            result = LoadImageWithSTBImageSharp(imagePath);
+                            break;
+                        case ImageEngine.Leadtools:
+                            result = LoadImageWithLeadtools(imagePath);
+                            break;
+                        case ImageEngine.Magick:
+                            result = LoadImageWithMagick(imagePath);
+                            break;
+                    }
+                    
+                    if (result != null)
+                    {
+                        Console.WriteLine($"成功使用引擎 {engine} 加载图片");
+                        return result;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"引擎 {engine} 加载失败: {ex.Message}");
+                    // 继续尝试下一个引擎
+                }
+            }
+            
+            // 所有引擎都失败了
+            Console.WriteLine("所有引擎都无法加载图片");
+            return CreateErrorImage("图片加载错误");
+        }
+
+        /// <summary>
+        /// 创建错误提示图片
+        /// </summary>
+        private BitmapImage CreateErrorImage(string errorMessage)
+        {
+            try
+            {
+                // 创建一个简单的错误图片
+                var drawingVisual = new DrawingVisual();
+                using (var drawingContext = drawingVisual.RenderOpen())
+                {
+                    var rect = new Rect(0, 0, 400, 300);
+                    drawingContext.DrawRectangle(Brushes.LightGray, new Pen(Brushes.Gray, 2), rect);
+                    
+                    var formattedText = new FormattedText(
+                        errorMessage,
+                        System.Globalization.CultureInfo.CurrentCulture,
+                        FlowDirection.LeftToRight,
+                        new Typeface("Arial"),
+                        16,
+                        Brushes.Red,
+                        VisualTreeHelper.GetDpi(drawingVisual).PixelsPerDip);
+                    
+                    var textPoint = new Point(
+                        (rect.Width - formattedText.Width) / 2,
+                        (rect.Height - formattedText.Height) / 2);
+                    
+                    drawingContext.DrawText(formattedText, textPoint);
+                }
+                
+                var renderTargetBitmap = new RenderTargetBitmap(400, 300, 96, 96, PixelFormats.Pbgra32);
+                renderTargetBitmap.Render(drawingVisual);
+                
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(renderTargetBitmap));
+                
+                using (var stream = new MemoryStream())
+                {
+                    encoder.Save(stream);
+                    stream.Position = 0;
+                    
+                    var bitmapImage = new BitmapImage();
+                    bitmapImage.BeginInit();
+                    bitmapImage.StreamSource = stream;
+                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.EndInit();
+                    bitmapImage.Freeze();
+                    
+                    return bitmapImage;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"创建错误图片失败: {ex.Message}");
+                // 返回一个最基本的BitmapImage
+                return new BitmapImage();
+            }
+        }
         /// 图像引擎类型枚举
         /// </summary>
         public enum ImageEngine
-        {
-            Magick,
-            Leadtools,
-            STBImageSharp
-        }
+    {
+        Auto,
+        STBImageSharp,
+        Leadtools,
+        Magick
+    }
 
         private readonly double backgroundOpacity;
         private ImageEngine currentEngine;
         private RasterCodecs leadtoolsCodecs;
+        private readonly Dictionary<ImageEngine, List<string>> engineSkipExtensions;
 
-        public ImageLoader(double backgroundOpacity = 0.3, ImageEngine engine = ImageEngine.Magick)
+        public ImageLoader(double backgroundOpacity = 0.3, ImageEngine engine = ImageEngine.Auto)
         {
             this.backgroundOpacity = backgroundOpacity;
+            
+            // 初始化引擎跳过扩展名列表
+            engineSkipExtensions = new Dictionary<ImageEngine, List<string>>
+            {
+                [ImageEngine.STBImageSharp] = new List<string> { ".psd", ".tiff", ".tif" },
+                [ImageEngine.Leadtools] = new List<string> { ".webp" },
+                [ImageEngine.Magick] = new List<string> { }
+            };
             
             // 智能选择引擎：如果指定的引擎不可用，自动回退到可用的引擎
             if (engine == ImageEngine.Leadtools && !IsLeadtoolsAvailable())
@@ -128,13 +259,14 @@ namespace PicViewEx
         /// </summary>
         public List<ImageEngine> GetAvailableEngines()
         {
-            var engines = new List<ImageEngine> { ImageEngine.Magick, ImageEngine.STBImageSharp }; // ImageMagick和STBImageSharp总是可用
+            var engines = new List<ImageEngine> { ImageEngine.Auto, ImageEngine.STBImageSharp };
             
             if (IsLeadtoolsAvailable())
             {
                 engines.Add(ImageEngine.Leadtools);
             }
             
+            engines.Add(ImageEngine.Magick);
             return engines;
         }
 
@@ -203,20 +335,39 @@ namespace PicViewEx
         /// </summary>
         public BitmapImage LoadImage(string imagePath)
         {
-            if (string.IsNullOrWhiteSpace(imagePath))
-                throw new ArgumentException("imagePath 不能为空", nameof(imagePath));
+            if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
+            {
+                return CreateErrorImage("文件不存在");
+            }
 
-            if (currentEngine == ImageEngine.Leadtools)
+            try
             {
-                return LoadImageWithLeadtools(imagePath);
+                // 检查是否为GIF或WebP，优先使用专门的播放器
+                string extension = Path.GetExtension(imagePath).ToLower();
+                if (extension == ".gif" || extension == ".webp")
+                {
+                    // GIF和WebP使用专门的播放器，这里返回第一帧
+                    return LoadImageWithMagick(imagePath);
+                }
+
+                switch (currentEngine)
+                {
+                    case ImageEngine.Auto:
+                        return LoadImageWithAutoEngine(imagePath);
+                    case ImageEngine.STBImageSharp:
+                        return LoadImageWithSTBImageSharp(imagePath);
+                    case ImageEngine.Leadtools:
+                        return LoadImageWithLeadtools(imagePath);
+                    case ImageEngine.Magick:
+                        return LoadImageWithMagick(imagePath);
+                    default:
+                        return CreateErrorImage("未知的图像引擎");
+                }
             }
-            else if (currentEngine == ImageEngine.STBImageSharp)
+            catch (Exception ex)
             {
-                return LoadImageWithSTBImageSharp(imagePath);
-            }
-            else
-            {
-                return LoadImageWithMagick(imagePath);
+                Console.WriteLine($"加载图片失败: {ex.Message}");
+                return CreateErrorImage($"加载失败: {ex.Message}");
             }
         }
 

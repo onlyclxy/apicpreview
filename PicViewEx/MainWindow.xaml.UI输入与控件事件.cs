@@ -138,7 +138,7 @@ namespace PicViewEx
 							UpdateFrameDisplay();
 
 							if (statusText != null)
-								statusText.Text = "序列帧播放已停止，切换到新图片";
+								UpdateStatusText("序列帧播放已停止，切换到新图片");
 						}
 
 						LoadImage(file);
@@ -183,7 +183,7 @@ namespace PicViewEx
 					UpdateFrameDisplay();
 
 					if (statusText != null)
-						statusText.Text = "序列帧播放已停止，切换到新图片";
+						UpdateStatusText("序列帧播放已停止，切换到新图片");
 				}
 
 				LoadImage(dialog.FileName);
@@ -288,13 +288,13 @@ namespace PicViewEx
 				SaveBitmapSource(source, fileName);
 
 				if (statusText != null)
-					statusText.Text = $"已保存: {Path.GetFileName(fileName)}";
+					UpdateStatusText($"已保存: {Path.GetFileName(fileName)}");
 			}
 			catch (Exception ex)
 			{
 				MessageBox.Show($"保存失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
 				if (statusText != null)
-					statusText.Text = "保存失败";
+					UpdateStatusText("保存失败");
 			}
 		}
 
@@ -453,15 +453,15 @@ namespace PicViewEx
 				if (statusText != null)
 				{
 					if (result.UsedFallback)
-						statusText.Text = "默认图片不存在，使用渐变背景";
+						UpdateStatusText("默认图片不存在，使用渐变背景");
 					else if (!string.IsNullOrEmpty(result.SourcePath))
-						statusText.Text = $"已加载默认背景图片: {Path.GetFileName(result.SourcePath)}";
+						UpdateStatusText($"已加载默认背景图片: {Path.GetFileName(result.SourcePath)}");
 				}
 			}
 			catch (Exception ex)
 			{
 				if (updateStatus && statusText != null)
-					statusText.Text = $"加载默认背景图片失败: {ex.Message}";
+					UpdateStatusText($"加载默认背景图片失败: {ex.Message}");
 			}
 		}
 
@@ -864,7 +864,7 @@ namespace PicViewEx
                 SaveAppSettings(); // 立即保存设置
 
                 if (statusText != null)
-                    statusText.Text = $"打开方式设置已更新，共 {openWithApps.Count} 个应用";
+                    UpdateStatusText($"打开方式设置已更新，共 {openWithApps.Count} 个应用");
             }
         }
 

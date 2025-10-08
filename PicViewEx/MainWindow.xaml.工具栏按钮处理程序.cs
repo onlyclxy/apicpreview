@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -128,14 +128,14 @@ namespace PicViewEx
                 {
                     string bgStatus = menuShowBgToolbar?.IsChecked == true ? "显示" : "隐藏";
                     string seqStatus = menuShowSequenceToolbar?.IsChecked == true ? "显示" : "隐藏";
-                    statusText.Text = $"工具菜单状态已同步 - 背景工具栏: {bgStatus}, 序列帧工具栏: {seqStatus}";
+                    UpdateStatusText($"工具菜单状态已同步 - 背景工具栏: {bgStatus}, 序列帧工具栏: {seqStatus}");
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"同步工具菜单状态失败: {ex.Message}");
                 if (statusText != null)
-                    statusText.Text = $"同步工具菜单状态失败: {ex.Message}";
+                    UpdateStatusText($"同步工具菜单状态失败: {ex.Message}");
             }
         }
     }

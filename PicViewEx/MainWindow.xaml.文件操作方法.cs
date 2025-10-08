@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualBasic;
+using Microsoft.VisualBasic;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
@@ -60,7 +60,7 @@ namespace PicViewEx
                     string sourceInfo = string.IsNullOrEmpty(currentImagePath) ? "剪贴板图片" : "文件图片";
                     string pathInfo = app.ExecutablePath == resolvedExecutablePath ?
                         app.Name : $"{app.Name} (相对路径)";
-                    statusText.Text = $"已用 {pathInfo} 打开 {sourceInfo}";
+                    UpdateStatusText($"已用 {pathInfo} 打开 {sourceInfo}");
                 }
             }
             catch (Exception ex)
@@ -91,7 +91,7 @@ namespace PicViewEx
                     Process.Start("explorer.exe", argument);
 
                     if (statusText != null)
-                        statusText.Text = "已在资源管理器中显示文件";
+                        UpdateStatusText("已在资源管理器中显示文件");
                 }
                 // 如果是剪贴板图片，提示用户并创建临时文件
                 else if (mainImage?.Source != null)
@@ -111,7 +111,7 @@ namespace PicViewEx
                         Process.Start("explorer.exe", argument);
 
                         if (statusText != null)
-                            statusText.Text = "已在资源管理器中显示临时文件";
+                            UpdateStatusText("已在资源管理器中显示临时文件");
                     }
                 }
                 else
@@ -216,7 +216,7 @@ namespace PicViewEx
                     UpdateOpenWithMenu();
 
                     if (statusText != null)
-                        statusText.Text = $"已添加打开方式: {displayName}";
+                        UpdateStatusText($"已添加打开方式: {displayName}");
 
                     // 询问是否继续添加
                     var continueResult = MessageBox.Show(
@@ -249,7 +249,7 @@ namespace PicViewEx
             catch (Exception ex)
             {
                 if (statusText != null)
-                    statusText.Text = $"提取图标失败: {ex.Message}";
+                    UpdateStatusText($"提取图标失败: {ex.Message}");
             }
 
             return string.Empty;
@@ -293,7 +293,7 @@ namespace PicViewEx
                         UpdateOpenWithMenu();
 
                         if (statusText != null)
-                            statusText.Text = $"已删除打开方式: {appToRemove.Name}";
+                            UpdateStatusText($"已删除打开方式: {appToRemove.Name}");
 
                         MessageBox.Show($"已成功删除 \"{appToRemove.Name}\"！", "删除成功",
                             MessageBoxButton.OK, MessageBoxImage.Information);

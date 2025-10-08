@@ -11,11 +11,43 @@ namespace PicViewEx
     {
         #region 引擎切换菜单事件
 
-        private void MenuEngineMagick_Click(object sender, RoutedEventArgs e)
+        private void MenuEngineAuto_Click(object sender, RoutedEventArgs e)
         {
-            if (menuEngineMagick != null && menuEngineLeadtools != null && menuEngineSTBImageSharp != null)
+            if (menuEngineAuto != null && menuEngineMagick != null && menuEngineLeadtools != null && menuEngineSTBImageSharp != null)
             {
                 // 设置菜单状态
+                menuEngineAuto.IsChecked = true;
+                menuEngineSTBImageSharp.IsChecked = false;
+                menuEngineLeadtools.IsChecked = false;
+                menuEngineMagick.IsChecked = false;
+
+                // 切换引擎
+                if (imageLoader != null)
+                {
+                    imageLoader.SwitchEngine(ImageLoader.ImageEngine.Auto);
+                }
+
+                // 保存设置
+                if (appSettings != null)
+                {
+                    appSettings.ImageEngine = "Auto";
+                    SettingsManager.SaveSettings(appSettings);
+                }
+
+                // 更新状态栏
+                if (statusText != null)
+                {
+                    UpdateStatusText($"已切换到自动引擎模式");
+                }
+            }
+        }
+
+        private void MenuEngineMagick_Click(object sender, RoutedEventArgs e)
+        {
+            if (menuEngineAuto != null && menuEngineMagick != null && menuEngineLeadtools != null && menuEngineSTBImageSharp != null)
+            {
+                // 设置菜单状态
+                menuEngineAuto.IsChecked = false;
                 menuEngineMagick.IsChecked = true;
                 menuEngineLeadtools.IsChecked = false;
                 menuEngineSTBImageSharp.IsChecked = false;
@@ -36,16 +68,17 @@ namespace PicViewEx
                 // 更新状态栏
                 if (statusText != null)
                 {
-                    statusText.Text = "已切换到 ImageMagick 引擎";
+                    UpdateStatusText($"已切换到 ImageMagick 引擎");
                 }
             }
         }
 
         private void MenuEngineLeadtools_Click(object sender, RoutedEventArgs e)
         {
-            if (menuEngineMagick != null && menuEngineLeadtools != null && menuEngineSTBImageSharp != null)
+            if (menuEngineAuto != null && menuEngineMagick != null && menuEngineLeadtools != null && menuEngineSTBImageSharp != null)
             {
                 // 设置菜单状态
+                menuEngineAuto.IsChecked = false;
                 menuEngineMagick.IsChecked = false;
                 menuEngineLeadtools.IsChecked = true;
                 menuEngineSTBImageSharp.IsChecked = false;
@@ -66,16 +99,17 @@ namespace PicViewEx
                 // 更新状态栏
                 if (statusText != null)
                 {
-                    statusText.Text = "已切换到 LEADTOOLS 引擎";
+                    UpdateStatusText($"已切换到 LEADTOOLS 引擎");
                 }
             }
         }
 
         private void MenuEngineSTBImageSharp_Click(object sender, RoutedEventArgs e)
         {
-            if (menuEngineMagick != null && menuEngineLeadtools != null && menuEngineSTBImageSharp != null)
+            if (menuEngineAuto != null && menuEngineMagick != null && menuEngineLeadtools != null && menuEngineSTBImageSharp != null)
             {
                 // 设置菜单状态
+                menuEngineAuto.IsChecked = false;
                 menuEngineMagick.IsChecked = false;
                 menuEngineLeadtools.IsChecked = false;
                 menuEngineSTBImageSharp.IsChecked = true;
@@ -96,7 +130,7 @@ namespace PicViewEx
                 // 更新状态栏
                 if (statusText != null)
                 {
-                    statusText.Text = "已切换到 STBImageSharp 引擎";
+                    UpdateStatusText($"已切换到 SkiaSharp 引擎");
                 }
             }
         }
@@ -108,12 +142,13 @@ namespace PicViewEx
         /// </summary>
         private void UpdateEngineMenuState()
         {
-            if (imageLoader != null && menuEngineMagick != null && menuEngineLeadtools != null && menuEngineSTBImageSharp != null)
+            if (imageLoader != null && menuEngineAuto != null && menuEngineMagick != null && menuEngineLeadtools != null && menuEngineSTBImageSharp != null)
             {
                 var currentEngine = imageLoader.GetCurrentEngine();
-                menuEngineMagick.IsChecked = (currentEngine == ImageLoader.ImageEngine.Magick);
-                menuEngineLeadtools.IsChecked = (currentEngine == ImageLoader.ImageEngine.Leadtools);
+                menuEngineAuto.IsChecked = (currentEngine == ImageLoader.ImageEngine.Auto);
                 menuEngineSTBImageSharp.IsChecked = (currentEngine == ImageLoader.ImageEngine.STBImageSharp);
+                menuEngineLeadtools.IsChecked = (currentEngine == ImageLoader.ImageEngine.Leadtools);
+                menuEngineMagick.IsChecked = (currentEngine == ImageLoader.ImageEngine.Magick);
             }
         }
     }
