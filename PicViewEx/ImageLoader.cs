@@ -67,6 +67,7 @@ namespace PicViewEx
                     if (result != null)
                     {
                         Console.WriteLine($"成功使用引擎 {engine} 加载图片");
+                        lastUsedAutoEngine = engine; // 记录成功使用的引擎
                         return result;
                     }
                 }
@@ -79,6 +80,7 @@ namespace PicViewEx
             
             // 所有引擎都失败了
             Console.WriteLine("所有引擎都无法加载图片");
+            lastUsedAutoEngine = ImageEngine.Auto; // 重置为Auto
             return CreateErrorImage("图片加载错误");
         }
 
@@ -89,12 +91,12 @@ namespace PicViewEx
         {
             try
             {
-                // 创建一个简单的错误图片
+                // 创建一个简单的错误图片，使用透明背景
                 var drawingVisual = new DrawingVisual();
                 using (var drawingContext = drawingVisual.RenderOpen())
                 {
                     var rect = new Rect(0, 0, 400, 300);
-                    drawingContext.DrawRectangle(Brushes.LightGray, new Pen(Brushes.Gray, 2), rect);
+                    // 使用透明背景，不绘制背景矩形
                     
                     var formattedText = new FormattedText(
                         errorMessage,
@@ -152,6 +154,7 @@ namespace PicViewEx
 
         private readonly double backgroundOpacity;
         private ImageEngine currentEngine;
+        private ImageEngine lastUsedAutoEngine; // 记录自动模式下最后使用的引擎
         private RasterCodecs leadtoolsCodecs;
         private readonly Dictionary<ImageEngine, List<string>> engineSkipExtensions;
 
@@ -162,9 +165,9 @@ namespace PicViewEx
             // 初始化引擎跳过扩展名列表
             engineSkipExtensions = new Dictionary<ImageEngine, List<string>>
             {
-                [ImageEngine.STBImageSharp] = new List<string> { ".psd", ".tiff", ".tif" },
+                [ImageEngine.STBImageSharp] = new List<string> { ".psd", ".tiff", ".tif", ".pdf" },
                 [ImageEngine.Leadtools] = new List<string> { ".webp" },
-                [ImageEngine.Magick] = new List<string> { }
+                [ImageEngine.Magick] = new List<string> { ".pdf" }
             };
             
             // 智能选择引擎：如果指定的引擎不可用，自动回退到可用的引擎
@@ -225,6 +228,9 @@ namespace PicViewEx
         {
             try
             {
+                // 获取当前应用程序的目录
+                string appDir = AppDomain.CurrentDomain.BaseDirectory;
+                
                 // 检查核心LEADTOOLS DLL是否存在
                 string[] requiredDlls = {
                     "Leadtools.dll",
@@ -234,16 +240,17 @@ namespace PicViewEx
 
                 foreach (string dll in requiredDlls)
                 {
-                    if (!File.Exists(dll))
+                    string dllPath = Path.Combine(appDir, dll);
+                    if (!File.Exists(dllPath))
                     {
-                        System.Diagnostics.Debug.WriteLine($"LEADTOOLS DLL not found: {dll}");
+                        System.Diagnostics.Debug.WriteLine($"LEADTOOLS DLL not found: {dllPath}");
                         return false;
                     }
                 }
 
                 // 尝试加载Leadtools程序集
-                Assembly.LoadFrom("Leadtools.dll");
-                Assembly.LoadFrom("Leadtools.Codecs.dll");
+                Assembly.LoadFrom(Path.Combine(appDir, "Leadtools.dll"));
+                Assembly.LoadFrom(Path.Combine(appDir, "Leadtools.Codecs.dll"));
                 
                 return true;
             }
@@ -276,6 +283,14 @@ namespace PicViewEx
         public ImageEngine GetCurrentEngine()
         {
             return currentEngine;
+        }
+        
+        /// <summary>
+        /// 获取自动模式下实际使用的引擎
+        /// </summary>
+        public ImageEngine GetLastUsedAutoEngine()
+        {
+            return lastUsedAutoEngine;
         }
         /// <summary>
         /// 初始化LEADTOOLS
@@ -380,8 +395,11 @@ namespace PicViewEx
             {
                 if (leadtoolsCodecs == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("LEADTOOLS codecs not initialized, falling back to ImageMagick");
-                    return LoadImageWithMagick(imagePath);
+                    System.Diagnostics.Debug.WriteLine("LEADTOOLS codecs not initialized, attempting to initialize...");
+                    if (!InitializeLeadtools())
+                    {
+                        throw new Exception("LEADTOOLS initialization failed");
+                    }
                 }
 
                 using (var rasterImage = leadtoolsCodecs.Load(imagePath))
@@ -392,8 +410,7 @@ namespace PicViewEx
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"LEADTOOLS failed to load {imagePath}: {ex.Message}");
-                // 如果LEADTOOLS加载失败，回退到Magick
-                return LoadImageWithMagick(imagePath);
+                throw; // 抛出异常而不是回退到Magick，让自动模式处理
             }
         }
 

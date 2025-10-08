@@ -165,6 +165,15 @@ namespace PicViewEx
             switch (engine)
             {
                 case ImageLoader.ImageEngine.Auto:
+                    // 如果是自动模式，显示实际使用的引擎
+                    if (imageLoader != null)
+                    {
+                        var lastUsedEngine = imageLoader.GetLastUsedAutoEngine();
+                        if (lastUsedEngine != ImageLoader.ImageEngine.Auto)
+                        {
+                            return $"自动-{GetEngineDisplayName(lastUsedEngine)}";
+                        }
+                    }
                     return "自动";
                 case ImageLoader.ImageEngine.STBImageSharp:
                     return "STBImageSharp";
