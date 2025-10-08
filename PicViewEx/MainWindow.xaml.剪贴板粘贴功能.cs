@@ -334,7 +334,8 @@ namespace PicViewEx
                 return CreateTemporaryImageFile();
             }
 
-            throw new InvalidOperationException("没有可用的图片文件");
+            // 没有可用的图片文件时，返回空字符串而不是抛出异常
+            return string.Empty;
         }
 
         #endregion

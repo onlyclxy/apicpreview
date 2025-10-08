@@ -40,8 +40,18 @@ namespace PicViewEx
                     return;
                 }
 
-                // 格式化参数，确保图片路径被正确引用
-                var arguments = string.Format(app.Arguments, imagePath);
+                // 根据是否有图片路径决定参数
+                string arguments;
+                if (string.IsNullOrEmpty(imagePath))
+                {
+                    // 没有图片时，不传递任何参数
+                    arguments = "";
+                }
+                else
+                {
+                    // 有图片时，格式化参数
+                    arguments = string.Format(app.Arguments, imagePath);
+                }
 
                 // 创建进程启动信息
                 var startInfo = new ProcessStartInfo
@@ -60,7 +70,16 @@ namespace PicViewEx
                     string sourceInfo = string.IsNullOrEmpty(currentImagePath) ? "剪贴板图片" : "文件图片";
                     string pathInfo = app.ExecutablePath == resolvedExecutablePath ?
                         app.Name : $"{app.Name} (相对路径)";
-                    UpdateStatusText($"已用 {pathInfo} 打开 {sourceInfo}");
+                    
+                    // 如果没有图片，显示不同的状态信息
+                    if (string.IsNullOrEmpty(imagePath))
+                    {
+                        UpdateStatusText($"已启动 {pathInfo} (无参数)");
+                    }
+                    else
+                    {
+                        UpdateStatusText($"已用 {pathInfo} 打开 {sourceInfo}");
+                    }
                 }
             }
             catch (Exception ex)
