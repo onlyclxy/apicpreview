@@ -105,6 +105,9 @@
     <Compile Include="MainWindow.xaml.UI输入与控件事件.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="ClipboardBridge.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="gifplayer.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
