@@ -293,16 +293,16 @@ extern "C" {
         if (!OpenClipboard(NULL)) return 0;
         int ok = 0;
         do {
-            // 1) CF_DIBV5
-            if (HANDLE h = GetClipboardData(17 /*CF_DIBV5*/)) {
+            // 1) CF_DIB (优先，更标准兼容)
+            if (HANDLE h = GetClipboardData(CF_DIB)) {
                 SIZE_T sz = (SIZE_T)GlobalSize(h);
                 const BYTE* p = (const BYTE*)GlobalLock(h);
                 if (p && sz) ok = extract_from_dib(p, sz);
                 if (p) GlobalUnlock(h);
                 if (ok) break;
             }
-            // 2) CF_DIB
-            if (HANDLE h = GetClipboardData(CF_DIB)) {
+            // 2) CF_DIBV5 (次选，部分软件V5头有特殊数据)
+            if (HANDLE h = GetClipboardData(17 /*CF_DIBV5*/)) {
                 SIZE_T sz = (SIZE_T)GlobalSize(h);
                 const BYTE* p = (const BYTE*)GlobalLock(h);
                 if (p && sz) ok = extract_from_dib(p, sz);
