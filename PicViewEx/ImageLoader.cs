@@ -12,6 +12,7 @@ using Leadtools.Codecs;
 using Leadtools.Pdf;
 using StbImageSharp;
 
+
 namespace PicViewEx
 {
     /// <summary>
@@ -22,7 +23,7 @@ namespace PicViewEx
         /// <summary>
         /// 自动引擎模式：按优先级尝试不同引擎加载图片
         /// </summary>
-        private BitmapImage LoadImageWithAutoEngine(string imagePath)
+        private BitmapSource LoadImageWithAutoEngine(string imagePath)
         {
             string extension = Path.GetExtension(imagePath).ToLower();
             
@@ -59,8 +60,8 @@ namespace PicViewEx
                 try
                 {
                     Console.WriteLine($"尝试使用引擎 {engine} 加载图片: {Path.GetFileName(imagePath)}");
-                    
-                    BitmapImage result = null;
+
+                    BitmapSource result = null;
                     switch (engine)
                     {
                         case ImageEngine.STBImageSharp:
@@ -97,7 +98,7 @@ namespace PicViewEx
         /// <summary>
         /// 创建错误提示图片
         /// </summary>
-        private BitmapImage CreateErrorImage(string errorMessage)
+        private BitmapSource CreateErrorImage(string errorMessage)
         {
             try
             {
@@ -193,7 +194,7 @@ namespace PicViewEx
             // 智能选择引擎：如果指定的引擎不可用，自动回退到可用的引擎
             if (engine == ImageEngine.Leadtools && !IsLeadtoolsAvailable())
             {
-                System.Diagnostics.Debug.WriteLine("LEADTOOLS not available, falling back to ImageMagick");
+                Console.WriteLine("LEADTOOLS not available, falling back to ImageMagick");
                 this.currentEngine = ImageEngine.Magick;
             }
             else
@@ -221,7 +222,10 @@ namespace PicViewEx
             // 检查目标引擎是否可用
             if (engine == ImageEngine.Leadtools && !IsLeadtoolsAvailable())
             {
-                System.Diagnostics.Debug.WriteLine("Cannot switch to LEADTOOLS: not available");
+                Console.WriteLine("Cannot switch to LEADTOOLS: not available");
+                Application.Current?.Dispatcher.Invoke(() =>
+            MessageBox.Show("无法切换到 LEADTOOLS：缺少必要的依赖或许可文件。", "切换失败",
+                MessageBoxButton.OK, MessageBoxImage.Warning));
                 return;
             }
 
@@ -385,96 +389,149 @@ namespace PicViewEx
         /// <summary>
         /// 加载常规图片资源，根据当前引擎选择加载方式。
         /// </summary>
-        public BitmapImage LoadImage(string imagePath)
+        public BitmapSource LoadImage(string imagePath)
         {
             if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
-            {
                 return CreateErrorImage("文件不存在");
-            }
 
             try
             {
-                // 检查是否为GIF或WebP，优先使用专门的播放器
                 string extension = Path.GetExtension(imagePath).ToLower();
                 if (extension == ".gif" || extension == ".webp")
                 {
-                    // GIF和WebP使用专门的播放器，这里返回第一帧
-                    return LoadImageWithMagick(imagePath);
+                    // 这两类你原来就是走 Magick 的第一帧
+                    return SafeLoad(
+                        () => LoadImageWithMagick(imagePath),
+                        "ImageMagick",
+                        imagePath,
+                        showDialogOnError: currentEngine != ImageEngine.Auto // 手动模式才弹
+                    );
                 }
 
                 switch (currentEngine)
                 {
                     case ImageEngine.Auto:
+                        // 自动模式：你已有的“逐个尝试+吞异常”的逻辑
                         return LoadImageWithAutoEngine(imagePath);
+
                     case ImageEngine.STBImageSharp:
-                        return LoadImageWithSTBImageSharp(imagePath);
+                        return SafeLoad(
+                            () => LoadImageWithSTBImageSharp(imagePath),
+                            "STBImageSharp",
+                            imagePath,
+                            showDialogOnError: true
+                        );
+
                     case ImageEngine.Leadtools:
-                        return LoadImageWithLeadtools(imagePath);
+                        return SafeLoad(
+                            () => LoadImageWithLeadtools(imagePath),
+                            "LEADTOOLS",
+                            imagePath,
+                            showDialogOnError: true
+                        );
+
                     case ImageEngine.Magick:
-                        return LoadImageWithMagick(imagePath);
+                        return SafeLoad(
+                            () => LoadImageWithMagick(imagePath),
+                            "ImageMagick",
+                            imagePath,
+                            showDialogOnError: true
+                        );
+
                     default:
                         return CreateErrorImage("未知的图像引擎");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"加载图片失败: {ex.Message}");
+                // 额外兜底（理论上不会到这里）
+                Console.WriteLine($"加载图片失败（兜底）: {ex}");
                 return CreateErrorImage($"加载失败: {ex.Message}");
             }
         }
 
-        /// <summary>
-        /// 使用LEADTOOLS加载图片
-        /// </summary>
-        private BitmapImage LoadImageWithLeadtools(string imagePath)
+
+
+        private BitmapSource LoadImageWithLeadtools(string imagePath)
         {
             try
             {
                 if (leadtoolsCodecs == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("LEADTOOLS codecs not initialized, attempting to initialize...");
+                    Console.WriteLine("LEADTOOLS codecs not initialized, attempting to initialize...");
                     if (!InitializeLeadtools())
                     {
                         throw new Exception("LEADTOOLS initialization failed");
                     }
+
+                }
+                else
+                {
+                    // LeadtoolsImageLoader 只有异步版本，所以我们需要同步调用
+                    Console.WriteLine("LEADTOOLS codecs return task");
+                    var task = LeadtoolsImageLoaderNew.LoadImageAsync(imagePath);
+                    return task.GetAwaiter().GetResult();
+
                 }
 
-                using (var rasterImage = leadtoolsCodecs.Load(imagePath))
-                {
-                    return ConvertRasterImageToBitmapImage(rasterImage);
-                }
+                 Console.WriteLine("LEADTOOLS codecs return null");
+                return null;
+
+
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"LEADTOOLS failed to load {imagePath}: {ex.Message}");
+                Console.WriteLine($"LEADTOOLS failed to load {imagePath}: {ex.Message}");
                 throw; // 抛出异常而不是回退到Magick，让自动模式处理
             }
         }
 
+
+
+
         /// <summary>
         /// 使用STBImageSharp加载图片
         /// </summary>
-        private BitmapImage LoadImageWithSTBImageSharp(string imagePath)
+        private BitmapSource LoadImageWithSTBImageSharp(string imagePath)
         {
-            try
+            byte[] bytes = File.ReadAllBytes(imagePath);
+            var result = StbImageSharp.ImageResult.FromMemory(bytes, StbImageSharp.ColorComponents.RedGreenBlueAlpha); // RGBA
+
+            var wb = new WriteableBitmap(result.Width, result.Height, 96, 96, PixelFormats.Bgra32, null);
+            wb.Lock();
+            unsafe
             {
-                byte[] imageData = File.ReadAllBytes(imagePath);
-                ImageResult result = ImageResult.FromMemory(imageData, ColorComponents.RedGreenBlueAlpha);
-                
-                return ConvertSTBImageToBitmapImage(result);
+                byte* dst = (byte*)wb.BackBuffer.ToPointer();
+                int stride = wb.BackBufferStride;
+                fixed (byte* src = result.Data)
+                {
+                    for (int y = 0; y < result.Height; y++)
+                    {
+                        byte* row = dst + y * stride;
+                        int si = y * result.Width * 4;
+                        for (int x = 0; x < result.Width; x++)
+                        {
+                            int s = si + x * 4;   // RGBA
+                            int d = x * 4;        // BGRA
+                            row[d + 0] = src[s + 2]; // B
+                            row[d + 1] = src[s + 1]; // G
+                            row[d + 2] = src[s + 0]; // R
+                            row[d + 3] = src[s + 3]; // A
+                        }
+                    }
+                }
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"STBImageSharp failed to load {imagePath}: {ex.Message}");
-                // 如果STBImageSharp加载失败，回退到Magick
-                return LoadImageWithMagick(imagePath);
-            }
+            wb.AddDirtyRect(new Int32Rect(0, 0, result.Width, result.Height));
+            wb.Unlock();
+            wb.Freeze();
+            return wb;
         }
+
 
         /// <summary>
         /// 将STBImageSharp的ImageResult转换为BitmapImage
         /// </summary>
-        private BitmapImage ConvertSTBImageToBitmapImage(ImageResult result)
+        private BitmapSource ConvertSTBImageToBitmapImage(ImageResult result)
         {
             try
             {
@@ -541,7 +598,7 @@ namespace PicViewEx
         /// <summary>
         /// 使用ImageMagick加载图片
         /// </summary>
-        private BitmapImage LoadImageWithMagick(string imagePath)
+        private BitmapSource LoadImageWithMagick(string imagePath)
         {
             try
             {
@@ -563,10 +620,12 @@ namespace PicViewEx
             }
         }
 
+
+
         /// <summary>
         /// 将LEADTOOLS RasterImage转换为BitmapImage
         /// </summary>
-        private BitmapImage ConvertRasterImageToBitmapImage(RasterImage rasterImage)
+        private BitmapSource ConvertRasterImageToBitmapImage(RasterImage rasterImage)
         {
             try
             {
@@ -606,7 +665,7 @@ namespace PicViewEx
         /// <summary>
         /// 为 GIF 动画加载静态源图像（用于 WpfAnimatedGif 控件）。
         /// </summary>
-        public BitmapImage LoadGifAnimationSource(string gifPath)
+        public BitmapSource LoadGifAnimationSource(string gifPath)
         {
             if (string.IsNullOrWhiteSpace(gifPath))
                 throw new ArgumentException("gifPath 不能为空", nameof(gifPath));
@@ -752,7 +811,7 @@ namespace PicViewEx
             return channels;
         }
 
-        private BitmapImage LoadBitmapImageFromFile(string imagePath)
+        private BitmapSource LoadBitmapImageFromFile(string imagePath)
         {
             var bitmap = new BitmapImage();
             bitmap.BeginInit();
@@ -833,6 +892,51 @@ namespace PicViewEx
             }
             */
         }
+
+        private BitmapSource SafeLoad(Func<BitmapSource> loader, string engineName, string imagePath, bool showDialogOnError)
+        {
+            try
+            {
+                return loader();
+            }
+            catch (Exception ex)
+            {
+                // 记录日志
+                Console.WriteLine($"[{engineName}] 加载失败: {imagePath}\n{ex}");
+
+                // 手动模式：给用户一个可理解的弹窗
+                if (showDialogOnError)
+                {
+                    // 确保在UI线程弹窗
+                    if (Application.Current?.Dispatcher != null)
+                    {
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            MessageBox.Show(
+                                $"使用引擎 {engineName} 加载失败：\n{ex.Message}",
+                                "加载失败",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Error
+                            );
+                        });
+                    }
+                    else
+                    {
+                        // 兜底
+                        MessageBox.Show(
+                            $"使用引擎 {engineName} 加载失败：\n{ex.Message}",
+                            "加载失败",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error
+                        );
+                    }
+                }
+
+                // 返回一张“错误图片”，避免崩溃
+                return CreateErrorImage($"加载失败（{engineName}）");
+            }
+        }
+
     }
 
     public class BackgroundImageResult
@@ -848,4 +952,6 @@ namespace PicViewEx
         public string SourcePath { get; }
         public bool UsedFallback { get; }
     }
+
+
 }

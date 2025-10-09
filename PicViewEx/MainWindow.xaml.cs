@@ -257,7 +257,7 @@ namespace PicViewEx
                 }
 
                 // 对于其他格式，使用原有逻辑
-                BitmapImage bitmap = imageLoader.LoadImage(imagePath);
+                BitmapSource bitmap = imageLoader.LoadImage(imagePath);
                 if (bitmap != null && mainImage != null)
                 {
                     // 清除可能的GIF动画和GIF/WebP播放器
@@ -364,7 +364,7 @@ namespace PicViewEx
             currentImageIndex = currentImageList.IndexOf(currentImagePath);
         }
 
-        private void UpdateImageInfo(BitmapImage bitmap)
+        private void UpdateImageInfo(BitmapSource bitmap)
         {
             if (bitmap != null && imageInfoText != null)
             {
