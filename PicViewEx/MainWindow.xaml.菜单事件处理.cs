@@ -258,9 +258,8 @@ namespace PicViewEx
                 "剪贴板功能 (NEW!):\n" +
                 "• 支持从网页复制图片 (Ctrl+V)\n" +
                 "• 支持剪贴板图片的另存为功能\n" +
-                "• 支持剪贴板图片的打开方式（自动创建临时文件）\n" +
-                "• 自动清理临时文件\n\n" +
-                "控件状态测试:\n" + controlTest,
+                "• 支持剪贴板图片的打开方式（自动创建临时文件）\n" ,         
+         
                 "关于PicViewEx", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 

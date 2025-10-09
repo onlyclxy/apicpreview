@@ -178,14 +178,14 @@ namespace PicViewEx
             engineSkipExtensions = new Dictionary<ImageEngine, List<string>>
             {
                 [ImageEngine.STBImageSharp] = new List<string> {  ".tiff", ".tif", ".pdf" },
-                [ImageEngine.Leadtools] = new List<string> { ".webp" },
+                [ImageEngine.Leadtools] = new List<string> { ".webp" ,".dds"},
                 [ImageEngine.Magick] = new List<string> { ".pdf" }
             };
             
             // 初始化引擎白名单扩展名列表
             engineWhitelistExtensions = new Dictionary<ImageEngine, List<string>>
             {
-                [ImageEngine.STBImageSharp] = new List<string> { ".jpg", ".jpeg", ".png", ".bmp", ".tga",".psd",".dds" },
+                [ImageEngine.STBImageSharp] = new List<string> { ".jpg", ".jpeg", ".png", ".bmp", ".tga",".dds" },
                 //[ImageEngine.Leadtools] = new List<string> { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".psd" },
                 //[ImageEngine.Magick] = new List<string> { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp", ".tiff", ".tif", ".psd" }
             };
