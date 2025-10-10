@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ImageMagick;
+using MColorType = ImageMagick.ColorType; // ← 新增
 
 namespace PicViewEx.ImageChannels
 {
@@ -17,6 +18,46 @@ namespace PicViewEx.ImageChannels
     /// </summary>
     public sealed class ChannelService : IChannelService
     {
+
+        // 放在 ChannelService 类内（字段/构造函数附近都可以）
+        private enum ChannelLayout { Rgb, Gray /* 以后要扩展 CMYK / Spot 可再加 */ }
+
+        // 用 Magick 读取文件头信息：颜色类型 + 是否带 Alpha（Alpha 即使全 255 也算“有”）
+        private static (ChannelLayout layout, bool hasAlpha) ProbeLayout(string path)
+        {
+            try
+            {
+                using (var m = new ImageMagick.MagickImage(path))
+                {
+                    var ct = m.ColorType;
+                    bool hasAlpha = m.HasAlpha; // Matte/Alpha 都会返回 true
+
+                    switch (m.ColorType)
+                    {
+                        case MColorType.Grayscale:
+                        case MColorType.GrayscaleAlpha:            // ← 用 GrayscaleAlpha 代替 GrayscaleMatte
+                            return (ChannelLayout.Gray, hasAlpha);
+
+                        // （可选）如果以后要区分 CMYK：
+                        // case MColorType.ColorSeparation:
+                        // case MColorType.ColorSeparationAlpha:
+                        //     return (ChannelLayout.Cmyk, hasAlpha);
+
+                        default:
+                            return (ChannelLayout.Rgb, hasAlpha);
+                    }
+                }
+            }
+            catch
+            {
+                // 保险：探测失败按 RGB、无 Alpha 处理（不影响稳定性）
+                return (ChannelLayout.Rgb, false);
+            }
+        }
+
+
+
+
         /// <summary>
         /// 单例实例
         /// </summary>
@@ -74,8 +115,12 @@ namespace PicViewEx.ImageChannels
                 if (previewBitmap == null)
                     return new List<ChannelBitmap>();
 
-                // 提取通道
-                var channels = ExtractChannels(previewBitmap, false);
+                // 新增：探测真实布局 + 是否带 Alpha
+                var (layout, hasAlpha) = ProbeLayout(path);
+
+                // 提取通道（按真实布局决定生成什么）
+                var channels = ExtractChannels(previewBitmap, isFullRes: false, layout: layout, includeAlpha: hasAlpha);
+                
 
                 // 缓存结果
                 _previewCache[cacheKey] = channels;
@@ -116,8 +161,11 @@ namespace PicViewEx.ImageChannels
                 if (fullResBitmap == null)
                     return null;
 
-                // 提取所有通道（为了缓存效率）
-                var channels = ExtractChannels(fullResBitmap, true);
+                // 新增：探测真实布局 + 是否带 Alpha
+                var (layout, hasAlpha) = ProbeLayout(path);
+
+                // 提取所有通道（按真实布局）
+                var channels = ExtractChannels(fullResBitmap, isFullRes: true, layout: layout, includeAlpha: hasAlpha);
 
                 // 缓存所有通道
                 var channelDict = channels.ToDictionary(c => c.Name, c => c);
@@ -299,64 +347,71 @@ namespace PicViewEx.ImageChannels
         /// <summary>
         /// 从BGRA32位图中并行提取R/G/B/A四个通道
         /// </summary>
-        private List<ChannelBitmap> ExtractChannels(BitmapSource source, bool isFullRes)
+        private List<ChannelBitmap> ExtractChannels(BitmapSource source, bool isFullRes, ChannelLayout layout, bool includeAlpha)
         {
-            if (source == null) return new List<ChannelBitmap>();
+            var result = new List<ChannelBitmap>();
+            if (source == null) return result;
 
-            var width = source.PixelWidth;
-            var height = source.PixelHeight;
-            var stride = width * 4; // BGRA32 = 4字节/像素
+            int width = source.PixelWidth;
+            int height = source.PixelHeight;
+            int stride = width * 4; // 输入是 BGRA32
             var pixelData = new byte[height * stride];
-
-            // 复制像素数据
             source.CopyPixels(pixelData, stride, 0);
 
-            var channels = new List<ChannelBitmap>(4);
-            var channelNames = new[] { "Blue", "Green", "Red", "Alpha" }; // BGRA顺序
-
-            // 并行生成四个通道
-            Parallel.For(0, 4, channelIndex =>
+            // 一个小工具：把某个“通道值”复制到灰度图（R=G=B=val，A=255）
+            ChannelBitmap MakeGrayFromSelector(string name, Func<int, byte> select)
             {
-                var channelData = new byte[pixelData.Length];
+                var gray = new byte[pixelData.Length];
+                int pixels = width * height;
 
-                // 提取指定通道并生成灰度图
-                Parallel.For(0, width * height, pixelIndex =>
+                for (int i = 0; i < pixels; i++)
                 {
-                    var baseOffset = pixelIndex * 4;
-                    var channelValue = pixelData[baseOffset + channelIndex];
-
-                    // 生成灰度图：B=G=R=通道值，A=255
-                    channelData[baseOffset] = channelValue;     // B
-                    channelData[baseOffset + 1] = channelValue; // G  
-                    channelData[baseOffset + 2] = channelValue; // R
-                    channelData[baseOffset + 3] = 255;          // A
-                });
-
-                // 创建通道位图
-                var channelBitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
-                var rect = new Int32Rect(0, 0, width, height);
-                channelBitmap.WritePixels(rect, channelData, stride, 0);
-                channelBitmap.Freeze();
-
-                var channelName = channelNames[channelIndex];
-                lock (channels)
-                {
-                    channels.Add(new ChannelBitmap(channelName, channelBitmap, isFullRes));
+                    int o = i * 4;
+                    byte v = select(o);
+                    gray[o + 0] = v; // B
+                    gray[o + 1] = v; // G
+                    gray[o + 2] = v; // R
+                    gray[o + 3] = 255;
                 }
-            });
 
-            // 按照R/G/B/A顺序排序返回
-            var orderedChannels = new List<ChannelBitmap>(4);
-            var nameOrder = new[] { "Red", "Green", "Blue", "Alpha" };
-
-            foreach (var name in nameOrder)
-            {
-                var channel = channels.FirstOrDefault(c => c.Name == name);
-                if (channel != null)
-                    orderedChannels.Add(channel);
+                var wb = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
+                wb.WritePixels(new Int32Rect(0, 0, width, height), gray, stride, 0);
+                wb.Freeze();
+                return new ChannelBitmap(name, wb, isFullRes);
             }
 
-            return orderedChannels;
+            if (layout == ChannelLayout.Gray)
+            {
+                // 源是“灰度系”（没有独立的 R/G/B）
+                // WIC/STB 解码到 BGRA 时三通道会相等，这里取 R（索引 2）即可
+                result.Add(MakeGrayFromSelector("Gray", o => pixelData[o + 2]));
+
+                if (includeAlpha)
+                {
+                    result.Add(MakeGrayFromSelector("Alpha", o => pixelData[o + 3]));
+                }
+
+                return result;
+            }
+
+            // layout == RGB：按 B/G/R（BGRA 顺序索引 0/1/2）提取
+            // 名字按 R/G/B 排序输出（符合常见 UI 习惯）
+            var red = MakeGrayFromSelector("Red", o => pixelData[o + 2]);
+            var green = MakeGrayFromSelector("Green", o => pixelData[o + 1]);
+            var blue = MakeGrayFromSelector("Blue", o => pixelData[o + 0]);
+
+            result.Add(red);
+            result.Add(green);
+            result.Add(blue);
+
+            if (includeAlpha)
+            {
+                var alpha = MakeGrayFromSelector("Alpha", o => pixelData[o + 3]);
+                result.Add(alpha);
+            }
+
+            return result;
         }
+
     }
 }

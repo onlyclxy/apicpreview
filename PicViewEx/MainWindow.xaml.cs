@@ -642,60 +642,6 @@ namespace PicViewEx
             return (h, s, v);
         }
 
-        //private void LoadImageChannels(string imagePath)
-        //{
-        //    try
-        //    {
-        //        if (channelStackPanel == null) return;
-
-        //        // 每次加载前都清空面板，防止重复添加
-        //        channelStackPanel.Children.Clear();
-
-        //        // 检查是否可以使用缓存
-        //        if (imagePath == currentChannelCachePath && channelCache.Count > 0)
-        //        {
-        //            // 直接使用缓存的通道图片
-        //            foreach (var channelTuple in channelCache)
-        //            {
-        //                CreateChannelControl(channelTuple.Item1, channelTuple.Item2);
-        //            }
-
-        //            if (statusText != null)
-        //                UpdateStatusText($"已从缓存加载通道 ({channelCache.Count}个) - {Path.GetFileName(imagePath)}");
-        //            return;
-        //        }
-
-        //        // 如果是新图片，清除旧的缓存
-        //        channelCache.Clear();
-        //        currentChannelCachePath = null;
-
-        //        if (statusText != null)
-        //            UpdateStatusText($"正在生成通道...");
-
-        //        // 只调用一次LoadChannels方法
-        //        var loadedChannels = imageLoader.LoadChannels(imagePath);
-
-        //        foreach (var channelTuple in loadedChannels)
-        //        {
-        //            channelCache.Add(channelTuple);
-        //            CreateChannelControl(channelTuple.Item1, channelTuple.Item2);
-        //        }
-
-        //        currentChannelCachePath = imagePath;
-        //        if (statusText != null)
-        //            UpdateStatusText($"通道加载完成 ({channelCache.Count}个) - {Path.GetFileName(imagePath)}");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        // 如果生成过程中出错，清除可能不完整的缓存
-        //        channelCache.Clear();
-        //        currentChannelCachePath = null;
-        //        if (statusText != null)
-        //            UpdateStatusText($"通道加载失败: {ex.Message}");
-        //    }
-        //}
-
-
 
         private async void LoadImageChannels(string imagePath)
         {
@@ -777,69 +723,6 @@ namespace PicViewEx
             window.Content = sv;
             window.Show();
         }
-
-
-
-
-        //private void CreateChannelControl(string channelName, BitmapSource channelImage)
-        //{
-        //    if (channelStackPanel == null) return;
-
-        //    var border = new Border
-        //    {
-        //        BorderBrush = System.Windows.Media.Brushes.Gray,
-        //        BorderThickness = new Thickness(1),
-        //        Margin = new Thickness(5)
-        //    };
-
-        //    var stackPanel = new StackPanel();
-
-        //    var label = new TextBlock
-        //    {
-        //        Text = channelName,
-        //        FontWeight = FontWeights.Bold,
-        //        Margin = new Thickness(5),
-        //        HorizontalAlignment = HorizontalAlignment.Center
-        //    };
-
-        //    var image = new System.Windows.Controls.Image
-        //    {
-        //        Source = channelImage,
-        //        Height = 150,
-        //        Stretch = Stretch.Uniform,
-        //        Margin = new Thickness(5),
-        //        Cursor = Cursors.Hand
-        //    };
-
-        //    // 改为单击事件，而不是双击
-        //    image.MouseLeftButtonDown += (s, e) =>
-        //    {
-        //        var window = new Window
-        //        {
-        //            Title = $"通道详细 - {channelName}",
-        //            Width = 600,
-        //            Height = 500,
-        //            Owner = this,
-        //            WindowStartupLocation = WindowStartupLocation.CenterOwner
-        //        };
-
-        //        var fullImage = new System.Windows.Controls.Image
-        //        {
-        //            Source = channelImage,
-        //            Stretch = Stretch.Uniform
-        //        };
-
-        //        window.Content = fullImage;
-        //        window.Show();
-        //    };
-
-        //    stackPanel.Children.Add(label);
-        //    stackPanel.Children.Add(image);
-        //    border.Child = stackPanel;
-
-        //    channelStackPanel.Children.Add(border);
-        //}
-
 
         private void CreateChannelControl(string channelName, BitmapSource channelPreview)
         {
@@ -1269,22 +1152,6 @@ namespace PicViewEx
 
             SaveAppSettings();
         }
-
-        private void ReplaceChannelCardBitmap(string channelName, BitmapSource newBitmap)
-        {
-            if (newBitmap == null) return;
-
-            if (_channelImageMap.TryGetValue(channelName, out var img) && img != null)
-            {
-                img.Source = newBitmap;
-                return;
-            }
-
-            // 兜底：如果没找到，就直接新增一个卡片
-            CreateChannelControl(channelName, newBitmap);
-        }
-
-
 
     }
 }
