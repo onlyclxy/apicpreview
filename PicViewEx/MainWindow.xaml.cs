@@ -7,6 +7,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using PicViewEx.ImageChannels;
+
 
 
 namespace PicViewEx
@@ -76,6 +78,14 @@ namespace PicViewEx
         private DateTime _fpsStartTime = DateTime.Now;
         private int _frameCount = 0;
         private bool _needsInitialPositioning = false;
+
+        private readonly IChannelService _channels = ChannelService.Instance;
+
+        // 记录“通道名 -> 卡片内的 Image 控件”，用于后续替换成全尺寸
+        private readonly Dictionary<string, System.Windows.Controls.Image> _channelImageMap =
+            new Dictionary<string, System.Windows.Controls.Image>(StringComparer.OrdinalIgnoreCase);
+
+
 
         public MainWindow()
         {
@@ -631,60 +641,105 @@ namespace PicViewEx
             return (h, s, v);
         }
 
-        private void LoadImageChannels(string imagePath)
+        //private void LoadImageChannels(string imagePath)
+        //{
+        //    try
+        //    {
+        //        if (channelStackPanel == null) return;
+
+        //        // 每次加载前都清空面板，防止重复添加
+        //        channelStackPanel.Children.Clear();
+
+        //        // 检查是否可以使用缓存
+        //        if (imagePath == currentChannelCachePath && channelCache.Count > 0)
+        //        {
+        //            // 直接使用缓存的通道图片
+        //            foreach (var channelTuple in channelCache)
+        //            {
+        //                CreateChannelControl(channelTuple.Item1, channelTuple.Item2);
+        //            }
+
+        //            if (statusText != null)
+        //                UpdateStatusText($"已从缓存加载通道 ({channelCache.Count}个) - {Path.GetFileName(imagePath)}");
+        //            return;
+        //        }
+
+        //        // 如果是新图片，清除旧的缓存
+        //        channelCache.Clear();
+        //        currentChannelCachePath = null;
+
+        //        if (statusText != null)
+        //            UpdateStatusText($"正在生成通道...");
+
+        //        // 只调用一次LoadChannels方法
+        //        var loadedChannels = imageLoader.LoadChannels(imagePath);
+
+        //        foreach (var channelTuple in loadedChannels)
+        //        {
+        //            channelCache.Add(channelTuple);
+        //            CreateChannelControl(channelTuple.Item1, channelTuple.Item2);
+        //        }
+
+        //        currentChannelCachePath = imagePath;
+        //        if (statusText != null)
+        //            UpdateStatusText($"通道加载完成 ({channelCache.Count}个) - {Path.GetFileName(imagePath)}");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        // 如果生成过程中出错，清除可能不完整的缓存
+        //        channelCache.Clear();
+        //        currentChannelCachePath = null;
+        //        if (statusText != null)
+        //            UpdateStatusText($"通道加载失败: {ex.Message}");
+        //    }
+        //}
+
+
+
+        private async void LoadImageChannels(string imagePath)
         {
-            try
+            if (channelStackPanel == null || string.IsNullOrEmpty(imagePath)) return;
+
+            channelStackPanel.Children.Clear();
+            if (statusText != null) UpdateStatusText($"正在生成通道预览…");
+
+            var previews = await System.Threading.Tasks.Task.Run(() =>
+                _channels.GetPreviewChannels(imagePath, 300)); // <= 预览 300
+
+            foreach (var ch in previews)
+                CreateChannelControl(ch.Name, ch.Bitmap);            ; // 你已有的 UI 方法
+
+            if (statusText != null) UpdateStatusText($"通道预览完成（{previews.Count} 个）");
+        }
+
+
+
+        private void OnChannelCardClicked(string channelName)
+        {
+            if (string.IsNullOrEmpty(currentImagePath)) return;
+            if (statusText != null) UpdateStatusText($"正在生成 {channelName} 全尺寸…");
+
+            System.Threading.Tasks.Task.Run(() =>
+                _channels.GetFullResChannel(currentImagePath, channelName)
+            )
+            .ContinueWith(t =>
             {
-                if (channelStackPanel == null) return;
-                
-                // 每次加载前都清空面板，防止重复添加
-                channelStackPanel.Children.Clear();
-
-                // 检查是否可以使用缓存
-                if (imagePath == currentChannelCachePath && channelCache.Count > 0)
+                if (t.Exception != null)
                 {
-                    // 直接使用缓存的通道图片
-                    foreach (var channelTuple in channelCache)
-                    {
-                        CreateChannelControl(channelTuple.Item1, channelTuple.Item2);
-                    }
-
                     if (statusText != null)
-                        UpdateStatusText($"已从缓存加载通道 ({channelCache.Count}个) - {Path.GetFileName(imagePath)}");
+                        UpdateStatusText($"生成失败：{t.Exception.InnerException?.Message}");
                     return;
                 }
 
-                // 如果是新图片，清除旧的缓存
-                channelCache.Clear();
-                currentChannelCachePath = null;
-
-                if (statusText != null)
-                    UpdateStatusText($"正在生成通道...");
-                
-                // 只调用一次LoadChannels方法
-                var loadedChannels = imageLoader.LoadChannels(imagePath);
-
-                foreach (var channelTuple in loadedChannels)
-                {
-                    channelCache.Add(channelTuple);
-                    CreateChannelControl(channelTuple.Item1, channelTuple.Item2);
-                }
-
-                currentChannelCachePath = imagePath;
-                if (statusText != null)
-                    UpdateStatusText($"通道加载完成 ({channelCache.Count}个) - {Path.GetFileName(imagePath)}");
-            }
-            catch (Exception ex)
-            {
-                // 如果生成过程中出错，清除可能不完整的缓存
-                channelCache.Clear();
-                currentChannelCachePath = null;
-                if (statusText != null)
-                    UpdateStatusText($"通道加载失败: {ex.Message}");
-            }
+                var cb = t.Result;
+                ReplaceChannelCardBitmap(cb.Name, cb.Bitmap); // 你已有的方法
+                if (statusText != null) UpdateStatusText($"{cb.Name} 全尺寸就绪");
+            },
+            System.Threading.Tasks.TaskScheduler.FromCurrentSynchronizationContext());
         }
 
-        private void CreateChannelControl(string channelName, BitmapImage channelImage)
+
+        private void CreateChannelControl(string channelName, BitmapSource channelImage)
         {
             if (channelStackPanel == null) return;
 
@@ -1123,6 +1178,20 @@ namespace PicViewEx
             CleanupGifWebpPlayer();
 
             SaveAppSettings();
+        }
+
+        private void ReplaceChannelCardBitmap(string channelName, BitmapSource newBitmap)
+        {
+            if (newBitmap == null) return;
+
+            if (_channelImageMap.TryGetValue(channelName, out var img) && img != null)
+            {
+                img.Source = newBitmap;
+                return;
+            }
+
+            // 兜底：如果没找到，就直接新增一个卡片
+            CreateChannelControl(channelName, newBitmap);
         }
 
 

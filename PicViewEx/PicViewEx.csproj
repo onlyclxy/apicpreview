@@ -224,5 +224,11 @@
       <SpecificVersion>false</SpecificVersion>
     </Reference>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PicViewEx.ImageChannels\PicViewEx.ImageChannels.csproj">
+      <Project>{fd6e0766-fbb5-4e13-aa2a-070aa5e55e47}</Project>
+      <Name>PicViewEx.ImageChannels</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
