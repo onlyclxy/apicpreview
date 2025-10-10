@@ -178,7 +178,7 @@ namespace PicViewEx
             // 初始化引擎跳过扩展名列表
             engineSkipExtensions = new Dictionary<ImageEngine, List<string>>
             {
-                [ImageEngine.STBImageSharp] = new List<string> {  ".tiff", ".tif", ".pdf" },
+                [ImageEngine.STBImageSharp] = new List<string> {  ".tiff", ".tif", ".pdf",".dds" },
                 [ImageEngine.Leadtools] = new List<string> { ".webp" ,".dds"},
                 [ImageEngine.Magick] = new List<string> { ".pdf" }
             };
@@ -186,7 +186,7 @@ namespace PicViewEx
             // 初始化引擎白名单扩展名列表
             engineWhitelistExtensions = new Dictionary<ImageEngine, List<string>>
             {
-                [ImageEngine.STBImageSharp] = new List<string> { ".jpg", ".jpeg", ".png", ".bmp", ".tga",".dds" },
+                [ImageEngine.STBImageSharp] = new List<string> { ".jpg", ".jpeg", ".png", ".bmp", ".tga" },
                 //[ImageEngine.Leadtools] = new List<string> { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".psd" },
                 //[ImageEngine.Magick] = new List<string> { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp", ".tiff", ".tif", ".psd" }
             };
@@ -463,6 +463,9 @@ namespace PicViewEx
                     {
                         throw new Exception("LEADTOOLS initialization failed");
                     }
+                    // 初始化成功与否都走这里：
+                    var task = LeadtoolsImageLoaderNew.LoadImageAsync(imagePath);
+                    return task.GetAwaiter().GetResult();
 
                 }
                 else
@@ -474,8 +477,6 @@ namespace PicViewEx
 
                 }
 
-                 Console.WriteLine("LEADTOOLS codecs return null");
-                return null;
 
 
             }
