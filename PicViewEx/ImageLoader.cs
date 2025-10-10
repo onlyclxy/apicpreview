@@ -20,43 +20,54 @@ namespace PicViewEx
     /// </summary>
     public class ImageLoader
     {
+
+        private bool HasEffectiveWhitelist(ImageEngine engine, out List<string> wl)
+        {
+            if (engineWhitelistExtensions.TryGetValue(engine, out wl) && wl != null && wl.Count > 0)
+                return true;
+            wl = null;
+            return false;
+        }
+
+
         /// <summary>
         /// 自动引擎模式：按优先级尝试不同引擎加载图片
         /// </summary>
         private BitmapSource LoadImageWithAutoEngine(string imagePath)
         {
-            string extension = Path.GetExtension(imagePath).ToLower();
+            string extension = Path.GetExtension(imagePath).ToLowerInvariant();
             
             // 定义引擎尝试顺序
             var engineOrder = new List<ImageEngine> { ImageEngine.STBImageSharp, ImageEngine.Leadtools, ImageEngine.Magick };
-            
+
             foreach (var engine in engineOrder)
             {
-                // 白名单逻辑：如果开关开启且白名单不为空，只使用白名单中的扩展名
-                if (useWhitelist && engineWhitelistExtensions.ContainsKey(engine) && 
-                    engineWhitelistExtensions[engine].Count > 0)
+                // ① 白名单优先：只有当“当前引擎存在且白名单非空”时才启用白名单判断
+                if (HasEffectiveWhitelist(engine, out var wl))
                 {
-                    if (!engineWhitelistExtensions[engine].Contains(extension))
+                    if (!wl.Contains(extension))
                     {
                         Console.WriteLine($"跳过引擎 {engine}，扩展名 {extension} 不在白名单中");
                         continue;
                     }
                 }
-                // 原有的跳过逻辑：如果不使用白名单，则使用跳过列表
-                else if (!useWhitelist && engineSkipExtensions.ContainsKey(engine) && 
-                    engineSkipExtensions[engine].Contains(extension))
+                else
                 {
-                    Console.WriteLine($"跳过引擎 {engine}，扩展名 {extension} 在跳过列表中");
-                    continue;
+                    // ② 没有白名单（或空白名单）→ 使用黑名单
+                    if (engineSkipExtensions.TryGetValue(engine, out var bl) && bl != null && bl.Contains(extension))
+                    {
+                        Console.WriteLine($"跳过引擎 {engine}，扩展名 {extension} 在黑名单中");
+                        continue;
+                    }
                 }
-                
-                // 检查引擎是否可用
+
+                // ③ 可用性检查（保持你原来的判断）
                 if (engine == ImageEngine.Leadtools && !IsLeadtoolsAvailable())
                 {
                     Console.WriteLine($"跳过引擎 {engine}，引擎不可用");
                     continue;
                 }
-                
+
                 try
                 {
                     Console.WriteLine($"尝试使用引擎 {engine} 加载图片: {Path.GetFileName(imagePath)}");
@@ -74,11 +85,11 @@ namespace PicViewEx
                             result = LoadImageWithMagick(imagePath);
                             break;
                     }
-                    
+
                     if (result != null)
                     {
                         Console.WriteLine($"成功使用引擎 {engine} 加载图片");
-                        lastUsedAutoEngine = engine; // 记录成功使用的引擎
+                        lastUsedAutoEngine = engine;
                         return result;
                     }
                 }
@@ -88,7 +99,9 @@ namespace PicViewEx
                     // 继续尝试下一个引擎
                 }
             }
-            
+
+
+
             // 所有引擎都失败了
             Console.WriteLine("所有引擎都无法加载图片");
             lastUsedAutoEngine = ImageEngine.Auto; // 重置为Auto
@@ -169,7 +182,7 @@ namespace PicViewEx
         private RasterCodecs leadtoolsCodecs;
         private readonly Dictionary<ImageEngine, List<string>> engineSkipExtensions;
         private readonly Dictionary<ImageEngine, List<string>> engineWhitelistExtensions;
-        private bool useWhitelist = true; // 白名单开关，默认不使用
+
 
         public ImageLoader(double backgroundOpacity = 0.3, ImageEngine engine = ImageEngine.Auto)
         {
@@ -178,7 +191,7 @@ namespace PicViewEx
             // 初始化引擎跳过扩展名列表
             engineSkipExtensions = new Dictionary<ImageEngine, List<string>>
             {
-                [ImageEngine.STBImageSharp] = new List<string> {  ".tiff", ".tif", ".pdf",".dds" },
+                //[ImageEngine.STBImageSharp] = new List<string> {  ".tiff", ".tif", ".pdf",".dds" },
                 [ImageEngine.Leadtools] = new List<string> { ".webp" ,".dds"},
                 [ImageEngine.Magick] = new List<string> { ".pdf" }
             };
@@ -315,23 +328,9 @@ namespace PicViewEx
         public ImageEngine GetLastUsedAutoEngine()
         {
             return lastUsedAutoEngine;
-        }
-        
-        /// <summary>
-        /// 设置是否使用白名单
-        /// </summary>
-        public void SetUseWhitelist(bool useWhitelist)
-        {
-            this.useWhitelist = useWhitelist;
-        }
-        
-        /// <summary>
-        /// 获取当前是否使用白名单
-        /// </summary>
-        public bool GetUseWhitelist()
-        {
-            return useWhitelist;
-        }
+        }       
+
+
         
         /// <summary>
         /// 初始化LEADTOOLS
@@ -396,7 +395,7 @@ namespace PicViewEx
 
             try
             {
-                string extension = Path.GetExtension(imagePath).ToLower();
+                string extension = Path.GetExtension(imagePath).ToLowerInvariant();
                 if (extension == ".gif" || extension == ".webp")
                 {
                     // 这两类你原来就是走 Magick 的第一帧
@@ -596,28 +595,39 @@ namespace PicViewEx
             }
         }
 
-        /// <summary>
-        /// 使用ImageMagick加载图片
-        /// </summary>
+        ///// <summary>
+        ///// 使用ImageMagick加载图片
+        ///// </summary>
+        //private BitmapSource LoadImageWithMagick(string imagePath)
+        //{
+        //    try
+        //    {
+        //        using (var magickImage = new MagickImage(imagePath))
+        //        {
+        //            return CreateBitmapFromMagickImage(magickImage);
+        //        }
+        //    }
+        //    catch
+        //    {
+        //        try
+        //        {
+        //            return LoadBitmapImageFromFile(imagePath);
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            throw new InvalidOperationException($"无法加载图片: {imagePath}", ex);
+        //        }
+        //    }
+        //}
+
         private BitmapSource LoadImageWithMagick(string imagePath)
         {
-            try
+            using (var m = new MagickImage(imagePath))
             {
-                using (var magickImage = new MagickImage(imagePath))
-                {
-                    return CreateBitmapFromMagickImage(magickImage);
-                }
-            }
-            catch
-            {
-                try
-                {
-                    return LoadBitmapImageFromFile(imagePath);
-                }
-                catch (Exception ex)
-                {
-                    throw new InvalidOperationException($"无法加载图片: {imagePath}", ex);
-                }
+                // 可选：m.ColorSpace = ColorSpace.sRGB; m.Depth = 8;
+                var src = m.ToBitmapSource();  // 直接得到 BitmapSource
+                src.Freeze();
+                return src;
             }
         }
 

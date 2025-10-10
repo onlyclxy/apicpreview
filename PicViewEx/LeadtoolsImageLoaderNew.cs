@@ -90,20 +90,6 @@ namespace PicViewEx
             return SupportedFormats.Contains(extension);
         }
 
-        /// <summary>
-        /// 检查 LEADTOOLS 是否可用
-        /// </summary>
-        public static bool IsAvailable
-        {
-            get
-            {
-
-                return true;
-
-                return false;
-
-            }
-        }
 
         /// <summary>
         /// 初始化 LEADTOOLS
@@ -160,7 +146,7 @@ namespace PicViewEx
                 }
             }
 
-            return false;
+   
 
         }
 

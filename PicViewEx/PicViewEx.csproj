@@ -138,6 +138,9 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- JSON 序列化（替代 System.Text.Json） -->
+    <PackageReference Include="Magick.NET.SystemWindowsMedia">
+      <Version>8.0.10</Version>
+    </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <!-- 图片格式支持 - 使用兼容 .NET Framework 4.8 的版本 -->
     <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.8.2" />

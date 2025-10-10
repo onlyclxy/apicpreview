@@ -247,7 +247,7 @@ namespace PicViewEx
                 if (statusText != null)
                     UpdateStatusText($"加载中: {Path.GetFileName(imagePath)}");
 
-                string extension = Path.GetExtension(imagePath).ToLower();
+                string extension = Path.GetExtension(imagePath).ToLowerInvariant();
                 
                 // 检查是否是GIF或WebP文件，如果是则使用专用播放器
                 if (extension == ".gif" || extension == ".webp")
