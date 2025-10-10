@@ -268,10 +268,12 @@
                 <GroupBox Header="预设颜色" Margin="5">
                     <StackPanel Orientation="Horizontal">
                         <Button x:Name="btnWhite" Width="30" Height="30" Background="White" Margin="2" Click="PresetColor_Click" Tag="White"/>
-                        <Button x:Name="btnBlack" Width="30" Height="30" Background="Black" Margin="2" Click="PresetColor_Click" Tag="Black"/>
-                        <Button x:Name="btnNeutralGray" Width="30" Height="30" Background="#808080" Margin="2" Click="PresetColor_Click" Tag="#808080"/>
                         <Button x:Name="btnLightGray" Width="30" Height="30" Background="#C0C0C0" Margin="2" Click="PresetColor_Click" Tag="#C0C0C0"/>
+                       
+                        <Button x:Name="btnNeutralGray" Width="30" Height="30" Background="#808080" Margin="2" Click="PresetColor_Click" Tag="#808080"/>
+                        
                         <Button x:Name="btnDarkGray" Width="30" Height="30" Background="#404040" Margin="2" Click="PresetColor_Click" Tag="#404040"/>
+                        <Button x:Name="btnBlack" Width="30" Height="30" Background="Black" Margin="2" Click="PresetColor_Click" Tag="Black"/>
                     </StackPanel>
                 </GroupBox>
 
