@@ -30,11 +30,11 @@ namespace PicViewEx
                 if (appSettings.IsMaximized)
                     this.WindowState = WindowState.Maximized;
 
-                // 恢复显示通道状态
-                if (appSettings.ShowChannels)
-                {
-                    chkShowChannels.IsChecked = true;
-                }
+                //// 恢复显示通道状态
+                //if (appSettings.ShowChannels)
+                //{
+                //    chkShowChannels.IsChecked = true;
+                //}
 
                 // 延迟恢复控件状态，确保所有控件都已初始化
                 this.Dispatcher.BeginInvoke(new Action(() =>
@@ -74,10 +74,18 @@ namespace PicViewEx
                     UpdateOpenWithButtons();
                     UpdateOpenWithMenu();
 
-                    isLoadingSettings = false;
+                    // ✅ 只在这里由“单一真相”属性驱动 UI（内部会调用 SyncChannelUI 抑制事件重入）
+                    ShowChannels = (appSettings?.ShowChannels ?? false);
 
-                    // 同步工具菜单状态 - 确保设置恢复后菜单状态正确
+                    // 如该方法会同步其它菜单项，保留；不要在里面反向写回 ShowChannels
                     SynchronizeToolMenuStates();
+
+
+
+                    isLoadingSettings = false;
+                  
+
+
 
                     if (statusText != null)
                         UpdateStatusText($"设置已加载 - 控件状态: {appSettings.ControlStates.Count} 项");

@@ -86,6 +86,66 @@ namespace PicViewEx
         private readonly Dictionary<string, System.Windows.Controls.Image> _channelImageMap =
             new Dictionary<string, System.Windows.Controls.Image>(StringComparer.OrdinalIgnoreCase);
 
+        private bool _updatingChannelUI = false;
+
+        private bool ShowChannels  // “单一真相”
+        {
+            get => showChannels;
+            set
+            {
+                if (showChannels == value) return;
+                showChannels = value;
+
+                ApplyShowChannelsUI(value);   // 真正改界面
+                SyncChannelUI(value);         // 同步勾选，不触发二次反转
+
+                // 如果你有配置对象，这里就顺手更新
+                if (appSettings != null) appSettings.ShowChannels = value;
+            }
+        }
+
+        private void ApplyShowChannelsUI(bool on)
+        {
+            if (channelPanel != null)
+                channelPanel.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+
+            if (channelSplitter != null)
+                channelSplitter.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+
+            if (channelColumn != null)
+                channelColumn.Width = on ? new GridLength(300) : new GridLength(0);
+
+            // 首次显示或切换时，重新计算一下布局，避免宽度变化导致图片偏移
+            if (mainImage?.Source != null)
+            {
+                // 这里用你已有的方法，二选一
+                CenterImageInContainer(); // 或 FitToWindow();
+            }
+
+
+            // 若需要立即生成/清空通道预览：
+            if (on && !string.IsNullOrEmpty(currentImagePath))
+                LoadImageChannels(currentImagePath);   // ← 去掉 "_ ="
+            else if (!on && channelStackPanel != null)
+                channelStackPanel.Children.Clear();
+
+        }
+
+
+
+        private void SyncChannelUI(bool value)
+        {
+            _updatingChannelUI = true;
+            try
+            {
+                if (menuShowChannels != null) menuShowChannels.IsChecked = value;
+                if (chkShowChannels != null) chkShowChannels.IsChecked = value;
+            }
+            finally
+            {
+                _updatingChannelUI = false;
+            }
+        }
 
 
         public MainWindow()

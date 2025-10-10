@@ -359,68 +359,83 @@ namespace PicViewEx
 		}
 
 
-		private void ChkShowChannels_Checked(object sender, RoutedEventArgs e)
-		{
-			Console.WriteLine("显示通道面板");
-			RecordToolUsage("ShowChannels");
-			if (chkShowChannels != null) chkShowChannels.Content = "关闭通道";
+        //private void ChkShowChannels_Checked(object sender, RoutedEventArgs e)
+        //{
+        //	Console.WriteLine("显示通道面板");
+        //	RecordToolUsage("ShowChannels");
+        //	if (chkShowChannels != null) chkShowChannels.Content = "关闭通道";
 
-			showChannels = true;
-			if (channelPanel != null && channelSplitter != null && channelColumn != null)
-			{
-				channelPanel.Visibility = Visibility.Visible;
-				channelSplitter.Visibility = Visibility.Visible;
+        //	showChannels = true;
+        //	if (channelPanel != null && channelSplitter != null && channelColumn != null)
+        //	{
+        //		channelPanel.Visibility = Visibility.Visible;
+        //		channelSplitter.Visibility = Visibility.Visible;
 
-				// 确保主图列恢复为星号宽度(自动填充)
-				if (mainImageColumn != null)
-				{
-					mainImageColumn.Width = new GridLength(1, GridUnitType.Star);
-				}
+        //		// 确保主图列恢复为星号宽度(自动填充)
+        //		if (mainImageColumn != null)
+        //		{
+        //			mainImageColumn.Width = new GridLength(1, GridUnitType.Star);
+        //		}
 
-				// 设置通道列为300像素宽度
-				channelColumn.Width = new GridLength(300);
-			}
+        //		// 设置通道列为300像素宽度
+        //		channelColumn.Width = new GridLength(300);
+        //	}
 
-			if (!string.IsNullOrEmpty(currentImagePath))
-			{
-				LoadImageChannels(currentImagePath);
-			}
+        //	if (!string.IsNullOrEmpty(currentImagePath))
+        //	{
+        //		LoadImageChannels(currentImagePath);
+        //	}
 
-			// 同步菜单状态
-			if (menuShowChannels != null)
-				menuShowChannels.IsChecked = true;
-		}
+        //	// 同步菜单状态
+        //	if (menuShowChannels != null)
+        //		menuShowChannels.IsChecked = true;
+        //}
 
-		private void ChkShowChannels_Unchecked(object sender, RoutedEventArgs e)
-		{
-			Console.WriteLine("隐藏通道面板");
-			RecordToolUsage("HideChannels");
-			if (chkShowChannels != null) chkShowChannels.Content = "显示通道";
+        // 工具栏 CheckBox
+        private void ChkShowChannels_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_updatingChannelUI) return;
+            ShowChannels = true;
+        }
 
-			showChannels = false;
-			if (channelPanel != null && channelSplitter != null && channelColumn != null && channelStackPanel != null)
-			{
-				channelPanel.Visibility = Visibility.Collapsed;
-				channelSplitter.Visibility = Visibility.Collapsed;
 
-				// 设置通道列宽度为0
-				channelColumn.Width = new GridLength(0);
 
-				// 确保主图列恢复为星号宽度(占据全部空间)
-				if (mainImageColumn != null)
-				{
-					mainImageColumn.Width = new GridLength(1, GridUnitType.Star);
-				}
+  //      private void ChkShowChannels_Unchecked(object sender, RoutedEventArgs e)
+		//{
+		//	Console.WriteLine("隐藏通道面板");
+		//	RecordToolUsage("HideChannels");
+		//	if (chkShowChannels != null) chkShowChannels.Content = "显示通道";
 
-				channelStackPanel.Children.Clear();
-			}
+		//	showChannels = false;
+		//	if (channelPanel != null && channelSplitter != null && channelColumn != null && channelStackPanel != null)
+		//	{
+		//		channelPanel.Visibility = Visibility.Collapsed;
+		//		channelSplitter.Visibility = Visibility.Collapsed;
 
-			// 同步菜单状态
-			if (menuShowChannels != null)
-				menuShowChannels.IsChecked = false;
-		}
+		//		// 设置通道列宽度为0
+		//		channelColumn.Width = new GridLength(0);
 
-		private void BackgroundType_Changed(object sender, RoutedEventArgs e)
+		//		// 确保主图列恢复为星号宽度(占据全部空间)
+		//		if (mainImageColumn != null)
+		//		{
+		//			mainImageColumn.Width = new GridLength(1, GridUnitType.Star);
+		//		}
+
+		//		channelStackPanel.Children.Clear();
+		//	}
+
+		//	// 同步菜单状态
+		//	if (menuShowChannels != null)
+		//		menuShowChannels.IsChecked = false;
+		//}
+
+        private void ChkShowChannels_Unchecked(object sender, RoutedEventArgs e)
+        {
+            if (_updatingChannelUI) return;
+            ShowChannels = false;
+        }
+
+        private void BackgroundType_Changed(object sender, RoutedEventArgs e)
 		{
 			if (sender is RadioButton rb)
 			{

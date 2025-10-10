@@ -68,78 +68,86 @@ namespace PicViewEx
             }
         }
 
+        //private void MenuShowChannels_Click(object sender, RoutedEventArgs e)
+        //{
+        //    if (menuShowChannels == null) return;
+
+        //    // 根据当前显示状态决定操作，而不是菜单的IsChecked状态
+        //    // 因为IsCheckable菜单项的IsChecked会在Click事件触发前自动切换
+        //    bool currentlyShowing = showChannels && channelPanel != null && channelPanel.Visibility == Visibility.Visible;
+        //    bool shouldShow = !currentlyShowing; // 切换状态
+
+        //    // 同步菜单状态
+        //    menuShowChannels.IsChecked = shouldShow;
+
+        //    // 同步到复选框(不会触发事件,因为我们手动执行逻辑)
+        //    if (chkShowChannels != null)
+        //    {
+        //        // 临时移除事件处理器
+        //        chkShowChannels.Checked -= ChkShowChannels_Checked;
+        //        chkShowChannels.Unchecked -= ChkShowChannels_Unchecked;
+
+        //        chkShowChannels.IsChecked = shouldShow;
+
+        //        // 恢复事件处理器
+        //        chkShowChannels.Checked += ChkShowChannels_Checked;
+        //        chkShowChannels.Unchecked += ChkShowChannels_Unchecked;
+        //    }
+
+        //    // 执行显示/隐藏逻辑
+        //    if (shouldShow)
+        //    {
+        //        RecordToolUsage("ShowChannels");
+        //        showChannels = true;
+        //        if (channelPanel != null && channelSplitter != null && channelColumn != null)
+        //        {
+        //            channelPanel.Visibility = Visibility.Visible;
+        //            channelSplitter.Visibility = Visibility.Visible;
+
+        //            // 确保主图列恢复为星号宽度(自动填充)
+        //            if (mainImageColumn != null)
+        //            {
+        //                mainImageColumn.Width = new GridLength(1, GridUnitType.Star);
+        //            }
+
+        //            // 设置通道列为300像素宽度
+        //            channelColumn.Width = new GridLength(300);
+        //        }
+
+        //        if (!string.IsNullOrEmpty(currentImagePath))
+        //        {
+        //            LoadImageChannels(currentImagePath);
+        //        }
+        //    }
+        //    else
+        //    {
+        //        RecordToolUsage("HideChannels");
+        //        showChannels = false;
+        //        if (channelPanel != null && channelSplitter != null && channelColumn != null && channelStackPanel != null)
+        //        {
+        //            channelPanel.Visibility = Visibility.Collapsed;
+        //            channelSplitter.Visibility = Visibility.Collapsed;
+
+        //            // 设置通道列宽度为0
+        //            channelColumn.Width = new GridLength(0);
+
+        //            // 确保主图列恢复为星号宽度(占据全部空间)
+        //            if (mainImageColumn != null)
+        //            {
+        //                mainImageColumn.Width = new GridLength(1, GridUnitType.Star);
+        //            }
+
+        //            channelStackPanel.Children.Clear();
+        //        }
+        //    }
+        //}
+
+
+        // 菜单：用 Click 也行，但要读取它自己的 IsChecked 作为“目标状态”
         private void MenuShowChannels_Click(object sender, RoutedEventArgs e)
         {
-            if (menuShowChannels == null) return;
-
-            // 根据当前显示状态决定操作，而不是菜单的IsChecked状态
-            // 因为IsCheckable菜单项的IsChecked会在Click事件触发前自动切换
-            bool currentlyShowing = showChannels && channelPanel != null && channelPanel.Visibility == Visibility.Visible;
-            bool shouldShow = !currentlyShowing; // 切换状态
-
-            // 同步菜单状态
-            menuShowChannels.IsChecked = shouldShow;
-
-            // 同步到复选框(不会触发事件,因为我们手动执行逻辑)
-            if (chkShowChannels != null)
-            {
-                // 临时移除事件处理器
-                chkShowChannels.Checked -= ChkShowChannels_Checked;
-                chkShowChannels.Unchecked -= ChkShowChannels_Unchecked;
-
-                chkShowChannels.IsChecked = shouldShow;
-
-                // 恢复事件处理器
-                chkShowChannels.Checked += ChkShowChannels_Checked;
-                chkShowChannels.Unchecked += ChkShowChannels_Unchecked;
-            }
-
-            // 执行显示/隐藏逻辑
-            if (shouldShow)
-            {
-                RecordToolUsage("ShowChannels");
-                showChannels = true;
-                if (channelPanel != null && channelSplitter != null && channelColumn != null)
-                {
-                    channelPanel.Visibility = Visibility.Visible;
-                    channelSplitter.Visibility = Visibility.Visible;
-
-                    // 确保主图列恢复为星号宽度(自动填充)
-                    if (mainImageColumn != null)
-                    {
-                        mainImageColumn.Width = new GridLength(1, GridUnitType.Star);
-                    }
-
-                    // 设置通道列为300像素宽度
-                    channelColumn.Width = new GridLength(300);
-                }
-
-                if (!string.IsNullOrEmpty(currentImagePath))
-                {
-                    LoadImageChannels(currentImagePath);
-                }
-            }
-            else
-            {
-                RecordToolUsage("HideChannels");
-                showChannels = false;
-                if (channelPanel != null && channelSplitter != null && channelColumn != null && channelStackPanel != null)
-                {
-                    channelPanel.Visibility = Visibility.Collapsed;
-                    channelSplitter.Visibility = Visibility.Collapsed;
-
-                    // 设置通道列宽度为0
-                    channelColumn.Width = new GridLength(0);
-
-                    // 确保主图列恢复为星号宽度(占据全部空间)
-                    if (mainImageColumn != null)
-                    {
-                        mainImageColumn.Width = new GridLength(1, GridUnitType.Star);
-                    }
-
-                    channelStackPanel.Children.Clear();
-                }
-            }
+            if (_updatingChannelUI) return;
+            ShowChannels = (menuShowChannels?.IsChecked == true);
         }
 
         private void MenuPrevious_Click(object sender, RoutedEventArgs e)

@@ -85,6 +85,8 @@ namespace PicViewEx
         {
             try
             {
+                SyncChannelUI(ShowChannels);
+
                 Console.WriteLine("--- 开始同步工具菜单状态 ---");
 
                 // 同步背景工具栏菜单状态
