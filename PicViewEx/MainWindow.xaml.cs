@@ -1,13 +1,14 @@
 using ImageMagick;
+using PicViewEx.ImageChannels;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using PicViewEx.ImageChannels;
 
 
 
@@ -714,32 +715,133 @@ namespace PicViewEx
 
 
 
-        private void OnChannelCardClicked(string channelName)
+        private async Task OnChannelCardClicked(string channelName)
         {
             if (string.IsNullOrEmpty(currentImagePath)) return;
-            if (statusText != null) UpdateStatusText($"正在生成 {channelName} 全尺寸…");
 
-            System.Threading.Tasks.Task.Run(() =>
-                _channels.GetFullResChannel(currentImagePath, channelName)
-            )
-            .ContinueWith(t =>
+            var oldCursor = this.Cursor;
+            try
             {
-                if (t.Exception != null)
+                this.Cursor = Cursors.Wait;
+                if (statusText != null) UpdateStatusText($"正在生成 {channelName} 全尺寸…");
+
+                // 后台计算全尺寸通道（ChannelService 已经 Freeze 了位图）
+                var full = await Task.Run(() => _channels.GetFullResChannel(currentImagePath, channelName));
+
+                if (full == null || full.Bitmap == null)
                 {
-                    if (statusText != null)
-                        UpdateStatusText($"生成失败：{t.Exception.InnerException?.Message}");
+                    if (statusText != null) UpdateStatusText($"{channelName} 全尺寸生成失败");
                     return;
                 }
 
-                var cb = t.Result;
-                ReplaceChannelCardBitmap(cb.Name, cb.Bitmap); // 你已有的方法
-                if (statusText != null) UpdateStatusText($"{cb.Name} 全尺寸就绪");
-            },
-            System.Threading.Tasks.TaskScheduler.FromCurrentSynchronizationContext());
+                // 仅打开窗口显示全尺寸（不替换卡片缩略图）
+                ShowFullChannelWindow(full.Name, full.Bitmap);
+
+                if (statusText != null) UpdateStatusText($"{full.Name} 全尺寸就绪");
+            }
+            catch (Exception ex)
+            {
+                if (statusText != null) UpdateStatusText($"生成失败：{ex.Message}");
+            }
+            finally
+            {
+                this.Cursor = oldCursor;
+            }
+        }
+
+        private void ShowFullChannelWindow(string channelName, BitmapSource fullBitmap)
+        {
+            var window = new Window
+            {
+                Title = $"通道（全尺寸） - {channelName}",
+                Width = 900,
+                Height = 700,
+                Owner = this,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+
+            var img = new System.Windows.Controls.Image
+            {
+                Source = fullBitmap,
+                Stretch = Stretch.Uniform,
+                SnapsToDevicePixels = true
+            };
+
+            var sv = new ScrollViewer
+            {
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Content = img
+            };
+
+            window.Content = sv;
+            window.Show();
         }
 
 
-        private void CreateChannelControl(string channelName, BitmapSource channelImage)
+
+
+        //private void CreateChannelControl(string channelName, BitmapSource channelImage)
+        //{
+        //    if (channelStackPanel == null) return;
+
+        //    var border = new Border
+        //    {
+        //        BorderBrush = System.Windows.Media.Brushes.Gray,
+        //        BorderThickness = new Thickness(1),
+        //        Margin = new Thickness(5)
+        //    };
+
+        //    var stackPanel = new StackPanel();
+
+        //    var label = new TextBlock
+        //    {
+        //        Text = channelName,
+        //        FontWeight = FontWeights.Bold,
+        //        Margin = new Thickness(5),
+        //        HorizontalAlignment = HorizontalAlignment.Center
+        //    };
+
+        //    var image = new System.Windows.Controls.Image
+        //    {
+        //        Source = channelImage,
+        //        Height = 150,
+        //        Stretch = Stretch.Uniform,
+        //        Margin = new Thickness(5),
+        //        Cursor = Cursors.Hand
+        //    };
+
+        //    // 改为单击事件，而不是双击
+        //    image.MouseLeftButtonDown += (s, e) =>
+        //    {
+        //        var window = new Window
+        //        {
+        //            Title = $"通道详细 - {channelName}",
+        //            Width = 600,
+        //            Height = 500,
+        //            Owner = this,
+        //            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        //        };
+
+        //        var fullImage = new System.Windows.Controls.Image
+        //        {
+        //            Source = channelImage,
+        //            Stretch = Stretch.Uniform
+        //        };
+
+        //        window.Content = fullImage;
+        //        window.Show();
+        //    };
+
+        //    stackPanel.Children.Add(label);
+        //    stackPanel.Children.Add(image);
+        //    border.Child = stackPanel;
+
+        //    channelStackPanel.Children.Add(border);
+        //}
+
+
+        private void CreateChannelControl(string channelName, BitmapSource channelPreview)
         {
             if (channelStackPanel == null) return;
 
@@ -747,7 +849,8 @@ namespace PicViewEx
             {
                 BorderBrush = System.Windows.Media.Brushes.Gray,
                 BorderThickness = new Thickness(1),
-                Margin = new Thickness(5)
+                Margin = new Thickness(5),
+                Tag = channelName
             };
 
             var stackPanel = new StackPanel();
@@ -760,43 +863,30 @@ namespace PicViewEx
                 HorizontalAlignment = HorizontalAlignment.Center
             };
 
-            var image = new System.Windows.Controls.Image
+            // 卡片里永远放预览图
+            var img = new System.Windows.Controls.Image
             {
-                Source = channelImage,
+                Source = channelPreview,
                 Height = 150,
                 Stretch = Stretch.Uniform,
                 Margin = new Thickness(5),
                 Cursor = Cursors.Hand
             };
 
-            // 改为单击事件，而不是双击
-            image.MouseLeftButtonDown += (s, e) =>
+            // 单击仅打开“全尺寸通道”窗口；不替换卡片上的小图
+            img.MouseLeftButtonDown += async (s, e) =>
             {
-                var window = new Window
-                {
-                    Title = $"通道详细 - {channelName}",
-                    Width = 600,
-                    Height = 500,
-                    Owner = this,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
-                };
-
-                var fullImage = new System.Windows.Controls.Image
-                {
-                    Source = channelImage,
-                    Stretch = Stretch.Uniform
-                };
-
-                window.Content = fullImage;
-                window.Show();
+                e.Handled = true;
+                await OnChannelCardClicked(channelName);
             };
 
             stackPanel.Children.Add(label);
-            stackPanel.Children.Add(image);
+            stackPanel.Children.Add(img);
             border.Child = stackPanel;
 
             channelStackPanel.Children.Add(border);
         }
+
 
         #endregion
 
