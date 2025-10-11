@@ -245,8 +245,8 @@ namespace PicViewEx
                 if (File.Exists(settingsPath))
                 {
                     string json = File.ReadAllText(settingsPath);
-                    Console.WriteLine("加载的 JSON 内容:");
-                    Console.WriteLine(json); // 输出加载的原始JSON
+                    //Console.WriteLine("加载的 JSON 内容:");
+                    //Console.WriteLine(json); // 输出加载的原始JSON
 
                     var settings = JsonConvert.DeserializeObject<AppSettings>(json);
 

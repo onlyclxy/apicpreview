@@ -160,7 +160,11 @@ namespace PicViewEx
                 // 根据设置初始化ImageLoader
                 InitializeImageLoader();
 
-            InitializeBackgroundSettings();
+                ImageLoader.InitializeLeadtools();
+
+
+
+                InitializeBackgroundSettings();
             UpdateZoomText();
 
             // 监听窗口大小变化
@@ -184,6 +188,8 @@ namespace PicViewEx
                     "初始化错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 Application.Current.Shutdown();
             }
+            
+
         }
 
         private void InitializeBackgroundSettings()
@@ -331,75 +337,57 @@ namespace PicViewEx
                 BitmapSource bitmap = imageLoader.LoadImage(imagePath);
                 if (bitmap != null && mainImage != null)
                 {
-                    // 清除可能的GIF动画和GIF/WebP播放器
-                    
+                    // 清掉 GIF/WebP 播放器等
                     CleanupGifWebpPlayer();
-                    mainImage.Source = bitmap;
 
-                    // 重置变换和缩放
+                    // —— 不要立刻赋 Source；先把几何全部准备好 —— //
                     currentTransform = Transform.Identity;
                     currentZoom = 1.0;
                     imagePosition = new Point(0, 0);
                     rotationAngle = 0.0;
-                    
-                    // 重置图片显示变换，确保新GIF不继承上一个图片的缩放
-                    if (mainImage != null)
-                    {
-                        mainImage.RenderTransform = Transform.Identity;
-                        mainImage.Stretch = Stretch.Uniform;
-                        mainImage.StretchDirection = StretchDirection.Both;
-                    }
-                    
-                    // 重置FPS计算相关字段
+
+                    // 有效视口
+                    GetEffectiveViewport(out double vw, out double vh);
+
+                    // 决定是否自适应（保留你原来的 80% 逻辑）
+                    bool autoFit = (vw > 0 && vh > 0) &&
+                                   (bitmap.PixelWidth > vw * 0.8 || bitmap.PixelHeight > vh * 0.8);
+
+                    currentZoom = autoFit ? ComputeFitZoom(bitmap, vw, vh) : 1.0;
+
+                    // 先把图元的几何设好（像素尺寸 + 变换 + 位置）
+                    mainImage.Width = bitmap.PixelWidth;
+                    mainImage.Height = bitmap.PixelHeight;
+
+                    // 构造“旋转后缩放”的变换组（首图通常未旋转，旋转中心按像素中心）
+                    var tg = new TransformGroup();
+                    tg.Children.Add(new RotateTransform(0, bitmap.PixelWidth / 2.0, bitmap.PixelHeight / 2.0));
+                    tg.Children.Add(new ScaleTransform(currentZoom, currentZoom));
+                    mainImage.LayoutTransform = Transform.Identity;
+                    mainImage.RenderTransform = tg;
+
+                    // 计算并预先写入 Canvas 位置（居中）
+                    double scaledW = bitmap.PixelWidth * currentZoom;
+                    double scaledH = bitmap.PixelHeight * currentZoom;
+                    double x = Math.Round(vw / 2.0 - scaledW / 2.0);
+                    double y = Math.Round(vh / 2.0 - scaledH / 2.0);
+                    imagePosition = new Point(x, y);
+                    UpdateImagePosition();     // 这里只设置 Canvas.Left/Top，不要再异步
+
+                    // —— 到这一步，几何已就绪 —— //
+                    // 最后一步才让它渲染首帧（已在正确位置/缩放）
+                    mainImage.Source = bitmap;
+
+                    // UI & 信息
                     _frameCount = 0;
-                    _fpsStartTime = DateTime.Now; // 重置旋转角度
-
-                    // 检查图片尺寸是否超过窗口尺寸
-                    if (imageContainer != null)
-                    {
-                        // 计算有效显示区域宽度
-                        double containerWidth = imageContainer.ActualWidth;
-                        double containerHeight = imageContainer.ActualHeight;
-
-                        // 只有当通道面板真正显示时才减去其宽度
-                        double effectiveWidth = containerWidth;
-                        if (showChannels && channelPanel != null && channelPanel.Visibility == Visibility.Visible)
-                        {
-                            effectiveWidth = Math.Max(100, containerWidth - 305); // 确保至少有100像素显示区域
-                        }
-
-                        // 如果图片尺寸超过容器的80%，自动适应窗口
-                        if (bitmap.PixelWidth > effectiveWidth * 0.8 || bitmap.PixelHeight > containerHeight * 0.8)
-                        {
-                            this.Dispatcher.BeginInvoke(new Action(() =>
-                            {
-                                FitToWindow();
-                                PrintImageInfo("图片加载 - 自动适应窗口");
-                                if (statusText != null)
-                                    UpdateStatusText($"已加载并自动适应窗口: {Path.GetFileName(imagePath)}");
-                            }), System.Windows.Threading.DispatcherPriority.Loaded);
-                        }
-                        else
-                        {
-                            // 否则居中显示
-                            this.Dispatcher.BeginInvoke(new Action(() =>
-                            {
-                                CenterImage();
-                                PrintImageInfo("图片加载 - 居中显示");
-                            }), System.Windows.Threading.DispatcherPriority.Loaded);
-                        }
-                    }
-
+                    _fpsStartTime = DateTime.Now;
+                    PrintImageInfo(autoFit ? "图片加载 - 自动适应窗口" : "图片加载 - 居中显示");
                     UpdateImageInfo(bitmap);
-
-                    if (showChannels)
-                    {
-                        LoadImageChannels(imagePath);
-                    }
-
+                    if (showChannels) LoadImageChannels(imagePath);
                     if (statusText != null && !showChannels)
                         UpdateStatusText($"已加载: {Path.GetFileName(imagePath)}");
                 }
+
             }
             catch (Exception ex)
             {
@@ -442,6 +430,9 @@ namespace PicViewEx
                 imageInfoText.Text = $"{bitmap.PixelWidth} × {bitmap.PixelHeight} | {FormatFileSize(new FileInfo(currentImagePath).Length)}";
             }
         }
+
+
+
 
         private string FormatFileSize(long bytes)
         {
@@ -1210,8 +1201,34 @@ namespace PicViewEx
             // 清理GIF/WebP播放器
             CleanupGifWebpPlayer();
 
+            ImageLoader.ShutdownLeadtools();
+
             SaveAppSettings();
         }
+
+        private void GetEffectiveViewport(out double vw, out double vh)
+        {
+            vw = 0; vh = 0;
+            if (imageContainer == null) return;
+
+            var cw = imageContainer.ActualWidth;
+            var ch = imageContainer.ActualHeight;
+            if (cw <= 0 || ch <= 0) return;
+
+            vw = cw;
+            if (showChannels && channelPanel != null && channelPanel.Visibility == Visibility.Visible)
+                vw = Math.Max(100, cw - 305); // 300 + 分隔 5
+            vh = ch;
+        }
+
+        private double ComputeFitZoom(BitmapSource bmp, double vw, double vh)
+        {
+            // 初始旋转角为 0：如需考虑旋转可用你的 GetRotatedImageBounds
+            double rw = bmp.PixelWidth, rh = bmp.PixelHeight;
+            double scale = Math.Min(vw / rw, vh / rh) * 0.95; // 留 5% 边
+            return Math.Max(0.1, scale);
+        }
+
 
     }
 }

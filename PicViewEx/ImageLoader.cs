@@ -1,16 +1,17 @@
 using ImageMagick;
+using Leadtools;
+using Leadtools.Codecs;
+using Leadtools.Pdf;
+using StbImageSharp;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Globalization;
-using Leadtools;
-using Leadtools.Codecs;
-using Leadtools.Pdf;
-using StbImageSharp;
 
 
 namespace PicViewEx
@@ -20,6 +21,9 @@ namespace PicViewEx
     /// </summary>
     public class ImageLoader
     {
+        // ImageLoader 内新增（静态共享）
+        private static readonly object s_leadLock = new object();
+        private static RasterCodecs s_leadCodecs;
 
         private bool HasEffectiveWhitelist(ImageEngine engine, out List<string> wl)
         {
@@ -267,7 +271,13 @@ namespace PicViewEx
             {
                 // 获取当前应用程序的目录
                 string appDir = AppDomain.CurrentDomain.BaseDirectory;
-                
+                string[] dlls = { "Leadtools.dll", "Leadtools.Codecs.dll", "Ltkrnx.dll" };
+                foreach (var dll in dlls)
+                {
+                    LogDllInfo(Path.Combine(appDir, dll));
+                }
+
+
                 // 检查核心LEADTOOLS DLL是否存在
                 string[] requiredDlls = {
                     "Leadtools.dll",
@@ -328,62 +338,212 @@ namespace PicViewEx
         public ImageEngine GetLastUsedAutoEngine()
         {
             return lastUsedAutoEngine;
-        }       
+        }
 
 
-        
+
         /// <summary>
         /// 初始化LEADTOOLS
         /// </summary>
-        private bool InitializeLeadtools()
+        public static bool InitializeLeadtools()
         {
-            try
+            if (s_leadCodecs != null)
             {
-                System.Diagnostics.Debug.WriteLine("Starting LEADTOOLS initialization...");
-                
-                // 检查许可证文件是否存在
-                string keyPath = "full_license.key";
-                string licPath = "full_license.lic";
-                
-                if (File.Exists(keyPath) && File.Exists(licPath))
+                Log("[INIT] LEADTOOLS 已初始化（复用现有实例）。");
+                return true;
+            }
+
+            lock (s_leadLock)
+            {
+                if (s_leadCodecs != null)
                 {
-                    System.Diagnostics.Debug.WriteLine("License files found, loading license...");
+                    Log("[INIT] LEADTOOLS 已初始化（复用现有实例，锁内）。");
+                    return true;
+                }
+
+                // ===== 环境信息 =====
+                string appDir = AppDomain.CurrentDomain.BaseDirectory;
+                Log($"[INIT] 开始初始化 LEADTOOLS");
+                Log($"[ENV ] AppDir = {appDir}");
+                Log($"[ENV ] OS     = {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
+                Log($"[ENV ] Arch   = {System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture}");
+                Log($"[ENV ] .NET   = {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}");
+
+                // ===== 许可证检测与加载 =====
+                string keyPath = System.IO.Path.Combine(appDir, "full_license.key");
+                string licPath = System.IO.Path.Combine(appDir, "full_license.lic");
+                bool keyExists = System.IO.File.Exists(keyPath);
+                bool licExists = System.IO.File.Exists(licPath);
+                Log($"[LIC ] key 存在: {keyExists}  ({keyPath})");
+                Log($"[LIC ] lic 存在: {licExists}  ({licPath})");
+
+                bool licenseLoaded = false;
+                if (keyExists && licExists)
+                {
                     try
                     {
-                        var key = File.ReadAllText(keyPath);
-                        var lic = File.ReadAllBytes(licPath);
-                        RasterSupport.SetLicense(lic, key);
-                        System.Diagnostics.Debug.WriteLine("License loaded successfully");
+                        var key = System.IO.File.ReadAllText(keyPath);
+                        var lic = System.IO.File.ReadAllBytes(licPath);
+                        Leadtools.RasterSupport.SetLicense(lic, key);
+                        licenseLoaded = true;
+                        Log("[LIC ] 许可证加载成功（RasterSupport.SetLicense OK）。");
                     }
-                    catch (Exception licEx)
+                    catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"License loading failed: {licEx.Message}");
-                        // 继续尝试初始化，可能在评估模式下工作
+                        Log($"[LIC ] 许可证加载失败：{ex.Message}");
+                        Log($"[LIC ] 将尝试在评估模式（evaluation）下继续。");
                     }
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine("License files not found, running in evaluation mode");
+                    Log("[LIC ] 未找到完整许可证文件，将在评估模式（evaluation）下运行（若许可允许）。");
                 }
 
-                System.Diagnostics.Debug.WriteLine("Creating RasterCodecs instance...");
-                leadtoolsCodecs = new RasterCodecs();
-                
-                System.Diagnostics.Debug.WriteLine("Setting codec options...");
-                leadtoolsCodecs.Options.Load.AllPages = true;
-                leadtoolsCodecs.Options.RasterizeDocument.Load.XResolution = 300;
-                leadtoolsCodecs.Options.RasterizeDocument.Load.YResolution = 300;
-                
-                System.Diagnostics.Debug.WriteLine("LEADTOOLS initialization completed successfully");
-                return true;
+                // ===== 必需 DLL 检查（存在 + 版本）=====
+                string[] dlls = { "Leadtools.dll", "Leadtools.Codecs.dll", "Ltkrnx.dll" };
+                foreach (var dll in dlls)
+                {
+                    string p = System.IO.Path.Combine(appDir, dll);
+                    if (System.IO.File.Exists(p))
+                    {
+                        string ver;
+                        try
+                        {
+                            var an = System.Reflection.AssemblyName.GetAssemblyName(p);
+                            ver = an?.Version?.ToString() ?? "unknown";
+                        }
+                        catch (Exception vex)
+                        {
+                            ver = $"unknown（GetAssemblyName失败: {vex.Message}）";
+                        }
+                        Log($"[DLL ] 存在: {dll}, 版本: {ver}");
+                    }
+                    else
+                    {
+                        Log($"[DLL ] 缺失: {dll} （路径: {p}）");
+                    }
+                }
+
+                // ===== 创建 RasterCodecs 并设置关键选项 =====
+                try
+                {
+                    var codecs = new Leadtools.Codecs.RasterCodecs();
+                    Log("[CODE] RasterCodecs 实例创建成功。");
+
+                    // 关键选项（按你原有配置打印出来）
+                    codecs.Options.Load.AllPages = true;
+                    codecs.Options.RasterizeDocument.Load.XResolution = 300;
+                    codecs.Options.RasterizeDocument.Load.YResolution = 300;
+
+                    Log($"[CODE] 选项：Load.AllPages = {codecs.Options.Load.AllPages}");
+                    Log($"[CODE] 选项：RasterizeDocument.Load = " +
+                        $"{codecs.Options.RasterizeDocument.Load.XResolution} x " +
+                        $"{codecs.Options.RasterizeDocument.Load.YResolution} dpi");
+
+                    s_leadCodecs = codecs;
+
+                    Log($"[DONE] LEADTOOLS 初始化成功。" +
+                        $" 许可证状态: {(licenseLoaded ? "已加载" : "评估/未加载")}");
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Log($"[FAIL] 创建 RasterCodecs 失败：{ex.Message}");
+                    Log(ex.ToString());
+                    s_leadCodecs = null;
+                    return false;
+                }
+            }
+
+        }
+
+
+        private static void LogDllInfo(string fullPath)
+        {
+            string file = Path.GetFileName(fullPath);
+            if (!File.Exists(fullPath))
+            {
+                Log($"[DLL ] 缺失: {file} （{fullPath}）");
+                return;
+            }
+
+            // 先尝试按“托管程序集”方式获取
+            try
+            {
+                var an = AssemblyName.GetAssemblyName(fullPath);
+                Log($"[DLL ] 托管: {file}  AssemblyVer={an.Version}");
+                return;
+            }
+            catch
+            {
+                // 不是托管程序集 → 当成本机 DLL 处理
+            }
+
+            // 本机 DLL：用 FileVersionInfo + 读取 PE 头看架构
+            try
+            {
+                var vi = FileVersionInfo.GetVersionInfo(fullPath);
+                string arch = ReadPeMachine(fullPath); // x86/x64/ARM64/…
+                string fv = string.IsNullOrWhiteSpace(vi.FileVersion) ? "unknown" : vi.FileVersion;
+                string pv = string.IsNullOrWhiteSpace(vi.ProductVersion) ? "unknown" : vi.ProductVersion;
+                Log($"[DLL ] 本机: {file}  FileVer={fv}  ProductVer={pv}  Arch={arch}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"LEADTOOLS initialization failed: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                return false;
+                Log($"[DLL ] 本机: {file}  读取版本失败：{ex.Message}");
             }
         }
+
+        private static string ReadPeMachine(string path)
+        {
+            using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            using (var br = new BinaryReader(fs))
+            {
+                // DOS header: e_lfanew at 0x3C → PE header偏移
+                fs.Seek(0x3C, SeekOrigin.Begin);
+                int peOffset = br.ReadInt32();
+                fs.Seek(peOffset, SeekOrigin.Begin);
+
+                uint sig = br.ReadUInt32(); // "PE\0\0" = 0x00004550
+                if (sig != 0x00004550)
+                    return "unknown-PE";
+
+                ushort machine = br.ReadUInt16();
+                // 常见 Machine 值
+                switch (machine)
+                {
+                    case 0x014c: return "x86";
+                    case 0x8664: return "x64";
+                    case 0xAA64: return "ARM64";
+                    case 0x0200: return "IA64";
+                    default: return $"0x{machine:X4}";
+                }
+            }
+        }
+
+        private static void Log(string msg)
+        {
+            //var line = $"[{DateTime.Now:HH:mm:ss.fff}] {msg}";
+            var line = $"{msg}";
+            Console.WriteLine(line);
+            Debug.WriteLine(line);
+        }
+
+
+        public static void ShutdownLeadtools()
+        {
+            lock (s_leadLock)
+            {
+                s_leadCodecs?.Dispose();
+                s_leadCodecs = null;
+            }
+        }
+
+        // 给实例用的访问器（把原来的实例字段 leadtoolsCodecs 替换成这个）
+        private static RasterCodecs LeadCodecsOrNull => s_leadCodecs;
+
+
+
 
         /// <summary>
         /// 加载常规图片资源，根据当前引擎选择加载方式。
@@ -451,40 +611,24 @@ namespace PicViewEx
 
 
 
-        private BitmapSource LoadImageWithLeadtools(string imagePath)
+        public BitmapSource LoadImageWithLeadtools(string imagePath)
         {
             try
             {
-                if (leadtoolsCodecs == null)
-                {
-                    Console.WriteLine("LEADTOOLS codecs not initialized, attempting to initialize...");
-                    if (!InitializeLeadtools())
-                    {
-                        throw new Exception("LEADTOOLS initialization failed");
-                    }
-                    // 初始化成功与否都走这里：
-                    var task = LeadtoolsImageLoaderNew.LoadImageAsync(imagePath);
-                    return task.GetAwaiter().GetResult();
+                if (!InitializeLeadtools())
+                    throw new Exception("LEADTOOLS initialization failed");
 
-                }
-                else
-                {
-                    // LeadtoolsImageLoader 只有异步版本，所以我们需要同步调用
-                    Console.WriteLine("LEADTOOLS codecs return task");
-                    var task = LeadtoolsImageLoaderNew.LoadImageAsync(imagePath);
-                    return task.GetAwaiter().GetResult();
-
-                }
-
-
-
+                // 你自己的异步加载
+                var task = LeadtoolsImageLoaderNew.LoadImageAsync(imagePath);
+                return task.GetAwaiter().GetResult();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"LEADTOOLS failed to load {imagePath}: {ex.Message}");
-                throw; // 抛出异常而不是回退到Magick，让自动模式处理
+                throw;
             }
         }
+
 
 
 
@@ -638,6 +782,8 @@ namespace PicViewEx
         /// </summary>
         private BitmapSource ConvertRasterImageToBitmapImage(RasterImage rasterImage)
         {
+
+            var codecs = LeadCodecsOrNull ?? throw new InvalidOperationException("LEADTOOLS 未初始化");
             try
             {
                 using (var ms = new MemoryStream())
