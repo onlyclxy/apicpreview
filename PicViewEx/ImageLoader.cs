@@ -112,6 +112,60 @@ namespace PicViewEx
             return CreateErrorImage("图片加载错误");
         }
 
+
+
+        private static bool PsdHasAlphaQuick(string path)
+        {
+            // 只读 PSD 头 26 字节
+            const int HeaderLen = 26;
+            byte[] hdr = new byte[HeaderLen];
+            using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            {
+                if (fs.Length < HeaderLen) return false;
+                fs.Read(hdr, 0, HeaderLen);
+            }
+
+            // "8BPS"
+            if (!(hdr[0] == 0x38 && hdr[1] == 0x42 && hdr[2] == 0x50 && hdr[3] == 0x53))
+                return false;
+
+            int channels = (hdr[12] << 8) | hdr[13];
+            int colorMode = (hdr[24] << 8) | hdr[25];
+
+            // 按色彩空间估算基础通道数（不含 Alpha/专色）
+            int baseCh;
+            switch (colorMode)
+            {
+                case 0: // Bitmap
+                case 1: // Gray
+                case 2: // Indexed
+                case 8: // Duotone
+                    baseCh = 1;
+                    break;
+
+                case 3: // RGB
+                case 9: // Lab
+                    baseCh = 3;
+                    break;
+
+                case 4: // CMYK
+                    baseCh = 4;
+                    break;
+
+                case 7: // Multichannel（保守按 3 计算）
+                    baseCh = 3;
+                    break;
+
+                default:
+                    baseCh = 3;
+                    break;
+            }
+
+            // PSD 的 channels 包括 Alpha/专色。常见透明：RGB(3)+A(1)=4
+            return channels > baseCh;
+        }
+
+
         /// <summary>
         /// 创建错误提示图片
         /// </summary>
@@ -261,6 +315,8 @@ namespace PicViewEx
                 InitializeLeadtools();
             }
         }
+
+
 
         /// <summary>
         /// 检查LEADTOOLS DLL是否存在
@@ -435,6 +491,10 @@ namespace PicViewEx
                     codecs.Options.RasterizeDocument.Load.XResolution = 300;
                     codecs.Options.RasterizeDocument.Load.YResolution = 300;
 
+                    // 🟢 关键三行：               
+                    codecs.Options.Load.AutoDetectAlpha = true;
+                    codecs.Options.Load.PremultiplyAlpha = true;
+
                     Log($"[CODE] 选项：Load.AllPages = {codecs.Options.Load.AllPages}");
                     Log($"[CODE] 选项：RasterizeDocument.Load = " +
                         $"{codecs.Options.RasterizeDocument.Load.XResolution} x " +
@@ -543,6 +603,45 @@ namespace PicViewEx
         private static RasterCodecs LeadCodecsOrNull => s_leadCodecs;
 
 
+        private static BitmapSource EnsurePbgra32(BitmapSource src)
+        {
+            if (src == null) return null;
+
+            // 先把奇怪的格式转成 BGRA，再转成 PBGRA（这一步会真正做"乘以alpha"）
+            if (src.Format != PixelFormats.Bgra32 && src.Format != PixelFormats.Pbgra32)
+            {
+                src = new FormatConvertedBitmap(src, PixelFormats.Bgra32, null, 0);
+            }
+            if (src.Format != PixelFormats.Pbgra32)
+            {
+                src = new FormatConvertedBitmap(src, PixelFormats.Pbgra32, null, 0);
+            }
+
+            if (src.CanFreeze) src.Freeze();
+            return src;
+        }
+
+        private static BitmapSource ForceMaterializePbgra32(BitmapSource src)
+        {
+            if (src == null) return null;
+
+            // 先通过 WIC 转成 Pbgra32（仍可能是惰性的）
+            var conv = src.Format == PixelFormats.Pbgra32
+                ? src
+                : new FormatConvertedBitmap(src, PixelFormats.Pbgra32, null, 0);
+
+            // 真正分配一块 Pbgra32 的像素缓冲区并拷贝进来
+            int w = conv.PixelWidth, h = conv.PixelHeight;
+            var wb = new WriteableBitmap(w, h, 96, 96, PixelFormats.Pbgra32, null);
+            int stride = w * 4;
+            var buf = new byte[stride * h];
+            conv.CopyPixels(buf, stride, 0);
+            wb.WritePixels(new Int32Rect(0, 0, w, h), buf, stride, 0);
+            wb.Freeze();
+            return wb;
+        }
+
+
 
 
         /// <summary>
@@ -611,6 +710,24 @@ namespace PicViewEx
 
 
 
+        //public BitmapSource LoadImageWithLeadtools(string imagePath)
+        //{
+        //    try
+        //    {
+        //        if (!InitializeLeadtools())
+        //            throw new Exception("LEADTOOLS initialization failed");
+
+        //        // 你自己的异步加载
+        //        var task = LeadtoolsImageLoaderNew.LoadImageAsync(imagePath);
+        //        return task.GetAwaiter().GetResult();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.WriteLine($"LEADTOOLS failed to load {imagePath}: {ex.Message}");
+        //        throw;
+        //    }
+        //}
+
         public BitmapSource LoadImageWithLeadtools(string imagePath)
         {
             try
@@ -618,9 +735,43 @@ namespace PicViewEx
                 if (!InitializeLeadtools())
                     throw new Exception("LEADTOOLS initialization failed");
 
-                // 你自己的异步加载
-                var task = LeadtoolsImageLoaderNew.LoadImageAsync(imagePath);
-                return task.GetAwaiter().GetResult();
+
+                //这一块用于psd乘以alpha的处理. 但是大文件比如1.56G的psd可能会慢个400ms左右
+                var ext = Path.GetExtension(imagePath).ToLowerInvariant();
+                BitmapSource bmp;
+
+                if (ext == ".psd")
+                {
+                    // 1) 只读头，极速判断
+                    bool likelyHasAlpha = PsdHasAlphaQuick(imagePath);
+
+                    // 2) 用你控制的 RasterCodecs 读取（确保 Options.Load.PremultiplyAlpha = true）
+                    using (var img = s_leadCodecs.Load(imagePath))
+                    {
+                        bmp = ConvertRasterImageToBitmapImage(img);
+                    }
+
+                    // 3) 只有“可能有 Alpha”才做预乘收口；否则直接返回
+                    if (likelyHasAlpha)
+                    {
+                        bmp = EnsurePbgra32(bmp);          // 轻量：FormatConvertedBitmap 到 Pbgra32
+                        if (LooksLikeStraightAlpha(bmp))   // 仍像直通道 → 兜底手工预乘（仅少数 PSD 会触发）
+                            bmp = ForcePremultiply(bmp);
+                    }
+                    // 没有 Alpha 的 PSD（很少见）就不做任何转换，保持极速
+                    return bmp;
+                }
+
+
+
+
+                // 你已有的异步加载，返回 BitmapSource 或者先得到 RasterImage 再转 BitmapSource
+                var task = LeadtoolsImageLoaderNew.LoadImageAsync(imagePath).GetAwaiter().GetResult();
+
+
+                // 关键：统一转为 Pbgra32（预乘）
+                return ForceMaterializePbgra32(task);
+
             }
             catch (Exception ex)
             {
@@ -630,7 +781,63 @@ namespace PicViewEx
         }
 
 
+        private static bool LooksLikeStraightAlpha(BitmapSource src, int step = 16)
+        {
+            var tmp = src.Format == PixelFormats.Bgra32 ? src
+                     : new FormatConvertedBitmap(src, PixelFormats.Bgra32, null, 0);
 
+            int stride = (tmp.PixelWidth * 32 + 7) / 8;
+            var buf = new byte[stride * tmp.PixelHeight];
+            tmp.CopyPixels(buf, stride, 0);
+
+            for (int y = 0; y < tmp.PixelHeight; y += step)
+            {
+                int row = y * stride;
+                for (int x = 0; x < tmp.PixelWidth; x += step)
+                {
+                    int i = row + x * 4;
+                    byte b = buf[i + 0], g = buf[i + 1], r = buf[i + 2], a = buf[i + 3];
+                    if (a < 255)
+                    {
+                        // 预乘数据应满足  r,g,b <= a（线性空间近似，允许一点容差）
+                        if (r > a + 1 || g > a + 1 || b > a + 1)
+                            return true; // 很可能是“未预乘”的直通道
+                    }
+                }
+            }
+            return false;
+        }
+
+        private static BitmapSource ForcePremultiply(BitmapSource src)
+        {
+            // 先转 BGRA32，逐像素做 r=g=b=channel * a / 255
+            var baseBgra = src.Format == PixelFormats.Bgra32
+                ? src
+                : new FormatConvertedBitmap(src, PixelFormats.Bgra32, null, 0);
+
+            int w = baseBgra.PixelWidth, h = baseBgra.PixelHeight;
+            int stride = (w * 32 + 7) / 8;
+            var buf = new byte[stride * h];
+            baseBgra.CopyPixels(buf, stride, 0);
+
+            for (int i = 0; i < buf.Length; i += 4)
+            {
+                byte a = buf[i + 3];
+                if (a != 255)
+                {
+                    buf[i + 0] = (byte)((buf[i + 0] * a + 127) / 255); // B
+                    buf[i + 1] = (byte)((buf[i + 1] * a + 127) / 255); // G
+                    buf[i + 2] = (byte)((buf[i + 2] * a + 127) / 255); // R
+                }
+            }
+
+            var wb = new WriteableBitmap(w, h, 96, 96, PixelFormats.Pbgra32, null);
+            wb.Lock();
+            wb.WritePixels(new Int32Rect(0, 0, w, h), buf, stride, 0);
+            wb.Unlock();
+            wb.Freeze();
+            return wb;
+        }
 
 
         /// <summary>

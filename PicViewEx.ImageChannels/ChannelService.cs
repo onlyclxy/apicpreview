@@ -396,9 +396,9 @@ namespace PicViewEx.ImageChannels
 
             // layout == RGB：按 B/G/R（BGRA 顺序索引 0/1/2）提取
             // 名字按 R/G/B 排序输出（符合常见 UI 习惯）
-            var red = MakeGrayFromSelector("Red", o => pixelData[o + 2]);
-            var green = MakeGrayFromSelector("Green", o => pixelData[o + 1]);
-            var blue = MakeGrayFromSelector("Blue", o => pixelData[o + 0]);
+            var red = MakeGrayFromSelector("红通道", o => pixelData[o + 2]);
+            var green = MakeGrayFromSelector("绿通道", o => pixelData[o + 1]);
+            var blue = MakeGrayFromSelector("蓝通道", o => pixelData[o + 0]);
 
             result.Add(red);
             result.Add(green);
@@ -406,7 +406,7 @@ namespace PicViewEx.ImageChannels
 
             if (includeAlpha)
             {
-                var alpha = MakeGrayFromSelector("Alpha", o => pixelData[o + 3]);
+                var alpha = MakeGrayFromSelector("透明通道", o => pixelData[o + 3]);
                 result.Add(alpha);
             }
 
