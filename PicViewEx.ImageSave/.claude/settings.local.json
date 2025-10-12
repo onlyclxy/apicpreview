@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Recurse -File)",
+      "Bash(Select-Object FullName, Name)",
+      "Bash(Format-Table)",
+      "Bash(if exist \"Class1.cs\" del \"Class1.cs\")",
+      "Bash(nuget restore:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
