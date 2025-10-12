@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 
@@ -15,6 +16,8 @@ namespace PicViewEx.ImageSave
         private readonly DdsPresetManager _presetManager;
         private string _selectedFormat = "";
         private string _selectedPresetPath = null;
+        private double _rotationAngle = 0;
+        private BitmapSource _currentSource;
 
         public string SavedFilePath { get; private set; }
 
@@ -23,9 +26,13 @@ namespace PicViewEx.ImageSave
             InitializeComponent();
 
             _source = source;
+            _currentSource = source;
             _originalFilePath = originalFilePath;
             _nvidiaTools = nvidiaTools;
             _presetManager = new DdsPresetManager();
+
+            // 设置预览图片
+            PreviewImage.Source = _currentSource;
 
             // 设置JPG质量滑块和文本框的双向绑定
             JpgQualitySlider.ValueChanged += JpgQualitySlider_ValueChanged;
@@ -206,21 +213,69 @@ namespace PicViewEx.ImageSave
             {
                 if (RbDdsCustom.IsChecked == true)
                 {
-                    // 使用NVIDIA UI
+                    // 使用NVIDIA UI - 不等待，不提示成功
                     string tempPng = _nvidiaTools.CreateTempPngForDds(_source);
                     if (!string.IsNullOrEmpty(tempPng))
                     {
-                        _nvidiaTools.ExportWithUI(tempPng);
-                        MessageBox.Show("已启动 NVIDIA Texture Tools 界面，请在其中完成DDS保存。",
-                            "信息", MessageBoxButton.OK, MessageBoxImage.Information);
-                        DialogResult = true;
-                        Close();
+                        bool launched = _nvidiaTools.ExportWithUI(tempPng);
+                        if (launched)
+                        {
+                            // UI模式：只通知已启动，不等待完成
+                            MessageBox.Show("已启动 NVIDIA Texture Tools 界面。\n\n请在界面中完成DDS保存操作。",
+                                "信息", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                            // 关闭另存为窗口，但不算"成功"（因为用户还没保存）
+                            DialogResult = false;
+                            Close();
+                        }
+                        else
+                        {
+                            MessageBox.Show("启动 NVIDIA Texture Tools 失败！",
+                                "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("创建临时PNG文件失败！",
+                            "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
                 else
                 {
-                    MessageBox.Show("请选择一个预设文件。", "提示",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    if (RbDdsCustom.IsChecked == true)
+                    {
+                        // 使用NVIDIA UI - 不等待，不提示成功，使用旋转后的图像
+                        string tempPng = _nvidiaTools.CreateTempPngForDds(_currentSource);
+                        if (!string.IsNullOrEmpty(tempPng))
+                        {
+                            bool launched = _nvidiaTools.ExportWithUI(tempPng);
+                            if (launched)
+                            {
+                                // UI模式：只通知已启动，不等待完成
+                                MessageBox.Show("已启动 NVIDIA Texture Tools 界面。\n\n请在界面中完成DDS保存操作。",
+                                    "信息", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                                // 关闭另存为窗口，但不算"成功"（因为用户还没保存）
+                                DialogResult = false;
+                                Close();
+                            }
+                            else
+                            {
+                                MessageBox.Show("启动 NVIDIA Texture Tools 失败！",
+                                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                            }
+                        }
+                        else
+                        {
+                            MessageBox.Show("创建临时PNG文件失败！",
+                                "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("请选择一个预设文件。", "提示",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
                 }
             }
         }
@@ -310,7 +365,8 @@ namespace PicViewEx.ImageSave
             try
             {
                 var saver = new ImageSaver();
-                return saver.SaveTo(_source, path, options);
+                // 使用旋转后的图像源
+                return saver.SaveTo(_currentSource, path, options);
             }
             catch (Exception ex)
             {
@@ -327,7 +383,8 @@ namespace PicViewEx.ImageSave
         {
             try
             {
-                string tempPng = _nvidiaTools.CreateTempPngForDds(_source);
+                // 使用旋转后的图像源
+                string tempPng = _nvidiaTools.CreateTempPngForDds(_currentSource);
                 if (string.IsNullOrEmpty(tempPng))
                 {
                     return new SaveResult
@@ -384,6 +441,75 @@ namespace PicViewEx.ImageSave
                     JpgQualitySlider.Value = value;
                 }
             }
+        }
+
+        private void BtnRotateLeft_Click(object sender, RoutedEventArgs e)
+        {
+            _rotationAngle -= 90;
+            if (_rotationAngle <= -360)
+                _rotationAngle += 360;
+
+            ApplyRotation();
+        }
+
+        private void BtnRotateRight_Click(object sender, RoutedEventArgs e)
+        {
+            _rotationAngle += 90;
+            if (_rotationAngle >= 360)
+                _rotationAngle -= 360;
+
+            ApplyRotation();
+        }
+
+        private void ApplyRotation()
+        {
+            // 更新旋转变换
+            ImageRotateTransform.Angle = _rotationAngle;
+
+            // 更新角度显示
+            RotationAngleText.Text = $"当前角度: {_rotationAngle}°";
+
+            // 应用旋转到实际图像数据
+            _currentSource = RotateBitmap(_source, _rotationAngle);
+
+            // 更新预览
+            PreviewImage.Source = _source;
+        }
+
+        private BitmapSource RotateBitmap(BitmapSource source, double angle)
+        {
+            if (angle == 0)
+                return source;
+
+            // 只支持90度的倍数旋转
+            int normalizedAngle = ((int)angle % 360 + 360) % 360;
+
+            if (normalizedAngle == 0)
+                return source;
+
+            // 创建旋转变换
+            TransformedBitmap transformedBitmap = new TransformedBitmap();
+            transformedBitmap.BeginInit();
+            transformedBitmap.Source = source;
+
+            // 根据角度选择旋转
+            switch (normalizedAngle)
+            {
+                case 90:
+                    transformedBitmap.Transform = new RotateTransform(90);
+                    break;
+                case 180:
+                    transformedBitmap.Transform = new RotateTransform(180);
+                    break;
+                case 270:
+                    transformedBitmap.Transform = new RotateTransform(270);
+                    break;
+            }
+
+            transformedBitmap.EndInit();
+            transformedBitmap.Freeze();
+
+            return transformedBitmap;
         }
     }
 }

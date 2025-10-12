@@ -64,6 +64,7 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
+    <Compile Include="DdsCommandBuilder.cs" />
     <Compile Include="DdsPresetManager.cs" />
     <Compile Include="IImageSaver.cs" />
     <Compile Include="ImageSaver.cs" />

@@ -5,7 +5,12 @@
       "Bash(Select-Object FullName, Name)",
       "Bash(Format-Table)",
       "Bash(if exist \"Class1.cs\" del \"Class1.cs\")",
-      "Bash(nuget restore:*)"
+      "Bash(nuget restore:*)",
+      "Bash(msbuild:*)",
+      "Bash(where msbuild)",
+      "Bash(\"F:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" PicViewEx.ImageSave.csproj /p:Configuration=Debug /v:minimal)",
+      "Bash(\"F:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" PicViewEx.ImageSave.csproj /p:Configuration=Debug /verbosity:minimal)",
+      "Bash(\"F:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" \"D:\\OneDrive - whq116\\C#\\x52\\apicpreview\\PicViewEx.ImageSave\\PicViewEx.ImageSave.csproj\")"
     ],
     "deny": [],
     "ask": []

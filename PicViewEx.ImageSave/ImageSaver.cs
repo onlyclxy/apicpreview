@@ -258,21 +258,6 @@ namespace PicViewEx.ImageSave
                     };
                 }
 
-                // 如果是直接保存且有原始DDS文件，获取原始参数
-                if (originalFilePath != null && File.Exists(originalFilePath) &&
-                    Path.GetExtension(originalFilePath).ToLower() == ".dds")
-                {
-                    var ddsInfo = _nvidiaTools.GetDdsInfo(originalFilePath);
-                    if (ddsInfo != null && options == null)
-                    {
-                        options = new DdsSaveOptions
-                        {
-                            CompressionFormat = ddsInfo.CompressionFormat,
-                            GenerateMipmaps = ddsInfo.HasMipmaps
-                        };
-                    }
-                }
-
                 // 创建临时PNG文件
                 string tempPngPath = _nvidiaTools.CreateTempPngForDds(source);
                 if (string.IsNullOrEmpty(tempPngPath))
@@ -288,25 +273,68 @@ namespace PicViewEx.ImageSave
                 {
                     bool success = false;
 
-                    // 如果指定了预设文件
+                    // 情况1: 如果指定了预设文件（另存为时使用）
                     if (options?.PresetPath != null && File.Exists(options.PresetPath))
                     {
                         success = _nvidiaTools.ExportWithPreset(tempPngPath, options.PresetPath, targetPath);
-                    }
-                    // 如果要使用NVIDIA UI
-                    else if (options?.UseNvidiaUI == true)
-                    {
-                        success = _nvidiaTools.ExportWithUI(tempPngPath);
-                        // UI模式下用户自己选择保存路径，无法确定是否成功
+
                         return new SaveResult
                         {
-                            Success = true,
-                            Message = "已启动NVIDIA Texture Tools UI"
+                            Success = success,
+                            Message = success ? "DDS保存成功" : "DDS保存失败",
+                            SavedPath = success ? targetPath : null
                         };
                     }
-                    else
+
+                    // 情况2: 直接保存，从原始DDS文件获取参数
+                    if (originalFilePath != null && File.Exists(originalFilePath) &&
+                        Path.GetExtension(originalFilePath).ToLower() == ".dds")
                     {
-                        // 尝试使用默认参数或启动UI
+                        var ddsInfo = _nvidiaTools.GetDdsInfo(originalFilePath);
+
+                        if (ddsInfo != null)
+                        {
+                            // 使用DdsCommandBuilder构建命令行参数
+                            string commandArgs = DdsCommandBuilder.BuildArgumentsFromInfo(ddsInfo, tempPngPath, targetPath);
+
+                            if (!string.IsNullOrEmpty(commandArgs))
+                            {
+                                success = _nvidiaTools.ExportWithCommandArgs(commandArgs);
+
+                                return new SaveResult
+                                {
+                                    Success = success,
+                                    Message = success ? "DDS保存成功" : "DDS保存失败",
+                                    SavedPath = success ? targetPath : null
+                                };
+                            }
+                        }
+
+                        // 如果无法获取DDS信息，回退到UI模式
+                        System.Diagnostics.Debug.WriteLine("无法获取原始DDS信息，启动UI模式");
+                    }
+
+                    // 情况3: 如果有DDS选项但没有预设
+                    if (options != null && !string.IsNullOrEmpty(options.CompressionFormat))
+                    {
+                        string commandArgs = DdsCommandBuilder.BuildArgumentsFromOptions(options, tempPngPath, targetPath);
+
+                        if (!string.IsNullOrEmpty(commandArgs))
+                        {
+                            success = _nvidiaTools.ExportWithCommandArgs(commandArgs);
+
+                            return new SaveResult
+                            {
+                                Success = success,
+                                Message = success ? "DDS保存成功" : "DDS保存失败",
+                                SavedPath = success ? targetPath : null
+                            };
+                        }
+                    }
+
+                    // 情况4: 使用NVIDIA UI（回退选项）
+                    if (options?.UseNvidiaUI == true)
+                    {
                         success = _nvidiaTools.ExportWithUI(tempPngPath);
                         return new SaveResult
                         {
@@ -315,11 +343,11 @@ namespace PicViewEx.ImageSave
                         };
                     }
 
+                    // 默认：如果无法确定参数，返回失败
                     return new SaveResult
                     {
-                        Success = success,
-                        Message = success ? "DDS保存成功" : "DDS保存失败",
-                        SavedPath = success ? targetPath : null
+                        Success = false,
+                        Message = "无法确定DDS保存参数"
                     };
                 }
                 finally
