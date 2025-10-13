@@ -38,9 +38,42 @@ namespace PicViewEx.ImageSave
             JpgQualitySlider.ValueChanged += JpgQualitySlider_ValueChanged;
             JpgQualityTextBox.TextChanged += JpgQualityTextBox_TextChanged;
 
-            // 设置DDS模式切换
-            RbDdsPreset.Checked += (s, e) => PresetListPanel.Visibility = Visibility.Visible;
-            RbDdsCustom.Checked += (s, e) => PresetListPanel.Visibility = Visibility.Collapsed;
+            // 添加窗口级别的鼠标点击事件来处理高级设置面板的收起
+            this.PreviewMouseLeftButtonDown += Window_PreviewMouseLeftButtonDown;
+        }
+
+        // 窗口级别的鼠标点击事件,用于关闭高级设置面板
+        private void Window_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (OptionsPanel.Visibility == Visibility.Visible)
+            {
+                // 检查点击位置是否在OptionsPanel内部
+                var position = e.GetPosition(OptionsPanel);
+                if (position.X < 0 || position.Y < 0 ||
+                    position.X > OptionsPanel.ActualWidth ||
+                    position.Y > OptionsPanel.ActualHeight)
+                {
+                    // 点击在OptionsPanel外部,关闭面板
+                    OptionsPanel.Visibility = Visibility.Collapsed;
+                }
+            }
+        }
+
+        // 主Grid点击事件(保留作为后备)
+        private void Grid_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            // 这个方法现在作为后备,主要逻辑在Window_PreviewMouseLeftButtonDown中
+        }
+
+        // 移除这两个不再需要的方法
+        private void WrapPanel_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            // 不再需要阻止事件冒泡
+        }
+
+        private void OptionsPanel_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            // 不再需要阻止事件冒泡
         }
 
         private void BtnPng_Click(object sender, RoutedEventArgs e)
@@ -95,18 +128,72 @@ namespace PicViewEx.ImageSave
             LoadDdsPresets();
         }
 
+        // DDS自定义按钮点击事件
+        private void BtnDdsCustom_Click(object sender, RoutedEventArgs e)
+        {
+            // 检查图像尺寸是否为2的幂次方
+            if (!IsPowerOfTwo(_currentSource.PixelWidth) || !IsPowerOfTwo(_currentSource.PixelHeight))
+            {
+                string message = $"警告:当前图像尺寸为 {_currentSource.PixelWidth} x {_currentSource.PixelHeight}\n\n" +
+                               "DDS格式建议使用2的幂次方尺寸(如256x256, 512x512, 1024x1024等)。\n\n" +
+                               "非2的幂次方尺寸的DDS图像可能会:\n" +
+                               "• 在某些游戏引擎中无法正确显示\n" +
+                               "• 无法生成完整的mipmap链\n" +
+                               "• 在某些硬件上加载失败\n\n" +
+                               "建议先将图像缩放到2的幂次方尺寸后再保存为DDS格式。\n\n" +
+                               "是否仍要继续?";
+
+                var result = MessageBox.Show(message, "DDS尺寸警告",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+
+                if (result != MessageBoxResult.Yes)
+                {
+                    return;
+                }
+            }
+
+            // 使用NVIDIA UI - 不等待,不提示成功,使用旋转后的图像
+            string tempPng = _nvidiaTools.CreateTempPngForDds(_currentSource);
+            if (!string.IsNullOrEmpty(tempPng))
+            {
+                bool launched = _nvidiaTools.ExportWithUI(tempPng);
+                if (launched)
+                {
+                    // UI模式:只通知已启动,不等待完成
+                    MessageBox.Show("已启动 NVIDIA Texture Tools 界面。\n\n请在界面中完成DDS保存操作。",
+                        "信息", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    // 关闭另存为窗口,但不算"成功"(因为用户还没保存)
+                    DialogResult = false;
+                    Close();
+                }
+                else
+                {
+                    MessageBox.Show("启动 NVIDIA Texture Tools 失败！",
+                        "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            else
+            {
+                MessageBox.Show("创建临时PNG文件失败！",
+                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private void LoadDdsPresets()
         {
-            // 加载历史预设
+            // 加载历史预设(最多3个)
             var historyPresets = _presetManager.GetHistoryPresets();
             if (historyPresets.Count > 0)
             {
                 HistoryHeader.Visibility = Visibility.Visible;
                 HistoryPresetsList.Items.Clear();
 
-                foreach (var preset in historyPresets)
+                // 最多显示3个常用预设
+                int count = Math.Min(historyPresets.Count, 3);
+                for (int i = 0; i < count; i++)
                 {
-                    var button = CreatePresetButton(preset, true);
+                    var button = CreatePresetButton(historyPresets[i], true);
                     HistoryPresetsList.Items.Add(button);
                 }
             }
@@ -148,39 +235,39 @@ namespace PicViewEx.ImageSave
                 Tag = preset.FilePath
             };
 
-            var stackPanel = new StackPanel();
+            // 使用Grid来水平排列内容,确保在一行内显示
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
+            // 文件名
             var nameText = new TextBlock
             {
                 Text = preset.FileName,
-                FontSize = 14,
-                FontWeight = FontWeights.Bold
+                FontSize = 12,
+                FontWeight = FontWeights.Normal,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                VerticalAlignment = VerticalAlignment.Center
             };
+            Grid.SetColumn(nameText, 0);
 
-            var dateText = new TextBlock
-            {
-                Text = $"修改时间: {preset.LastModified:yyyy-MM-dd HH:mm}",
-                FontSize = 11,
-                Foreground = System.Windows.Media.Brushes.Gray,
-                Margin = new Thickness(0, 2, 0, 0)
-            };
-
-            stackPanel.Children.Add(nameText);
-            stackPanel.Children.Add(dateText);
-
+            // 常用标签(如果是历史记录)
             if (isHistory)
             {
                 var historyTag = new TextBlock
                 {
-                    Text = "常用",
+                    Text = "[常用]",
                     FontSize = 10,
                     Foreground = System.Windows.Media.Brushes.LightGreen,
-                    Margin = new Thickness(0, 2, 0, 0)
+                    Margin = new Thickness(5, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Center
                 };
-                stackPanel.Children.Add(historyTag);
+                Grid.SetColumn(historyTag, 1);
+                grid.Children.Add(historyTag);
             }
 
-            button.Content = stackPanel;
+            grid.Children.Add(nameText);
+            button.Content = grid;
             button.Click += PresetButton_Click;
 
             return button;
@@ -208,75 +295,6 @@ namespace PicViewEx.ImageSave
             if (_selectedFormat == "JPG")
             {
                 ShowSaveDialog("JPEG图像 (*.jpg)|*.jpg|所有文件 (*.*)|*.*");
-            }
-            else if (_selectedFormat == "DDS")
-            {
-                if (RbDdsCustom.IsChecked == true)
-                {
-                    // 使用NVIDIA UI - 不等待，不提示成功
-                    string tempPng = _nvidiaTools.CreateTempPngForDds(_source);
-                    if (!string.IsNullOrEmpty(tempPng))
-                    {
-                        bool launched = _nvidiaTools.ExportWithUI(tempPng);
-                        if (launched)
-                        {
-                            // UI模式：只通知已启动，不等待完成
-                            MessageBox.Show("已启动 NVIDIA Texture Tools 界面。\n\n请在界面中完成DDS保存操作。",
-                                "信息", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                            // 关闭另存为窗口，但不算"成功"（因为用户还没保存）
-                            DialogResult = false;
-                            Close();
-                        }
-                        else
-                        {
-                            MessageBox.Show("启动 NVIDIA Texture Tools 失败！",
-                                "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                        }
-                    }
-                    else
-                    {
-                        MessageBox.Show("创建临时PNG文件失败！",
-                            "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
-                }
-                else
-                {
-                    if (RbDdsCustom.IsChecked == true)
-                    {
-                        // 使用NVIDIA UI - 不等待，不提示成功，使用旋转后的图像
-                        string tempPng = _nvidiaTools.CreateTempPngForDds(_currentSource);
-                        if (!string.IsNullOrEmpty(tempPng))
-                        {
-                            bool launched = _nvidiaTools.ExportWithUI(tempPng);
-                            if (launched)
-                            {
-                                // UI模式：只通知已启动，不等待完成
-                                MessageBox.Show("已启动 NVIDIA Texture Tools 界面。\n\n请在界面中完成DDS保存操作。",
-                                    "信息", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                                // 关闭另存为窗口，但不算"成功"（因为用户还没保存）
-                                DialogResult = false;
-                                Close();
-                            }
-                            else
-                            {
-                                MessageBox.Show("启动 NVIDIA Texture Tools 失败！",
-                                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                            }
-                        }
-                        else
-                        {
-                            MessageBox.Show("创建临时PNG文件失败！",
-                                "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                        }
-                    }
-                    else
-                    {
-                        MessageBox.Show("请选择一个预设文件。", "提示",
-                            MessageBoxButton.OK, MessageBoxImage.Information);
-                    }
-                }
             }
         }
 
@@ -383,6 +401,31 @@ namespace PicViewEx.ImageSave
         {
             try
             {
+                // 检查图像尺寸是否为2的幂次方
+                if (!IsPowerOfTwo(_currentSource.PixelWidth) || !IsPowerOfTwo(_currentSource.PixelHeight))
+                {
+                    string message = $"警告:当前图像尺寸为 {_currentSource.PixelWidth} x {_currentSource.PixelHeight}\n\n" +
+                                   "DDS格式建议使用2的幂次方尺寸(如256x256, 512x512, 1024x1024等)。\n\n" +
+                                   "非2的幂次方尺寸的DDS图像可能会:\n" +
+                                   "• 在某些游戏引擎中无法正确显示\n" +
+                                   "• 无法生成完整的mipmap链\n" +
+                                   "• 在某些硬件上加载失败\n\n" +
+                                   "建议先将图像缩放到2的幂次方尺寸后再保存为DDS格式。\n\n" +
+                                   "是否仍要继续保存?";
+
+                    var result = MessageBox.Show(message, "DDS尺寸警告",
+                        MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+
+                    if (result != MessageBoxResult.Yes)
+                    {
+                        return new SaveResult
+                        {
+                            Success = false,
+                            Message = "用户取消保存"
+                        };
+                    }
+                }
+
                 // 使用旋转后的图像源
                 string tempPng = _nvidiaTools.CreateTempPngForDds(_currentSource);
                 if (string.IsNullOrEmpty(tempPng))
@@ -422,6 +465,12 @@ namespace PicViewEx.ImageSave
                     ErrorDetails = ex.Message
                 };
             }
+        }
+
+        // 检查一个数是否为2的幂次方
+        private bool IsPowerOfTwo(int n)
+        {
+            return n > 0 && (n & (n - 1)) == 0;
         }
 
         private void JpgQualitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

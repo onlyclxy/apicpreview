@@ -27,14 +27,14 @@
         </Style>
 
         <Style x:Key="PresetButtonStyle" TargetType="Button">
-            <Setter Property="Height" Value="35"/>
+            <Setter Property="Height" Value="30"/>
             <Setter Property="Margin" Value="5,2"/>
             <Setter Property="Background" Value="#FF3E3E42"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderBrush" Value="#FF555555"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Padding" Value="8,5"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
@@ -44,7 +44,7 @@
         </Style>
     </Window.Resources>
 
-    <Grid Margin="20">
+    <Grid Margin="20" MouseLeftButtonDown="Grid_MouseLeftButtonDown">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -148,40 +148,50 @@
 
                 <!-- DDS预设设置 -->
                 <StackPanel x:Name="DdsPresetPanel" Visibility="Collapsed">
+                    <!-- 自定义按钮 -->
+                    <Button x:Name="BtnDdsCustom" Content="自定义参数保存（NVIDIA UI）"
+                            Height="35" Padding="15,5" Margin="0,0,0,10"
+                            Background="#FF3E3E42" Foreground="White"
+                            BorderBrush="#FF555555" BorderThickness="1" Cursor="Hand"
+                            HorizontalAlignment="Stretch"
+                            Click="BtnDdsCustom_Click">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="#FF3E3E42"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#FF007ACC"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <!-- 双列布局 -->
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <RadioButton x:Name="RbDdsPreset" Grid.Column="0" Content="使用预设"
-                                     Foreground="White" FontSize="14" IsChecked="True"
-                                     GroupName="DdsMode" Margin="0,0,0,10"/>
-                        <RadioButton x:Name="RbDdsCustom" Grid.Column="1" Content="自定义（NVIDIA UI）"
-                                     Foreground="White" FontSize="14"
-                                     GroupName="DdsMode" Margin="20,0,0,10"/>
+                        <!-- 左列:常用预设 -->
+                        <StackPanel Grid.Column="0" Margin="0,0,5,0">
+                            <TextBlock x:Name="HistoryHeader" Text="常用预设" Foreground="#FF00D1B2"
+                                       FontSize="12" Margin="0,0,0,5" Visibility="Collapsed"/>
+                            <ItemsControl x:Name="HistoryPresetsList"/>
+                        </StackPanel>
+
+                        <!-- 右列:全部预设(带滚动) -->
+                        <StackPanel Grid.Column="1" Margin="5,0,0,0">
+                            <TextBlock Text="全部预设" Foreground="#FF00D1B2"
+                                       FontSize="12" Margin="0,0,0,5"/>
+                            <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto"
+                                         HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl x:Name="AllPresetsList"/>
+                            </ScrollViewer>
+                        </StackPanel>
                     </Grid>
-
-                    <!-- 预设列表 -->
-                    <StackPanel x:Name="PresetListPanel">
-                        <!-- 历史预设 -->
-                        <TextBlock x:Name="HistoryHeader" Text="最近使用" Foreground="#FF00D1B2"
-                                   FontSize="12" Margin="0,5,0,5" Visibility="Collapsed"/>
-                        <ItemsControl x:Name="HistoryPresetsList" Margin="0,0,0,10"/>
-
-                        <!-- 所有预设 -->
-                        <TextBlock Text="所有预设（按修改时间排序）" Foreground="#FF00D1B2"
-                                   FontSize="12" Margin="0,5,0,5"/>
-                        <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto">
-                            <ItemsControl x:Name="AllPresetsList"/>
-                        </ScrollViewer>
-                    </StackPanel>
                 </StackPanel>
-
-                <Button x:Name="BtnSave" Content="保存" Width="100" Height="35"
-                        Margin="0,15,0,0" HorizontalAlignment="Right"
-                        Background="#FF007ACC" Foreground="White" FontSize="14"
-                        Click="BtnSave_Click"/>
             </StackPanel>
         </Border>
     </Grid>

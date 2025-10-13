@@ -11,7 +11,10 @@
       "Bash(\"F:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" PicViewEx.ImageSave.csproj /p:Configuration=Debug /v:minimal)",
       "Bash(\"F:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" PicViewEx.ImageSave.csproj /p:Configuration=Debug /verbosity:minimal)",
       "Bash(\"F:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" \"D:\\OneDrive - whq116\\C#\\x52\\apicpreview\\PicViewEx.ImageSave\\PicViewEx.ImageSave.csproj\")",
-      "Bash(\"F:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" \"D:\\OneDrive - whq116\\C#\\x52\\apicpreview\\PicViewEx.ImageSave\\PicViewEx.ImageSave.csproj\" /t:Clean)"
+      "Bash(\"F:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" \"D:\\OneDrive - whq116\\C#\\x52\\apicpreview\\PicViewEx.ImageSave\\PicViewEx.ImageSave.csproj\" /t:Clean)",
+      "Bash(\"F:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" \"D:\\OneDrive - whq116\\C#\\x52\\apicpreview\\PicViewEx.ImageSave\\PicViewEx.ImageSave.csproj\" /p:Configuration=Debug /verbosity:minimal)",
+      "Bash(\"F:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" \"D:\\OneDrive - whq116\\C#\\x52\\apicpreview\\PicViewEx.ImageSave\\PicViewEx.ImageSave.csproj\" /p:Configuration=Debug)",
+      "Bash(\"F:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" PicViewEx.ImageSave.csproj)"
     ],
     "deny": [],
     "ask": []
