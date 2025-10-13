@@ -35,16 +35,90 @@
         <!-- 图片显示区域 -->
         <Border Grid.Row="1" Background="#FF1E1E1E" Margin="15,15,15,5">
             <Grid>
-                <TextBlock Text="请打开一张图片进行测试" FontSize="20"
-                           Foreground="#FF555555" HorizontalAlignment="Center"
-                           VerticalAlignment="Center" x:Name="TxtPlaceholder"/>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-                <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Auto"
-                              x:Name="ImageScrollViewer"
-                              Visibility="Collapsed">
-                    <Image x:Name="DisplayImage" Stretch="None"/>
-                </ScrollViewer>
+                <!-- 左侧：图片显示 -->
+                <Grid Grid.Column="0">
+                    <TextBlock Text="请打开一张图片进行测试" FontSize="20"
+                               Foreground="#FF555555" HorizontalAlignment="Center"
+                               VerticalAlignment="Center" x:Name="TxtPlaceholder"/>
+
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto"
+                                  x:Name="ImageScrollViewer"
+                                  Visibility="Collapsed">
+                        <Image x:Name="DisplayImage" Stretch="None" RenderTransformOrigin="0.5,0.5">
+                            <Image.RenderTransform>
+                                <RotateTransform x:Name="ImageRotateTransform"/>
+                            </Image.RenderTransform>
+                        </Image>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- 右侧：旋转控制 -->
+                <Border Grid.Column="1" Background="#FF252526" BorderBrush="#FF3E3E42"
+                        BorderThickness="1,0,0,0" Padding="15" Width="150"
+                        x:Name="RotationPanel" Visibility="Collapsed">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="图片旋转" Foreground="White" FontSize="14"
+                                   Margin="0,0,0,15" FontWeight="Bold" HorizontalAlignment="Center"/>
+
+                        <Button x:Name="BtnRotateLeft" Content="↺ 左旋90°" Height="40"
+                                Margin="0,5" Background="#FF3E3E42" Foreground="White"
+                                BorderBrush="#FF555555" BorderThickness="1" Cursor="Hand"
+                                Click="BtnRotateLeft_Click" FontSize="13">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#FF3E3E42"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#FF007ACC"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Button x:Name="BtnRotateRight" Content="↻ 右旋90°" Height="40"
+                                Margin="0,5" Background="#FF3E3E42" Foreground="White"
+                                BorderBrush="#FF555555" BorderThickness="1" Cursor="Hand"
+                                Click="BtnRotateRight_Click" FontSize="13">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#FF3E3E42"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#FF007ACC"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Button x:Name="BtnResetRotation" Content="⟲ 重置" Height="35"
+                                Margin="0,5" Background="#FF3E3E42" Foreground="White"
+                                BorderBrush="#FF555555" BorderThickness="1" Cursor="Hand"
+                                Click="BtnResetRotation_Click" FontSize="12">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#FF3E3E42"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#FFDC3545"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <TextBlock x:Name="RotationAngleText" Text="当前角度: 0°"
+                                   Foreground="#FFAAAAAA" FontSize="12" Margin="0,15,0,0"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
             </Grid>
         </Border>
 

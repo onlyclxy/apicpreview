@@ -68,9 +68,9 @@
                 <!-- 图片预览 -->
                 <Border Grid.Column="0" Width="200" Height="150" Background="#FF1E1E1E"
                         BorderBrush="#FF555555" BorderThickness="1" Margin="0,0,15,0">
-                    <Image x:Name="PreviewImage" Stretch="Uniform">
+                    <Image x:Name="PreviewImage" Stretch="Uniform" RenderTransformOrigin="0.5,0.5">
                         <Image.RenderTransform>
-                            <RotateTransform x:Name="ImageRotateTransform" CenterX="100" CenterY="75"/>
+                            <RotateTransform x:Name="ImageRotateTransform"/>
                         </Image.RenderTransform>
                     </Image>
                 </Border>

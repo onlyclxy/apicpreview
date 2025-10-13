@@ -1,7 +1,10 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
+
+using System.Text;
 
 namespace PicViewEx.ImageSave
 {
@@ -286,68 +289,116 @@ namespace PicViewEx.ImageSave
         /// </summary>
         /// <param name="commandArgs">完整的命令行参数</param>
         /// <returns>是否导出成功</returns>
-        public bool ExportWithCommandArgs(string commandArgs)
+
+
+public bool ExportWithCommandArgs(string commandArgs)
+    {
+        if (!IsAvailable || string.IsNullOrEmpty(commandArgs))
+            return false;
+
+        // 完成判定（兼容 .NET Framework）
+        bool IsDone(string s)
+            => !string.IsNullOrEmpty(s)
+               && (s.IndexOf("Total processing time", StringComparison.OrdinalIgnoreCase) >= 0
+                   || Regex.IsMatch(s, @"\bDone\.?\b", RegexOptions.IgnoreCase));
+
+        try
         {
-            if (!IsAvailable || string.IsNullOrEmpty(commandArgs))
-                return false;
+            string display = $"\"{_nvttExportPath}\" {commandArgs}";
+            Console.WriteLine("=== 即将执行命令 ===");
+            Console.WriteLine(display);
+            Console.WriteLine("===================");
 
-            try
+            var psi = new ProcessStartInfo
             {
-                // 给文件系统一点时间确保文件完全可访问
-                System.Threading.Thread.Sleep(100);
+                FileName = _nvttExportPath,           // 注意：这里不要加引号
+                Arguments = commandArgs,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                RedirectStandardInput = true,
+                CreateNoWindow = true,
+                // 如有中文控制台输出需要正确编码，可按需开启：
+                // StandardOutputEncoding = Encoding.GetEncoding(936),
+                // StandardErrorEncoding  = Encoding.GetEncoding(936),
+                WorkingDirectory = System.IO.Path.GetDirectoryName(_nvttExportPath) ?? Environment.CurrentDirectory
+            };
 
-                ProcessStartInfo psi = new ProcessStartInfo
+            var sbOut = new StringBuilder();
+            var sbErr = new StringBuilder();
+            var completionSent = false;
+
+            using (var p = new Process { StartInfo = psi, EnableRaisingEvents = true })
+            {
+                p.OutputDataReceived += (s, e) =>
                 {
-                    FileName = _nvttExportPath,
-                    Arguments = commandArgs,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
+                    if (e.Data == null) return;
+                    Console.WriteLine(e.Data);
+                    sbOut.AppendLine(e.Data);
+
+                    // 一旦检测到完成信号，立刻发送“回车”让程序自然退出
+                    if (!completionSent && IsDone(e.Data))
+                    {
+                        try { p.StandardInput.WriteLine(); } catch { /* stdin 可能已关闭 */ }
+                        completionSent = true;
+                    }
                 };
 
-                using (Process process = Process.Start(psi))
+                p.ErrorDataReceived += (s, e) =>
                 {
-                    string output = process.StandardOutput.ReadToEnd();
-                    string error = process.StandardError.ReadToEnd();
+                    if (e.Data == null) return;
+                    Console.WriteLine(e.Data);
+                    sbErr.AppendLine(e.Data);
 
-                    process.WaitForExit(30000); // 30秒超时
-
-                    // 检查输出中是否包含 "Total processing time"，这表示转换完成
-                    bool hasCompletionMessage = output.Contains("Total processing time");
-
-                    if (!string.IsNullOrEmpty(error))
+                    if (!completionSent && IsDone(e.Data))
                     {
-                        System.Diagnostics.Debug.WriteLine($"NVIDIA导出错误: {error}");
+                        try { p.StandardInput.WriteLine(); } catch { }
+                        completionSent = true;
                     }
+                };
 
-                    // 必须满足：退出码为0 AND 包含完成消息
-                    if (process.ExitCode == 0 && hasCompletionMessage)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"DDS导出成功");
-                        System.Diagnostics.Debug.WriteLine($"NVIDIA输出: {output}");
-                        return true;
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"NVIDIA导出失败，退出码: {process.ExitCode}");
-                        System.Diagnostics.Debug.WriteLine($"包含完成消息: {hasCompletionMessage}");
-                        System.Diagnostics.Debug.WriteLine($"输出: {output}");
-                    }
+                p.Start();
+                p.BeginOutputReadLine();
+                p.BeginErrorReadLine();
+
+                // 等待进程退出（可设置超时；不额外延迟、也不循环发回车）
+                p.WaitForExit();
+
+                // 这里输出完整日志
+                var output = sbOut.ToString();
+                var error = sbErr.ToString();
+
+                bool hasCompletionMessage = IsDone(output) || IsDone(error);
+
+                if (!string.IsNullOrEmpty(error))
+                    Console.WriteLine("[STDERR]\n" + error);
+
+                if (p.ExitCode == 0 && hasCompletionMessage)
+                {
+                    Console.WriteLine("DDS导出成功");
+                    return true;
+                }
+                else
+                {
+                    Console.WriteLine($"NVIDIA导出失败，退出码: {p.ExitCode}");
+                    Console.WriteLine($"包含完成消息: {hasCompletionMessage}");
+                    return false;
                 }
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"使用命令行参数导出DDS失败: {ex.Message}");
-            }
-
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"使用命令行参数导出DDS失败: {ex.Message}");
             return false;
         }
+    }
 
-        /// <summary>
-        /// 创建临时PNG文件（用于不支持的格式转换）
-        /// </summary>
-        public string CreateTempPngForDds(System.Windows.Media.Imaging.BitmapSource source)
+
+
+    /// <summary>
+    /// 创建临时PNG文件（用于不支持的格式转换）
+    /// </summary>
+    public string CreateTempPngForDds(System.Windows.Media.Imaging.BitmapSource source)
         {
             string tempPath = null;
             try

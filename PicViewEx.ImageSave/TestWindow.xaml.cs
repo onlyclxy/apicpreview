@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ImageMagick;
 using Microsoft.Win32;
@@ -10,8 +11,10 @@ namespace PicViewEx.ImageSave
     public partial class TestWindow : Window
     {
         private BitmapSource _currentImage;
+        private BitmapSource _originalImage; // 保存原始图像
         private string _currentFilePath;
         private readonly IImageSaver _imageSaver;
+        private double _rotationAngle = 0;
 
         public TestWindow()
         {
@@ -69,8 +72,15 @@ namespace PicViewEx.ImageSave
 
                     // 显示图片
                     DisplayImage.Source = _currentImage;
+                    _originalImage = _currentImage; // 保存原始图像
                     ImageScrollViewer.Visibility = Visibility.Visible;
                     TxtPlaceholder.Visibility = Visibility.Collapsed;
+                    RotationPanel.Visibility = Visibility.Visible; // 显示旋转控制面板
+
+                    // 重置旋转
+                    _rotationAngle = 0;
+                    ImageRotateTransform.Angle = 0;
+                    RotationAngleText.Text = "当前角度: 0°";
 
                     // 保存文件路径
                     _currentFilePath = filePath;
@@ -242,6 +252,81 @@ namespace PicViewEx.ImageSave
             }
 
             return $"{size:0.##} {sizes[order]}";
+        }
+
+        private void BtnRotateLeft_Click(object sender, RoutedEventArgs e)
+        {
+            _rotationAngle -= 90;
+            if (_rotationAngle <= -360)
+                _rotationAngle += 360;
+
+            ApplyRotation();
+            Log($"左旋90°，当前角度: {_rotationAngle}°");
+        }
+
+        private void BtnRotateRight_Click(object sender, RoutedEventArgs e)
+        {
+            _rotationAngle += 90;
+            if (_rotationAngle >= 360)
+                _rotationAngle -= 360;
+
+            ApplyRotation();
+            Log($"右旋90°，当前角度: {_rotationAngle}°");
+        }
+
+        private void BtnResetRotation_Click(object sender, RoutedEventArgs e)
+        {
+            _rotationAngle = 0;
+            ApplyRotation();
+            Log("旋转已重置");
+        }
+
+        private void ApplyRotation()
+        {
+            // 更新旋转变换（仅用于显示）
+            ImageRotateTransform.Angle = _rotationAngle;
+
+            // 更新角度显示
+            RotationAngleText.Text = $"当前角度: {_rotationAngle}°";
+
+            // 应用旋转到实际图像数据
+            _currentImage = RotateBitmap(_originalImage, _rotationAngle);
+        }
+
+        private BitmapSource RotateBitmap(BitmapSource source, double angle)
+        {
+            if (angle == 0)
+                return source;
+
+            // 只支持90度的倍数旋转
+            int normalizedAngle = ((int)angle % 360 + 360) % 360;
+
+            if (normalizedAngle == 0)
+                return source;
+
+            // 创建旋转变换
+            TransformedBitmap transformedBitmap = new TransformedBitmap();
+            transformedBitmap.BeginInit();
+            transformedBitmap.Source = source;
+
+            // 根据角度选择旋转
+            switch (normalizedAngle)
+            {
+                case 90:
+                    transformedBitmap.Transform = new RotateTransform(90);
+                    break;
+                case 180:
+                    transformedBitmap.Transform = new RotateTransform(180);
+                    break;
+                case 270:
+                    transformedBitmap.Transform = new RotateTransform(270);
+                    break;
+            }
+
+            transformedBitmap.EndInit();
+            transformedBitmap.Freeze();
+
+            return transformedBitmap;
         }
     }
 }
