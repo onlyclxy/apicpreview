@@ -156,22 +156,29 @@ namespace PicViewEx.ImageSave
             // 检查图像尺寸是否为2的幂次方
             if (!IsPowerOfTwo(_currentSource.PixelWidth) || !IsPowerOfTwo(_currentSource.PixelHeight))
             {
-                string message = $"警告:当前图像尺寸为 {_currentSource.PixelWidth} x {_currentSource.PixelHeight}\n\n" +
-                               "DDS格式建议使用2的幂次方尺寸(如256x256, 512x512, 1024x1024等)。\n\n" +
-                               "非2的幂次方尺寸的DDS图像可能会:\n" +
-                               "• 在某些游戏引擎中无法正确显示\n" +
-                               "• 无法生成完整的mipmap链\n" +
-                               "• 在某些硬件上加载失败\n\n" +
-                               "建议先将图像缩放到2的幂次方尺寸后再保存为DDS格式。\n\n" +
-                               "是否仍要继续?";
-
-                var result = MessageBox.Show(message, "DDS尺寸警告",
-                    MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-
-                if (result != MessageBoxResult.Yes)
+                var warningWindow = new DdsResizeWarningWindow(
+                    _currentSource,
+                    _currentSource.PixelWidth,
+                    _currentSource.PixelHeight)
                 {
+                    Owner = this
+                };
+
+                bool? result = warningWindow.ShowDialog();
+                
+                if (result != true)
+                {
+                    // 用户点击了取消，直接返回，不弹出错误对话框
                     return;
                 }
+
+                // 用户选择了缩放
+                if (warningWindow.ShouldResize && warningWindow.ResizedImage != null)
+                {
+                    _currentSource = warningWindow.ResizedImage;
+                    PreviewImage.Source = _currentSource;
+                }
+                // 如果用户选择"直接继续"，则继续使用原始尺寸
             }
 
             // 使用NVIDIA UI - 不等待,不提示成功,使用旋转后的图像
@@ -441,11 +448,13 @@ namespace PicViewEx.ImageSave
                         DialogResult = true;
                         Close();
                     }
-                    else
+                    else if (!result.IsCancelled)
                     {
+                        // 只有在非取消的情况下才显示错误对话框
                         MessageBox.Show($"保存失败！\n\n{result.Message}\n{result.ErrorDetails}",
                             "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
+                    // 如果是取消操作（IsCancelled=true），则静默处理，不显示错误对话框
                 }
             }
         }
@@ -476,26 +485,34 @@ namespace PicViewEx.ImageSave
                 // 检查图像尺寸是否为2的幂次方
                 if (!IsPowerOfTwo(_currentSource.PixelWidth) || !IsPowerOfTwo(_currentSource.PixelHeight))
                 {
-                    string message = $"警告:当前图像尺寸为 {_currentSource.PixelWidth} x {_currentSource.PixelHeight}\n\n" +
-                                   "DDS格式建议使用2的幂次方尺寸(如256x256, 512x512, 1024x1024等)。\n\n" +
-                                   "非2的幂次方尺寸的DDS图像可能会:\n" +
-                                   "• 在某些游戏引擎中无法正确显示\n" +
-                                   "• 无法生成完整的mipmap链\n" +
-                                   "• 在某些硬件上加载失败\n\n" +
-                                   "建议先将图像缩放到2的幂次方尺寸后再保存为DDS格式。\n\n" +
-                                   "是否仍要继续保存?";
-
-                    var result = MessageBox.Show(message, "DDS尺寸警告",
-                        MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-
-                    if (result != MessageBoxResult.Yes)
+                    var warningWindow = new DdsResizeWarningWindow(
+                        _currentSource,
+                        _currentSource.PixelWidth,
+                        _currentSource.PixelHeight)
                     {
+                        Owner = this
+                    };
+
+                    bool? result = warningWindow.ShowDialog();
+                    
+                    if (result != true)
+                    {
+                        // 用户点击了取消，返回取消状态，但不显示为错误
                         return new SaveResult
                         {
                             Success = false,
-                            Message = "用户取消保存"
+                            Message = "用户取消保存",
+                            IsCancelled = true  // 标记为取消而非错误
                         };
                     }
+
+                    // 用户选择了缩放
+                    if (warningWindow.ShouldResize && warningWindow.ResizedImage != null)
+                    {
+                        _currentSource = warningWindow.ResizedImage;
+                        PreviewImage.Source = _currentSource;
+                    }
+                    // 如果用户选择"直接继续"，则继续使用原始尺寸
                 }
 
                 // 使用旋转后的图像源

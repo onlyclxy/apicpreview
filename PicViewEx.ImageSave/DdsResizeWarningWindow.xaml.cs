@@ -1,0 +1,342 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media.Imaging;
+
+namespace PicViewEx.ImageSave
+{
+    /// <summary>
+    /// DDS尺寸警告窗口，提供缩放到2的幂次方的功能
+    /// </summary>
+    public partial class DdsResizeWarningWindow : Window
+    {
+        private int _currentWidth;
+        private int _currentHeight;
+        private BitmapSource _sourceImage;
+
+        public bool ShouldResize { get; private set; }
+        public bool ContinueAnyway { get; private set; }
+        public int TargetWidth { get; private set; }
+        public int TargetHeight { get; private set; }
+        public BitmapSource ResizedImage { get; private set; }
+
+        // 游戏行业常用的正方形纹理尺寸（推荐用）
+        private static readonly int[] GameTextureSizes = { 16, 32, 64, 128, 256, 512, 1024, 2048 };
+
+        // 所有可用的分辨率（包括非正方形，最大4096）
+        private static readonly List<(int width, int height, string description)> AllResolutions = new List<(int, int, string)>
+        {
+            // 正方形分辨率
+            (16, 16, "16 × 16 (极小)"),
+            (32, 32, "32 × 32 (极小)"),
+            (64, 64, "64 × 64 (小)"),
+            (128, 128, "128 × 128 (小)"),
+            (256, 256, "256 × 256 (中)"),
+            (512, 512, "512 × 512 (中)"),
+            (1024, 1024, "1024 × 1024 (大)"),
+            (2048, 2048, "2048 × 2048 (很大)"),
+            (4096, 4096, "4096 × 4096 (超大)"),
+            
+            // 常用非正方形分辨率
+            (256, 128, "256 × 128 (宽)"),
+            (512, 256, "512 × 256 (宽)"),
+            (1024, 512, "1024 × 512 (宽)"),
+            (2048, 1024, "2048 × 1024 (宽)"),
+            (4096, 2048, "4096 × 2048 (宽)"),
+            
+            (128, 256, "128 × 256 (高)"),
+            (256, 512, "256 × 512 (高)"),
+            (512, 1024, "512 × 1024 (高)"),
+            (1024, 2048, "1024 × 2048 (高)"),
+            (2048, 4096, "2048 × 4096 (高)"),
+            
+            (512, 128, "512 × 128 (超宽)"),
+            (1024, 256, "1024 × 256 (超宽)"),
+            (2048, 512, "2048 × 512 (超宽)"),
+            (4096, 1024, "4096 × 1024 (超宽)"),
+            
+            (128, 512, "128 × 512 (超高)"),
+            (256, 1024, "256 × 1024 (超高)"),
+            (512, 2048, "512 × 2048 (超高)"),
+            (1024, 4096, "1024 × 4096 (超高)")
+        };
+
+        public DdsResizeWarningWindow(BitmapSource source, int currentWidth, int currentHeight)
+        {
+            InitializeComponent();
+
+            _sourceImage = source;
+            _currentWidth = currentWidth;
+            _currentHeight = currentHeight;
+
+            ShouldResize = false;
+            ContinueAnyway = false;
+
+            InitializeUI();
+        }
+
+        private void InitializeUI()
+        {
+            // 显示当前尺寸
+            TxtCurrentSize.Text = $"当前图像尺寸：{_currentWidth} × {_currentHeight}";
+
+            // 计算推荐的分辨率
+            var recommended = CalculateRecommendedResolution(_currentWidth, _currentHeight);
+
+            // 显示推荐提示
+            TxtRecommendedHint.Text = $"推荐分辨率：{recommended.width} × {recommended.height}（基于游戏行业标准）";
+
+            // 构建分辨率列表：推荐的在最上方，然后是其他选项
+            BuildResolutionList(recommended);
+
+            // 默认选中推荐项
+            if (ResolutionListBox.Items.Count > 0)
+            {
+                ResolutionListBox.SelectedIndex = 0;
+            }
+        }
+
+        /// <summary>
+        /// 计算推荐的分辨率
+        /// 规则：
+        /// 1. 基于游戏行业标准尺寸（正方形）
+        /// 2. 找最长边，然后找最接近的2的幂次方
+        /// 3. 一般放大不缩小，除非超过2048
+        /// 4. 最大推荐2048×2048
+        /// </summary>
+        private (int width, int height) CalculateRecommendedResolution(int width, int height)
+        {
+            int maxDimension = Math.Max(width, height);
+
+            // 如果超过2048，推荐2048×2048
+            if (maxDimension > 2048)
+            {
+                return (2048, 2048);
+            }
+
+            // 找到最接近的游戏纹理尺寸（向上取整）
+            int recommendedSize = 2048; // 默认最大值
+            foreach (int size in GameTextureSizes)
+            {
+                if (size >= maxDimension)
+                {
+                    recommendedSize = size;
+                    break;
+                }
+            }
+
+            return (recommendedSize, recommendedSize);
+        }
+
+        /// <summary>
+        /// 构建分辨率列表
+        /// </summary>
+        private void BuildResolutionList((int width, int height) recommended)
+        {
+            ResolutionListBox.Items.Clear();
+
+            // 首先添加推荐项（带标识）
+            var recommendedItem = CreateResolutionItem(recommended.width, recommended.height, true);
+            ResolutionListBox.Items.Add(recommendedItem);
+
+            // 添加分隔线
+            var separator = new Border
+            {
+                Height = 1,
+                Background = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(85, 85, 85)),
+                Margin = new Thickness(0, 5, 0, 5)
+            };
+            ResolutionListBox.Items.Add(separator);
+
+            // 添加所有其他分辨率（排除推荐项）
+            foreach (var resolution in AllResolutions)
+            {
+                // 跳过与推荐项相同的分辨率
+                if (resolution.width == recommended.width && resolution.height == recommended.height)
+                    continue;
+
+                var item = CreateResolutionItem(resolution.width, resolution.height, false, resolution.description);
+                ResolutionListBox.Items.Add(item);
+            }
+        }
+
+        /// <summary>
+        /// 创建分辨率列表项
+        /// </summary>
+        private ListBoxItem CreateResolutionItem(int width, int height, bool isRecommended, string description = null)
+        {
+            var item = new ListBoxItem();
+            item.Tag = new ResolutionInfo { Width = width, Height = height };
+
+            var panel = new StackPanel { Orientation = Orientation.Horizontal };
+
+            // 分辨率文本
+            var resolutionText = new TextBlock
+            {
+                Text = $"{width} × {height}",
+                FontSize = 13,
+                FontWeight = FontWeights.Bold,
+                VerticalAlignment = VerticalAlignment.Center,
+                MinWidth = 140
+            };
+            panel.Children.Add(resolutionText);
+
+            // 如果是推荐项，添加标签
+            if (isRecommended)
+            {
+                var recommendedTag = new TextBlock
+                {
+                    Text = "【推荐】",
+                    FontSize = 12,
+                    Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(0, 200, 83)),
+                    FontWeight = FontWeights.Bold,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(10, 0, 0, 0)
+                };
+                panel.Children.Add(recommendedTag);
+            }
+            else if (!string.IsNullOrEmpty(description))
+            {
+                // 添加描述
+                var descText = new TextBlock
+                {
+                    Text = description,
+                    FontSize = 11,
+                    Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(170, 170, 170)),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(10, 0, 0, 0)
+                };
+                panel.Children.Add(descText);
+            }
+
+            // 显示与原始尺寸的关系
+            double scaleRatio = Math.Max((double)width / _currentWidth, (double)height / _currentHeight);
+            string scaleInfo = "";
+            if (scaleRatio > 1.0)
+            {
+                scaleInfo = $"↑ {scaleRatio:F2}x";
+            }
+            else if (scaleRatio < 1.0)
+            {
+                scaleInfo = $"↓ {scaleRatio:F2}x";
+            }
+            else
+            {
+                scaleInfo = "= 1.00x";
+            }
+
+            var scaleText = new TextBlock
+            {
+                Text = scaleInfo,
+                FontSize = 11,
+                Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(170, 170, 170)),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(10, 0, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+            
+            // 使用Grid来让缩放信息右对齐
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            
+            Grid.SetColumn(panel, 0);
+            Grid.SetColumn(scaleText, 1);
+            
+            grid.Children.Add(panel);
+            grid.Children.Add(scaleText);
+
+            item.Content = grid;
+            return item;
+        }
+
+        private void ResolutionListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // 更新选中的目标分辨率
+            if (ResolutionListBox.SelectedItem is ListBoxItem item && item.Tag is ResolutionInfo info)
+            {
+                TargetWidth = info.Width;
+                TargetHeight = info.Height;
+            }
+        }
+
+        private void BtnResize_Click(object sender, RoutedEventArgs e)
+        {
+            if (ResolutionListBox.SelectedItem == null)
+            {
+                MessageBox.Show("请选择目标分辨率！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (ResolutionListBox.SelectedItem is ListBoxItem item && item.Tag is ResolutionInfo info)
+            {
+                TargetWidth = info.Width;
+                TargetHeight = info.Height;
+
+                // 执行缩放
+                ResizedImage = ResizeImage(_sourceImage, TargetWidth, TargetHeight);
+                if (ResizedImage == null)
+                {
+                    MessageBox.Show("图像缩放失败！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                ShouldResize = true;
+                ContinueAnyway = false;
+                DialogResult = true;
+                Close();
+            }
+        }
+
+        private void BtnContinueAnyway_Click(object sender, RoutedEventArgs e)
+        {
+            ShouldResize = false;
+            ContinueAnyway = true;
+            DialogResult = true;
+            Close();
+        }
+
+        private void BtnCancel_Click(object sender, RoutedEventArgs e)
+        {
+            ShouldResize = false;
+            ContinueAnyway = false;
+            DialogResult = false;
+            Close();
+        }
+
+        /// <summary>
+        /// 缩放图像到指定尺寸
+        /// </summary>
+        private BitmapSource ResizeImage(BitmapSource source, int targetWidth, int targetHeight)
+        {
+            try
+            {
+                var scaledBitmap = new TransformedBitmap(source,
+                    new System.Windows.Media.ScaleTransform(
+                        (double)targetWidth / source.PixelWidth,
+                        (double)targetHeight / source.PixelHeight));
+                
+                scaledBitmap.Freeze();
+                return scaledBitmap;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"图像缩放失败: {ex.Message}");
+                return null;
+            }
+        }
+
+        private class ResolutionInfo
+        {
+            public int Width { get; set; }
+            public int Height { get; set; }
+        }
+    }
+}
+

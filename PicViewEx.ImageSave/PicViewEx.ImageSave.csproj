@@ -74,6 +74,9 @@
     </Compile>
     <Compile Include="DdsCommandBuilder.cs" />
     <Compile Include="DdsPresetManager.cs" />
+    <Compile Include="DdsResizeWarningWindow.xaml.cs">
+      <DependentUpon>DdsResizeWarningWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="IImageSaver.cs" />
     <Compile Include="ImageSaver.cs" />
     <Compile Include="JpegQualityAnalyzer.cs" />
@@ -94,6 +97,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Page Include="DdsResizeWarningWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="SaveAsWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

@@ -44,6 +44,10 @@ namespace PicViewEx.ImageSave
         public string Message { get; set; }
         public string SavedPath { get; set; }
         public string ErrorDetails { get; set; }
+        /// <summary>
+        /// 标记是否是用户主动取消（用于区分取消和错误）
+        /// </summary>
+        public bool IsCancelled { get; set; }
     }
 
     /// <summary>
