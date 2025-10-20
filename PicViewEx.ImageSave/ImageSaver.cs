@@ -343,6 +343,7 @@ namespace PicViewEx.ImageSave
                     if (options?.UseNvidiaUI == true)
                     {
                         success = _nvidiaTools.ExportWithUI(tempPngPath);
+                        Console.WriteLine($"使用NVIDIA UI保存DDS, 结果: {success}");
                         return new SaveResult
                         {
                             Success = true,
@@ -351,6 +352,7 @@ namespace PicViewEx.ImageSave
                     }
 
                     // 默认：如果无法确定参数，返回失败
+                    Console.WriteLine("无法确定DDS保存参数，操作取消");
                     return new SaveResult
                     {
                         Success = false,
@@ -368,6 +370,7 @@ namespace PicViewEx.ImageSave
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"保存DDS文件时出错: {ex.Message}");
                 return new SaveResult
                 {
                     Success = false,

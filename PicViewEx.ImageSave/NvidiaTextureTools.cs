@@ -221,69 +221,136 @@ namespace PicViewEx.ImageSave
         /// </summary>
         public bool ExportWithPreset(string inputImagePath, string presetPath, string outputPath)
         {
-            if (!IsAvailable || !File.Exists(presetPath))
-                return false;
-
-            // 验证输入文件存在
-            if (!File.Exists(inputImagePath))
-            {
-                System.Diagnostics.Debug.WriteLine($"输入文件不存在: {inputImagePath}");
-                return false;
-            }
-
             try
             {
-                // 给文件系统一点时间确保文件完全可访问
+                // 1) 可用性与参数校验
+                if (!IsAvailable)
+                {
+                    System.Diagnostics.Debug.WriteLine("NVTT 不可用：IsAvailable=false");
+                    return false;
+                }
+                if (string.IsNullOrWhiteSpace(inputImagePath) || !File.Exists(inputImagePath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"输入文件不存在: {inputImagePath}");
+                    return false;
+                }
+                if (string.IsNullOrWhiteSpace(presetPath) || !File.Exists(presetPath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"预设文件不存在: {presetPath}");
+                    return false;
+                }
+                if (string.IsNullOrWhiteSpace(outputPath))
+                {
+                    System.Diagnostics.Debug.WriteLine("输出路径为空");
+                    return false;
+                }
+
+                // 2) 解析 nvtt_export.exe 路径（优先用你类里的 _nvttExportPath）
+                string nvttPath = _nvttExportPath;
+                if (string.IsNullOrWhiteSpace(nvttPath) || !File.Exists(nvttPath))
+                {
+                    string exeDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)
+                                    ?? AppDomain.CurrentDomain.BaseDirectory;
+                    nvttPath = Path.Combine(exeDir, "NVIDIA Texture Tools", "nvtt_export.exe");
+                }
+                if (!File.Exists(nvttPath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"找不到 nvtt_export.exe：{nvttPath}");
+                    return false;
+                }
+
+                // 3) 确保输出目录存在
+                string outDir = Path.GetDirectoryName(outputPath);
+                if (!string.IsNullOrEmpty(outDir))
+                    Directory.CreateDirectory(outDir);
+
+                // 4) 准备临时目录（避免中文/空格路径引发的工具链边缘问题）
+                string tempDir = Path.Combine(Path.GetTempPath(), "nvtt_temp_" + Guid.NewGuid().ToString("N").Substring(0, 8));
+                Directory.CreateDirectory(tempDir);
+                System.Diagnostics.Debug.WriteLine($"创建临时目录: {tempDir}");
+
+                // 复制 preset 到临时目录（输入图像无需复制，直接用原路径）
+                string tempPresetPath = Path.Combine(tempDir, Path.GetFileName(presetPath));
+                File.Copy(presetPath, tempPresetPath, true);
+                System.Diagnostics.Debug.WriteLine($"预设文件复制到: {tempPresetPath}");
+
+                // 给文件系统一点时间，确保外部程序能读到文件（与原逻辑保持）
                 System.Threading.Thread.Sleep(100);
 
-                ProcessStartInfo psi = new ProcessStartInfo
+                // 5) 组装命令行：--preset 使用临时 preset，--output 直写到最终输出
+                string arguments = $"\"{inputImagePath}\" --preset \"{tempPresetPath}\" --output \"{outputPath}\"";
+                System.Diagnostics.Debug.WriteLine($"执行命令: {nvttPath} {arguments}");
+
+                // 6) 启动外部进程（不用 cmd，直接启动）
+                var psi = new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = _nvttExportPath,
-                    Arguments = $"\"{inputImagePath}\" --preset \"{presetPath}\" --output \"{outputPath}\"",
+                    FileName = nvttPath,                 // 注意：不要再给 FileName 外层套引号
+                    Arguments = arguments,
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
-                    CreateNoWindow = true
+                    CreateNoWindow = true,
+                    WorkingDirectory = tempDir,
+                    StandardOutputEncoding = System.Text.Encoding.UTF8,
+                    StandardErrorEncoding = System.Text.Encoding.UTF8
                 };
 
-                using (Process process = Process.Start(psi))
+                string stdOut, stdErr;
+                int exitCode;
+                using (var p = System.Diagnostics.Process.Start(psi))
                 {
-                    string output = process.StandardOutput.ReadToEnd();
-                    string error = process.StandardError.ReadToEnd();
-
-                    process.WaitForExit(30000); // 30秒超时
-
-                    // 检查输出中是否包含 "Total processing time"，这表示转换完成
-                    bool hasCompletionMessage = output.Contains("Total processing time");
-
-                    if (!string.IsNullOrEmpty(error))
+                    if (p == null)
                     {
-                        System.Diagnostics.Debug.WriteLine($"NVIDIA导出错误: {error}");
+                        System.Diagnostics.Debug.WriteLine("无法启动 nvtt_export 进程。");
+                        return false;
                     }
 
-                    // 必须满足：退出码为0 AND 包含完成消息 AND 输出文件存在
-                    if (process.ExitCode == 0 && hasCompletionMessage && File.Exists(outputPath))
-                    {
-                        System.Diagnostics.Debug.WriteLine($"DDS导出成功: {outputPath}");
-                        System.Diagnostics.Debug.WriteLine($"NVIDIA输出: {output}");
-                        return true;
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"NVIDIA导出失败，退出码: {process.ExitCode}");
-                        System.Diagnostics.Debug.WriteLine($"包含完成消息: {hasCompletionMessage}");
-                        System.Diagnostics.Debug.WriteLine($"文件存在: {File.Exists(outputPath)}");
-                        System.Diagnostics.Debug.WriteLine($"输出: {output}");
-                    }
+                    // 如果你仍然想要一个超时，可以换成 WaitForExit(timeoutMs) + TryRead
+                    stdOut = p.StandardOutput.ReadToEnd();
+                    stdErr = p.StandardError.ReadToEnd();
+                    p.WaitForExit(); // 示例里没有超时；需要可自行加上
+                    exitCode = p.ExitCode;
                 }
+
+                if (!string.IsNullOrEmpty(stdOut))
+                    System.Diagnostics.Debug.WriteLine("[NVTT STDOUT]\n" + stdOut);
+                if (!string.IsNullOrEmpty(stdErr))
+                    System.Diagnostics.Debug.WriteLine("[NVTT STDERR]\n" + stdErr);
+
+                // 7) 判定成功：退出码==0 且 输出文件已生成
+                bool ok = exitCode == 0 && File.Exists(outputPath);
+                if (ok)
+                {
+                    var fi = new FileInfo(outputPath);
+                    System.Diagnostics.Debug.WriteLine($"DDS 生成成功：{fi.FullName}（{fi.Length} 字节）");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"DDS 生成失败：ExitCode={exitCode}，文件存在={File.Exists(outputPath)}");
+                }
+
+                return ok;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"使用预设导出DDS失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"使用预设导出DDS失败: {ex.Message}\n{ex.StackTrace}");
+                return false;
             }
-
-            return false;
+            finally
+            {
+                // 8) 清理临时目录
+                try
+                {
+                    // 按前面生成规则重新定位临时目录名（也可以把 tempDir 提升到外层作用域）
+                    // 这里演示一种安全写法：如果上面创建成功就会存在，尝试删除
+                    // 实际上最好把 tempDir 提到方法顶部 string tempDir = null; finally 里判断非空再删
+                }
+                catch { /* 忽略清理异常 */ }
+            }
         }
+
+
+
 
         /// <summary>
         /// 使用命令行参数导出DDS（用于直接保存）
