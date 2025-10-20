@@ -1,10 +1,12 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
+using WinPtyConsole;
 
 namespace PicViewEx.ImageSave
 {
@@ -298,7 +300,7 @@ namespace PicViewEx.ImageSave
             }
         }
 
-        private void ShowSaveDialog(string filter)
+        private async void ShowSaveDialog(string filter)
         {
             SaveFileDialog dialog = new SaveFileDialog
             {
@@ -336,19 +338,19 @@ namespace PicViewEx.ImageSave
                     {
                         Quality = (int)JpgQualitySlider.Value
                     };
-                    result = SaveImage(dialog.FileName, options);
+                    result = await SaveImage(dialog.FileName, options);
                 }
                 else if (_selectedFormat == "PNG")
                 {
-                    result = SaveImage(dialog.FileName, new PngSaveOptions());
+                    result = await SaveImage(dialog.FileName, new PngSaveOptions());
                 }
                 else if (_selectedFormat == "BMP")
                 {
-                    result = SaveImage(dialog.FileName, new BmpSaveOptions());
+                    result = await SaveImage(dialog.FileName, new BmpSaveOptions());
                 }
                 else if (_selectedFormat == "TGA")
                 {
-                    result = SaveImage(dialog.FileName, new TgaSaveOptions());
+                    result = await SaveImage(dialog.FileName, new TgaSaveOptions());
                 }
                 else if (_selectedFormat == "DDS")
                 {
@@ -378,13 +380,13 @@ namespace PicViewEx.ImageSave
             }
         }
 
-        private SaveResult SaveImage(string path, SaveOptions options)
+        private async Task<SaveResult> SaveImage(string path, SaveOptions options)
         {
             try
             {
                 var saver = new ImageSaver();
                 // 使用旋转后的图像源
-                return saver.SaveTo(_currentSource, path, options);
+                return await saver.SaveTo(_currentSource, path, options);
             }
             catch (Exception ex)
             {

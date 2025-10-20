@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 using ImageMagick;
 
@@ -20,7 +21,7 @@ namespace PicViewEx.ImageSave
         /// <summary>
         /// 直接保存图片到原路径，保持原始参数
         /// </summary>
-        public SaveResult Save(BitmapSource source, string originalFilePath)
+        public async Task<SaveResult> Save(BitmapSource source, string originalFilePath)
         {
             try
             {
@@ -68,7 +69,7 @@ namespace PicViewEx.ImageSave
                         break;
 
                     case ".dds":
-                        return SaveDdsFile(source, originalFilePath, originalFilePath);
+                        return await SaveDdsFile(source, originalFilePath, originalFilePath);
 
                     default:
                         return new SaveResult
@@ -118,7 +119,7 @@ namespace PicViewEx.ImageSave
         /// <summary>
         /// 另存为（打开对话框）
         /// </summary>
-        public SaveResult SaveAs(BitmapSource source, string originalFilePath)
+        public async Task<SaveResult> SaveAs(BitmapSource source, string originalFilePath)
         {
             try
             {
@@ -158,13 +159,13 @@ namespace PicViewEx.ImageSave
         /// <summary>
         /// 保存到指定路径
         /// </summary>
-        public SaveResult SaveTo(BitmapSource source, string targetPath, SaveOptions options)
+        public async Task<SaveResult> SaveTo(BitmapSource source, string targetPath, SaveOptions options)
         {
             try
             {
                 if (options is DdsSaveOptions ddsOptions)
                 {
-                    return SaveDdsFile(source, null, targetPath, ddsOptions);
+                    return await SaveDdsFile(source, null, targetPath, ddsOptions);
                 }
 
                 return SaveToInternal(source, targetPath, options);
@@ -245,12 +246,13 @@ namespace PicViewEx.ImageSave
         /// <summary>
         /// 保存DDS文件
         /// </summary>
-        private SaveResult SaveDdsFile(BitmapSource source, string originalFilePath, string targetPath, DdsSaveOptions options = null)
+        private async Task<SaveResult> SaveDdsFile(BitmapSource source, string originalFilePath, string targetPath, DdsSaveOptions options = null)
         {
             try
             {
                 if (!_nvidiaTools.IsAvailable)
                 {
+                    Console.WriteLine("NVIDIA Texture Tools 不可用，无法保存DDS文件");
                     return new SaveResult
                     {
                         Success = false,
@@ -262,12 +264,15 @@ namespace PicViewEx.ImageSave
                 string tempPngPath = _nvidiaTools.CreateTempPngForDds(source);
                 if (string.IsNullOrEmpty(tempPngPath))
                 {
+                    Console.WriteLine("创建临时PNG文件失败，无法保存DDS");
                     return new SaveResult
                     {
                         Success = false,
                         Message = "创建临时PNG文件失败"
                     };
                 }
+
+                Console.WriteLine($"临时PNG文件路径: {tempPngPath}");
 
                 try
                 {
@@ -278,6 +283,7 @@ namespace PicViewEx.ImageSave
                     {
                         success = _nvidiaTools.ExportWithPreset(tempPngPath, options.PresetPath, targetPath);
 
+                        Console.WriteLine($"使用预设文件保存DDS: {options.PresetPath}, 结果: {success}");
                         return new SaveResult
                         {
                             Success = success,
@@ -301,6 +307,7 @@ namespace PicViewEx.ImageSave
                             {
                                 success = _nvidiaTools.ExportWithCommandArgs(commandArgs);
 
+                                Console.WriteLine($"使用原始DDS参数保存DDS, 结果: {success}");
                                 return new SaveResult
                                 {
                                     Success = success,

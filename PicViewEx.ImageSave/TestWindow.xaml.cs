@@ -134,7 +134,7 @@ namespace PicViewEx.ImageSave
             }
         }
 
-        private void BtnSave_Click(object sender, RoutedEventArgs e)
+        private async void BtnSave_Click(object sender, RoutedEventArgs e)
         {
             if (_currentImage == null || string.IsNullOrEmpty(_currentFilePath))
             {
@@ -148,7 +148,7 @@ namespace PicViewEx.ImageSave
                 Log("执行保存操作...");
                 Log($"目标文件: {_currentFilePath}");
 
-                var result = _imageSaver.Save(_currentImage, _currentFilePath);
+                var result = await _imageSaver.Save(_currentImage, _currentFilePath);
 
                 if (result.Success)
                 {
@@ -176,7 +176,7 @@ namespace PicViewEx.ImageSave
             }
         }
 
-        private void BtnSaveAs_Click(object sender, RoutedEventArgs e)
+        private async void BtnSaveAs_Click(object sender, RoutedEventArgs e)
         {
             if (_currentImage == null || string.IsNullOrEmpty(_currentFilePath))
             {
@@ -189,7 +189,7 @@ namespace PicViewEx.ImageSave
             {
                 Log("执行另存为操作...");
 
-                var result = _imageSaver.SaveAs(_currentImage, _currentFilePath);
+                var result = await _imageSaver.SaveAs(_currentImage, _currentFilePath);
 
                 if (result.Success)
                 {

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using WinPtyConsole;
 
 using System.Text;
 
@@ -13,9 +14,9 @@ namespace PicViewEx.ImageSave
     /// </summary>
     public class NvidiaTextureTools
     {
-        private readonly string _toolsPath;
-        private readonly string _nvddsInfoPath;
-        private readonly string _nvttExportPath;
+        private string _toolsPath;
+        private string _nvddsInfoPath;
+        private string _nvttExportPath;
 
         public bool IsAvailable { get; private set; }
 
@@ -289,116 +290,81 @@ namespace PicViewEx.ImageSave
         /// </summary>
         /// <param name="commandArgs">完整的命令行参数</param>
         /// <returns>是否导出成功</returns>
-
-
-public bool ExportWithCommandArgs(string commandArgs)
-    {
-        if (!IsAvailable || string.IsNullOrEmpty(commandArgs))
-            return false;
-
-        // 完成判定（兼容 .NET Framework）
-        bool IsDone(string s)
-            => !string.IsNullOrEmpty(s)
-               && (s.IndexOf("Total processing time", StringComparison.OrdinalIgnoreCase) >= 0
-                   || Regex.IsMatch(s, @"\bDone\.?\b", RegexOptions.IgnoreCase));
-
-        try
+        public bool ExportWithCommandArgs(string commandArgs)
         {
-            string display = $"\"{_nvttExportPath}\" {commandArgs}";
-            Console.WriteLine("=== 即将执行命令 ===");
-            Console.WriteLine(display);
-            Console.WriteLine("===================");
+            if (!IsAvailable || string.IsNullOrWhiteSpace(commandArgs))
+                return false;
 
-            var psi = new ProcessStartInfo
+            if (string.IsNullOrWhiteSpace(_nvttExportPath) || !File.Exists(_nvttExportPath))
             {
-                FileName = _nvttExportPath,           // 注意：这里不要加引号
-                Arguments = commandArgs,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                RedirectStandardInput = true,
-                CreateNoWindow = true,
-                // 如有中文控制台输出需要正确编码，可按需开启：
-                // StandardOutputEncoding = Encoding.GetEncoding(936),
-                // StandardErrorEncoding  = Encoding.GetEncoding(936),
-                WorkingDirectory = System.IO.Path.GetDirectoryName(_nvttExportPath) ?? Environment.CurrentDirectory
-            };
+                Console.WriteLine("[NVTT] nvtt_export.exe 不存在: " + _nvttExportPath);
+                return false;
+            }
 
-            var sbOut = new StringBuilder();
-            var sbErr = new StringBuilder();
-            var completionSent = false;
+            // 只返回是否有 Done
+            bool hasDone = false;
 
-            using (var p = new Process { StartInfo = psi, EnableRaisingEvents = true })
+            try
             {
-                p.OutputDataReceived += (s, e) =>
-                {
-                    if (e.Data == null) return;
-                    Console.WriteLine(e.Data);
-                    sbOut.AppendLine(e.Data);
+                // 必须把 exe 也写进 commandLine，确保 argv[0]=exe
+                string cmdLineWithExe = $"\"{_nvttExportPath}\" {(string.IsNullOrWhiteSpace(commandArgs) ? "" : commandArgs)}".Trim();
 
-                    // 一旦检测到完成信号，立刻发送“回车”让程序自然退出
-                    if (!completionSent && IsDone(e.Data))
+                Console.WriteLine("=== WinPTY 直启 nvtt_export.exe ===");
+                Console.WriteLine("EXE : " + _nvttExportPath);
+                Console.WriteLine("ARGS: " + commandArgs);
+                Console.WriteLine("WORK: " + (Path.GetDirectoryName(_nvttExportPath) ?? Environment.CurrentDirectory));
+                Console.WriteLine("==================================");
+
+                // 匹配 Done / Total processing time
+                var doneRegex = new Regex(@"\bDone\.?\b|Total processing time",
+                                          RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+                using (var session = new WinPtySession(
+                    exePath: _nvttExportPath,                    // ApplicationName
+                    args: cmdLineWithExe,                        // CommandLine（必须包含 exe）
+                    workingDir: Path.GetDirectoryName(_nvttExportPath) ?? Environment.CurrentDirectory,
+                    options: new WinPtySessionOptions
                     {
-                        try { p.StandardInput.WriteLine(); } catch { /* stdin 可能已关闭 */ }
-                        completionSent = true;
-                    }
-                };
-
-                p.ErrorDataReceived += (s, e) =>
+                        UsePlainOutput = true,
+                        EmitLineByLine = false,                  // 块读取，避免“末尾无换行”漏词
+                        InitialCols = 120,
+                        InitialRows = 40,
+                        Encoding = new UTF8Encoding(false)
+                    }))
                 {
-                    if (e.Data == null) return;
-                    Console.WriteLine(e.Data);
-                    sbErr.AppendLine(e.Data);
-
-                    if (!completionSent && IsDone(e.Data))
+                    using (var exited = new System.Threading.ManualResetEventSlim(false))
                     {
-                        try { p.StandardInput.WriteLine(); } catch { }
-                        completionSent = true;
+                        session.OutputReceived += s =>
+                        {
+                            if (string.IsNullOrEmpty(s)) return;
+                            Console.Write(s); // 实时打印
+                            if (!hasDone && doneRegex.IsMatch(s))
+                                hasDone = true;
+                        };
+
+                        session.Exited += () => exited.Set();
+
+                        // 不做任何超时或额外输入：只等待自然退出
+                        exited.Wait();
                     }
-                };
-
-                p.Start();
-                p.BeginOutputReadLine();
-                p.BeginErrorReadLine();
-
-                // 等待进程退出（可设置超时；不额外延迟、也不循环发回车）
-                p.WaitForExit();
-
-                // 这里输出完整日志
-                var output = sbOut.ToString();
-                var error = sbErr.ToString();
-
-                bool hasCompletionMessage = IsDone(output) || IsDone(error);
-
-                if (!string.IsNullOrEmpty(error))
-                    Console.WriteLine("[STDERR]\n" + error);
-
-                if (p.ExitCode == 0 && hasCompletionMessage)
-                {
-                    Console.WriteLine("DDS导出成功");
-                    return true;
                 }
-                else
-                {
-                    Console.WriteLine($"NVIDIA导出失败，退出码: {p.ExitCode}");
-                    Console.WriteLine($"包含完成消息: {hasCompletionMessage}");
-                    return false;
-                }
+
+                Console.WriteLine("\n[NVTT] 进程已退出。");
+                return hasDone;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[NVTT] 运行失败: " + ex.Message);
+                return false;
             }
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"使用命令行参数导出DDS失败: {ex.Message}");
-            return false;
-        }
-    }
 
 
 
-    /// <summary>
-    /// 创建临时PNG文件（用于不支持的格式转换）
-    /// </summary>
-    public string CreateTempPngForDds(System.Windows.Media.Imaging.BitmapSource source)
+        /// <summary>
+        /// 创建临时PNG文件（用于不支持的格式转换）
+        /// </summary>
+        public string CreateTempPngForDds(System.Windows.Media.Imaging.BitmapSource source)
         {
             string tempPath = null;
             try

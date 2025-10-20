@@ -1,4 +1,6 @@
+using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
+
 
 namespace PicViewEx.ImageSave
 {
@@ -13,7 +15,7 @@ namespace PicViewEx.ImageSave
         /// <param name="source">要保存的图片数据</param>
         /// <param name="originalFilePath">原始文件路径</param>
         /// <returns>保存结果</returns>
-        SaveResult Save(BitmapSource source, string originalFilePath);
+        Task<SaveResult> Save(BitmapSource source, string originalFilePath);
 
         /// <summary>
         /// 另存为图片，允许用户选择格式和参数
@@ -21,7 +23,7 @@ namespace PicViewEx.ImageSave
         /// <param name="source">要保存的图片数据</param>
         /// <param name="originalFilePath">原始文件路径（用于确定默认格式）</param>
         /// <returns>保存结果</returns>
-        SaveResult SaveAs(BitmapSource source, string originalFilePath);
+        Task<SaveResult> SaveAs(BitmapSource source, string originalFilePath);
 
         /// <summary>
         /// 保存到指定路径，使用特定参数
@@ -30,7 +32,7 @@ namespace PicViewEx.ImageSave
         /// <param name="targetPath">目标文件路径</param>
         /// <param name="options">保存选项</param>
         /// <returns>保存结果</returns>
-        SaveResult SaveTo(BitmapSource source, string targetPath, SaveOptions options);
+        Task<SaveResult> SaveTo(BitmapSource source, string targetPath, SaveOptions options);
     }
 
     /// <summary>
