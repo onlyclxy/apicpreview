@@ -130,6 +130,11 @@ namespace PicViewEx.ImageSave
         /// </summary>
         public bool UseNvidiaUI { get; set; }
 
+        /// <summary>
+        /// 是否复用原始DDS图片的参数
+        /// </summary>
+        public bool UseOriginalParams { get; set; }
+
         public DdsSaveOptions()
         {
             Format = "DDS";

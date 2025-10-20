@@ -148,24 +148,50 @@
 
                 <!-- DDS预设设置 -->
                 <StackPanel x:Name="DdsPresetPanel" Visibility="Collapsed">
-                    <!-- 自定义按钮 -->
-                    <Button x:Name="BtnDdsCustom" Content="自定义参数保存（NVIDIA UI）"
-                            Height="35" Padding="15,5" Margin="0,0,0,10"
-                            Background="#FF3E3E42" Foreground="White"
-                            BorderBrush="#FF555555" BorderThickness="1" Cursor="Hand"
-                            HorizontalAlignment="Stretch"
-                            Click="BtnDdsCustom_Click">
-                        <Button.Style>
-                            <Style TargetType="Button">
-                                <Setter Property="Background" Value="#FF3E3E42"/>
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="#FF007ACC"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
+                    <!-- 按钮区域 - 双按钮横向布局 -->
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <!-- 自定义按钮 -->
+                        <Button x:Name="BtnDdsCustom" Grid.Column="0" Content="自定义参数保存（NVIDIA UI）"
+                                Height="35" Padding="10,5"
+                                Background="#FF3E3E42" Foreground="White"
+                                BorderBrush="#FF555555" BorderThickness="1" Cursor="Hand"
+                                Click="BtnDdsCustom_Click">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#FF3E3E42"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#FF007ACC"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        
+                        <!-- 复用参数按钮 -->
+                        <Button x:Name="BtnDdsReuseParams" Grid.Column="2" Content="复用原始图片参数"
+                                Height="35" Padding="10,5"
+                                Background="#FF3E3E42" Foreground="White"
+                                BorderBrush="#FF555555" BorderThickness="1" Cursor="Hand"
+                                Click="BtnDdsReuseParams_Click">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#FF3E3E42"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#FF00C853"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </Grid>
 
                     <!-- 双列布局 -->
                     <Grid>
@@ -174,21 +200,21 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- 左列:常用预设 -->
+                        <!-- 左列:全部预设(带滚动) -->
                         <StackPanel Grid.Column="0" Margin="0,0,5,0">
-                            <TextBlock x:Name="HistoryHeader" Text="常用预设" Foreground="#FF00D1B2"
-                                       FontSize="12" Margin="0,0,0,5" Visibility="Collapsed"/>
-                            <ItemsControl x:Name="HistoryPresetsList"/>
-                        </StackPanel>
-
-                        <!-- 右列:全部预设(带滚动) -->
-                        <StackPanel Grid.Column="1" Margin="5,0,0,0">
                             <TextBlock Text="全部预设" Foreground="#FF00D1B2"
                                        FontSize="12" Margin="0,0,0,5"/>
                             <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto"
                                          HorizontalScrollBarVisibility="Disabled">
                                 <ItemsControl x:Name="AllPresetsList"/>
                             </ScrollViewer>
+                        </StackPanel>
+
+                        <!-- 右列:常用预设 -->
+                        <StackPanel Grid.Column="1" Margin="5,0,0,0">
+                            <TextBlock x:Name="HistoryHeader" Text="常用预设" Foreground="#FF00D1B2"
+                                       FontSize="12" Margin="0,0,0,5" Visibility="Collapsed"/>
+                            <ItemsControl x:Name="HistoryPresetsList"/>
                         </StackPanel>
                     </Grid>
                 </StackPanel>

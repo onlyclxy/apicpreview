@@ -18,6 +18,7 @@ namespace PicViewEx.ImageSave
         private readonly DdsPresetManager _presetManager;
         private string _selectedFormat = "";
         private string _selectedPresetPath = null;
+        private bool _useDdsReuseParams = false;
         private double _rotationAngle = 0;
         private BitmapSource _currentSource;
 
@@ -127,6 +128,25 @@ namespace PicViewEx.ImageSave
             JpgQualityPanel.Visibility = Visibility.Collapsed;
             DdsPresetPanel.Visibility = Visibility.Visible;
 
+            // 检查原始文件是否为DDS格式，决定是否启用"复用参数"按钮
+            bool isOriginalDds = !string.IsNullOrEmpty(_originalFilePath) &&
+                                 File.Exists(_originalFilePath) &&
+                                 Path.GetExtension(_originalFilePath).ToLower() == ".dds";
+            
+            BtnDdsReuseParams.IsEnabled = isOriginalDds;
+            
+            // 如果不是DDS文件，添加工具提示说明
+            if (!isOriginalDds)
+            {
+                BtnDdsReuseParams.ToolTip = "仅当原始文件为DDS格式时可用";
+                BtnDdsReuseParams.Opacity = 0.5;
+            }
+            else
+            {
+                BtnDdsReuseParams.ToolTip = "使用原始DDS文件的压缩参数进行保存";
+                BtnDdsReuseParams.Opacity = 1.0;
+            }
+
             LoadDdsPresets();
         }
 
@@ -180,6 +200,54 @@ namespace PicViewEx.ImageSave
                 MessageBox.Show("创建临时PNG文件失败！",
                     "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        // DDS复用参数按钮点击事件
+        private void BtnDdsReuseParams_Click(object sender, RoutedEventArgs e)
+        {
+            // 检查原始文件是否存在且为DDS格式
+            if (string.IsNullOrEmpty(_originalFilePath))
+            {
+                MessageBox.Show("无法复用参数：未找到原始文件路径。",
+                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            if (!File.Exists(_originalFilePath))
+            {
+                MessageBox.Show("无法复用参数：原始文件不存在。",
+                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            string extension = Path.GetExtension(_originalFilePath).ToLower();
+            if (extension != ".dds")
+            {
+                MessageBox.Show($"无法复用参数：原始文件不是DDS格式（当前格式：{extension}）。\n\n" +
+                              "此功能仅适用于DDS格式的图片。",
+                    "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // 获取DDS信息
+            var ddsInfo = _nvidiaTools.GetDdsInfo(_originalFilePath);
+            if (ddsInfo == null)
+            {
+                MessageBox.Show("无法读取原始DDS文件的参数信息。\n\n" +
+                              "可能原因：\n" +
+                              "• DDS文件损坏\n" +
+                              "• 不支持的DDS格式\n" +
+                              "• NVIDIA Texture Tools 无法解析",
+                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            // 设置标记，表示使用复用参数模式
+            _selectedPresetPath = null; // 清除预设路径
+            _useDdsReuseParams = true;  // 标记使用复用参数
+
+            // 直接打开保存对话框
+            ShowSaveDialog("DDS图像 (*.dds)|*.dds");
         }
 
         private void LoadDdsPresets()
@@ -280,6 +348,7 @@ namespace PicViewEx.ImageSave
             if (sender is Button button)
             {
                 _selectedPresetPath = button.Tag as string;
+                _useDdsReuseParams = false; // 使用预设时，清除复用参数标记
 
                 // 添加到历史
                 if (!string.IsNullOrEmpty(_selectedPresetPath))
@@ -356,7 +425,8 @@ namespace PicViewEx.ImageSave
                 {
                     var options = new DdsSaveOptions
                     {
-                        PresetPath = _selectedPresetPath
+                        PresetPath = _selectedPresetPath,
+                        UseOriginalParams = _useDdsReuseParams
                     };
                     result = SaveDdsImage(dialog.FileName, options);
                 }
@@ -441,13 +511,54 @@ namespace PicViewEx.ImageSave
 
                 try
                 {
-                    bool success = _nvidiaTools.ExportWithPreset(tempPng, options.PresetPath, path);
+                    bool success = false;
 
+                    // 情况1: 复用原始DDS参数
+                    if (options.UseOriginalParams && !string.IsNullOrEmpty(_originalFilePath) &&
+                        Path.GetExtension(_originalFilePath).ToLower() == ".dds")
+                    {
+                        var ddsInfo = _nvidiaTools.GetDdsInfo(_originalFilePath);
+                        if (ddsInfo != null)
+                        {
+                            // 使用DdsCommandBuilder构建命令行参数
+                            string commandArgs = DdsCommandBuilder.BuildArgumentsFromInfo(ddsInfo, tempPng, path);
+                            if (!string.IsNullOrEmpty(commandArgs))
+                            {
+                                success = _nvidiaTools.ExportWithCommandArgs(commandArgs);
+                                return new SaveResult
+                                {
+                                    Success = success,
+                                    Message = success ? "保存成功（使用原始DDS参数）" : "保存失败",
+                                    SavedPath = success ? path : null
+                                };
+                            }
+                        }
+
+                        // 如果无法获取DDS信息，返回错误
+                        return new SaveResult
+                        {
+                            Success = false,
+                            Message = "无法从原始DDS文件获取参数"
+                        };
+                    }
+
+                    // 情况2: 使用预设文件
+                    if (!string.IsNullOrEmpty(options.PresetPath))
+                    {
+                        success = _nvidiaTools.ExportWithPreset(tempPng, options.PresetPath, path);
+                        return new SaveResult
+                        {
+                            Success = success,
+                            Message = success ? "保存成功" : "保存失败",
+                            SavedPath = success ? path : null
+                        };
+                    }
+
+                    // 默认情况：没有指定参数
                     return new SaveResult
                     {
-                        Success = success,
-                        Message = success ? "保存成功" : "保存失败",
-                        SavedPath = success ? path : null
+                        Success = false,
+                        Message = "未指定DDS保存参数"
                     };
                 }
                 finally
