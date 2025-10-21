@@ -153,48 +153,113 @@
         </Border>
 
         <!-- 操作按钮 -->
-        <Grid Grid.Row="3" Margin="0,10,0,0">
+        <Grid Grid.Row="3" Margin="0,15,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="1.5*"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Button Grid.Column="0" x:Name="BtnResize" Content="缩放并保存" 
-                    Click="BtnResize_Click">
+            <!-- 左侧：保存原始分辨率（较弱的样式） -->
+            <Button Grid.Column="0" x:Name="BtnContinueAnyway" Content="保存原始分辨率" 
+                    Click="BtnContinueAnyway_Click"
+                    Height="40" FontSize="13" Margin="4">
                 <Button.Style>
-                    <Style TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}">
-                        <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#FF00C853"/>
-                            </Trigger>
-                        </Style.Triggers>
+                    <Style TargetType="Button">
+                        <Setter Property="Background" Value="#FF4A4A4F"/>
+                        <Setter Property="Foreground" Value="#FFAAAAAA"/>
+                        <Setter Property="BorderBrush" Value="#FF555555"/>
+                        <Setter Property="BorderThickness" Value="1"/>
+                        <Setter Property="Cursor" Value="Hand"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="border" 
+                                            Background="{TemplateBinding Background}"
+                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                            CornerRadius="5">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#FFFFB74D"/>
+                                            <Setter Property="Foreground" Value="White"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
                     </Style>
                 </Button.Style>
             </Button>
 
-            <Button Grid.Column="1" x:Name="BtnContinueAnyway" Content="保存原始分辨率" 
-                    Click="BtnContinueAnyway_Click">
+            <!-- 中间：保存新分辨率（突出的绿色样式） -->
+            <Button Grid.Column="1" x:Name="BtnResize" Content="✓ 保存新分辨率" 
+                    Click="BtnResize_Click"
+                    Height="50" FontSize="15" FontWeight="Bold" Margin="8,0">
                 <Button.Style>
-                    <Style TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}">
-                        <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#FFFFB74D"/>
-                            </Trigger>
-                        </Style.Triggers>
+                    <Style TargetType="Button">
+                        <Setter Property="Background" Value="#FF28A745"/>
+                        <Setter Property="Foreground" Value="White"/>
+                        <Setter Property="BorderBrush" Value="#FF1E7E34"/>
+                        <Setter Property="BorderThickness" Value="2"/>
+                        <Setter Property="Cursor" Value="Hand"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="border" 
+                                            Background="{TemplateBinding Background}"
+                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                            CornerRadius="8">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#FF218838"/>
+                                            <Setter TargetName="border" Property="BorderBrush" Value="#FF00C853"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#FF1E7E34"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
                     </Style>
                 </Button.Style>
             </Button>
 
+            <!-- 右侧：取消 -->
             <Button Grid.Column="2" x:Name="BtnCancel" Content="取消" 
-                    Click="BtnCancel_Click">
+                    Click="BtnCancel_Click"
+                    Height="40" FontSize="13" Margin="4">
                 <Button.Style>
-                    <Style TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}">
-                        <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#FFF44336"/>
-                            </Trigger>
-                        </Style.Triggers>
+                    <Style TargetType="Button">
+                        <Setter Property="Background" Value="#FF3E3E42"/>
+                        <Setter Property="Foreground" Value="White"/>
+                        <Setter Property="BorderBrush" Value="#FF555555"/>
+                        <Setter Property="BorderThickness" Value="1"/>
+                        <Setter Property="Cursor" Value="Hand"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="border" 
+                                            Background="{TemplateBinding Background}"
+                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                            CornerRadius="5">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#FFF44336"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
                     </Style>
                 </Button.Style>
             </Button>
