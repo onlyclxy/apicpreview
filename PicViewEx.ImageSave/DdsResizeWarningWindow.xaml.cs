@@ -82,16 +82,18 @@ namespace PicViewEx.ImageSave
             // 显示当前尺寸
             TxtCurrentSize.Text = $"当前图像尺寸：{_currentWidth} × {_currentHeight}";
 
-            // 计算推荐的分辨率
-            var recommended = CalculateRecommendedResolution(_currentWidth, _currentHeight);
+            // 计算推荐的分辨率（正方形和非正方形各一个）
+            var squareRecommended = CalculateRecommendedSquareResolution(_currentWidth, _currentHeight);
+            var rectangleRecommended = CalculateRecommendedRectangleResolution(_currentWidth, _currentHeight);
 
             // 显示推荐提示
-            TxtRecommendedHint.Text = $"推荐分辨率：{recommended.width} × {recommended.height}（基于游戏行业标准）";
+            TxtRecommendedHint.Text = $"智能推荐：正方形 {squareRecommended.width}×{squareRecommended.height}  |  " +
+                                      $"非正方形 {rectangleRecommended.width}×{rectangleRecommended.height}";
 
             // 构建分辨率列表：推荐的在最上方，然后是其他选项
-            BuildResolutionList(recommended);
+            BuildResolutionList(squareRecommended, rectangleRecommended);
 
-            // 默认选中推荐项
+            // 默认选中第一个推荐项
             if (ResolutionListBox.Items.Count > 0)
             {
                 ResolutionListBox.SelectedIndex = 0;
@@ -99,14 +101,14 @@ namespace PicViewEx.ImageSave
         }
 
         /// <summary>
-        /// 计算推荐的分辨率
+        /// 计算推荐的正方形分辨率
         /// 规则：
         /// 1. 基于游戏行业标准尺寸（正方形）
         /// 2. 找最长边，然后找最接近的2的幂次方
         /// 3. 一般放大不缩小，除非超过2048
         /// 4. 最大推荐2048×2048
         /// </summary>
-        private (int width, int height) CalculateRecommendedResolution(int width, int height)
+        private (int width, int height) CalculateRecommendedSquareResolution(int width, int height)
         {
             int maxDimension = Math.Max(width, height);
 
@@ -131,15 +133,82 @@ namespace PicViewEx.ImageSave
         }
 
         /// <summary>
+        /// 计算推荐的非正方形分辨率
+        /// 规则：
+        /// 1. 分别找长边和短边最接近的2的幂次方
+        /// 2. 保持原始宽高比的大致方向
+        /// 3. 向上取整，最大到4096
+        /// </summary>
+        private (int width, int height) CalculateRecommendedRectangleResolution(int width, int height)
+        {
+            int[] powerOfTwoSizes = { 16, 32, 64, 128, 256, 512, 1024, 2048, 4096 };
+
+            // 找到长边和短边
+            int longSide = Math.Max(width, height);
+            int shortSide = Math.Min(width, height);
+            bool isWidthLonger = width > height;
+
+            // 为长边找到最接近的2的幂次方（向上取整）
+            int recommendedLong = 4096;
+            foreach (int size in powerOfTwoSizes)
+            {
+                if (size >= longSide)
+                {
+                    recommendedLong = size;
+                    break;
+                }
+            }
+
+            // 为短边找到最接近的2的幂次方（向上取整）
+            int recommendedShort = 4096;
+            foreach (int size in powerOfTwoSizes)
+            {
+                if (size >= shortSide)
+                {
+                    recommendedShort = size;
+                    break;
+                }
+            }
+
+            // 如果推荐出来的长边和短边相同，则短边降一级（除非已经是最小的16）
+            if (recommendedLong == recommendedShort && recommendedShort > 16)
+            {
+                int shortIndex = Array.IndexOf(powerOfTwoSizes, recommendedShort);
+                if (shortIndex > 0)
+                {
+                    recommendedShort = powerOfTwoSizes[shortIndex - 1];
+                }
+            }
+
+            // 根据原始图片方向返回
+            if (isWidthLonger)
+            {
+                return (recommendedLong, recommendedShort);
+            }
+            else
+            {
+                return (recommendedShort, recommendedLong);
+            }
+        }
+
+        /// <summary>
         /// 构建分辨率列表
         /// </summary>
-        private void BuildResolutionList((int width, int height) recommended)
+        private void BuildResolutionList((int width, int height) squareRecommended, (int width, int height) rectangleRecommended)
         {
             ResolutionListBox.Items.Clear();
 
-            // 首先添加推荐项（带标识）
-            var recommendedItem = CreateResolutionItem(recommended.width, recommended.height, true);
-            ResolutionListBox.Items.Add(recommendedItem);
+            // 首先添加正方形推荐项
+            var squareItem = CreateResolutionItem(squareRecommended.width, squareRecommended.height, true, "正方形");
+            ResolutionListBox.Items.Add(squareItem);
+
+            // 如果非正方形推荐与正方形推荐不同，则添加非正方形推荐
+            if (rectangleRecommended.width != squareRecommended.width || 
+                rectangleRecommended.height != squareRecommended.height)
+            {
+                var rectangleItem = CreateResolutionItem(rectangleRecommended.width, rectangleRecommended.height, true, "非正方形");
+                ResolutionListBox.Items.Add(rectangleItem);
+            }
 
             // 添加分隔线
             var separator = new Border
@@ -155,7 +224,8 @@ namespace PicViewEx.ImageSave
             foreach (var resolution in AllResolutions)
             {
                 // 跳过与推荐项相同的分辨率
-                if (resolution.width == recommended.width && resolution.height == recommended.height)
+                if ((resolution.width == squareRecommended.width && resolution.height == squareRecommended.height) ||
+                    (resolution.width == rectangleRecommended.width && resolution.height == rectangleRecommended.height))
                     continue;
 
                 var item = CreateResolutionItem(resolution.width, resolution.height, false, resolution.description);
@@ -189,7 +259,7 @@ namespace PicViewEx.ImageSave
             {
                 var recommendedTag = new TextBlock
                 {
-                    Text = "【推荐】",
+                    Text = $"【推荐 - {description}】",
                     FontSize = 12,
                     Foreground = new System.Windows.Media.SolidColorBrush(
                         System.Windows.Media.Color.FromRgb(0, 200, 83)),

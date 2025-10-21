@@ -1,7 +1,7 @@
 <Window x:Class="PicViewEx.ImageSave.DdsResizeWarningWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="DDS尺寸警告" Height="550" Width="600"
+        Title="DDS尺寸警告" Height="650" Width="650"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="#FF2D2D30">
@@ -107,7 +107,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Button Grid.Column="0" x:Name="BtnResize" Content="缩放并继续" 
+            <Button Grid.Column="0" x:Name="BtnResize" Content="缩放并保存" 
                     Click="BtnResize_Click">
                 <Button.Style>
                     <Style TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}">
@@ -120,7 +120,7 @@
                 </Button.Style>
             </Button>
 
-            <Button Grid.Column="1" x:Name="BtnContinueAnyway" Content="直接继续" 
+            <Button Grid.Column="1" x:Name="BtnContinueAnyway" Content="保存原始分辨率" 
                     Click="BtnContinueAnyway_Click">
                 <Button.Style>
                     <Style TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}">
