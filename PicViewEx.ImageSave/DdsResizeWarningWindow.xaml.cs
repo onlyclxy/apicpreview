@@ -170,19 +170,19 @@ namespace PicViewEx.ImageSave
         /// 规则：
         /// 1. 分别找长边和短边最接近的2的幂次方
         /// 2. 保持原始宽高比的大致方向
-        /// 3. 向上取整，最大到4096
+        /// 3. 向上取整，最大边不超过2048
         /// </summary>
         private (int width, int height) CalculateRecommendedRectangleResolution(int width, int height)
         {
-            int[] powerOfTwoSizes = { 16, 32, 64, 128, 256, 512, 1024, 2048, 4096 };
+            int[] powerOfTwoSizes = { 16, 32, 64, 128, 256, 512, 1024, 2048 };
 
             // 找到长边和短边
             int longSide = Math.Max(width, height);
             int shortSide = Math.Min(width, height);
             bool isWidthLonger = width > height;
 
-            // 为长边找到最接近的2的幂次方（向上取整）
-            int recommendedLong = 4096;
+            // 为长边找到最接近的2的幂次方（向上取整），最大2048
+            int recommendedLong = 2048;
             foreach (int size in powerOfTwoSizes)
             {
                 if (size >= longSide)
@@ -192,8 +192,8 @@ namespace PicViewEx.ImageSave
                 }
             }
 
-            // 为短边找到最接近的2的幂次方（向上取整）
-            int recommendedShort = 4096;
+            // 为短边找到最接近的2的幂次方（向上取整），最大2048
+            int recommendedShort = 2048;
             foreach (int size in powerOfTwoSizes)
             {
                 if (size >= shortSide)

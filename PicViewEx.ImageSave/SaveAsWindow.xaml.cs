@@ -124,34 +124,6 @@ namespace PicViewEx.ImageSave
                 return;
             }
 
-            // 先检查图像尺寸是否为2的幂次方，如果不是，立即弹出警告窗口
-            if (!IsPowerOfTwo(_currentSource.PixelWidth) || !IsPowerOfTwo(_currentSource.PixelHeight))
-            {
-                var warningWindow = new DdsResizeWarningWindow(
-                    _currentSource,
-                    _currentSource.PixelWidth,
-                    _currentSource.PixelHeight)
-                {
-                    Owner = this
-                };
-
-                bool? result = warningWindow.ShowDialog();
-                
-                if (result != true)
-                {
-                    // 用户点击了取消，直接返回
-                    return;
-                }
-
-                // 用户选择了缩放
-                if (warningWindow.ShouldResize && warningWindow.ResizedImage != null)
-                {
-                    _currentSource = warningWindow.ResizedImage;
-                    PreviewImage.Source = _currentSource;
-                }
-                // 如果用户选择"保存原始分辨率"，则继续使用原始尺寸
-            }
-
             OptionsPanel.Visibility = Visibility.Visible;
             JpgQualityPanel.Visibility = Visibility.Collapsed;
             DdsPresetPanel.Visibility = Visibility.Visible;
@@ -181,6 +153,12 @@ namespace PicViewEx.ImageSave
         // DDS自定义按钮点击事件
         private void BtnDdsCustom_Click(object sender, RoutedEventArgs e)
         {
+            // 先检查图像尺寸是否为2的幂次方
+            if (!CheckAndHandleDdsResolution())
+            {
+                return; // 用户取消了
+            }
+
             // 使用NVIDIA UI - 不等待,不提示成功,使用旋转后的图像
             string tempPng = _nvidiaTools.CreateTempPngForDds(_currentSource);
             if (!string.IsNullOrEmpty(tempPng))
@@ -247,6 +225,12 @@ namespace PicViewEx.ImageSave
                               "• NVIDIA Texture Tools 无法解析",
                     "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
+            }
+
+            // 先检查图像尺寸是否为2的幂次方
+            if (!CheckAndHandleDdsResolution())
+            {
+                return; // 用户取消了
             }
 
             // 设置标记，表示使用复用参数模式
@@ -354,6 +338,12 @@ namespace PicViewEx.ImageSave
         {
             if (sender is Button button)
             {
+                // 先检查图像尺寸是否为2的幂次方
+                if (!CheckAndHandleDdsResolution())
+                {
+                    return; // 用户取消了
+                }
+
                 _selectedPresetPath = button.Tag as string;
                 _useDdsReuseParams = false; // 使用预设时，清除复用参数标记
 
@@ -568,6 +558,46 @@ namespace PicViewEx.ImageSave
         private bool IsPowerOfTwo(int n)
         {
             return n > 0 && (n & (n - 1)) == 0;
+        }
+
+        /// <summary>
+        /// 检查并处理DDS分辨率（如果不是2的幂次方，弹出警告窗口）
+        /// </summary>
+        /// <returns>true表示继续，false表示用户取消</returns>
+        private bool CheckAndHandleDdsResolution()
+        {
+            // 如果已经是2的幂次方，直接返回true
+            if (IsPowerOfTwo(_currentSource.PixelWidth) && IsPowerOfTwo(_currentSource.PixelHeight))
+            {
+                return true;
+            }
+
+            // 弹出警告窗口
+            var warningWindow = new DdsResizeWarningWindow(
+                _currentSource,
+                _currentSource.PixelWidth,
+                _currentSource.PixelHeight)
+            {
+                Owner = this
+            };
+
+            bool? result = warningWindow.ShowDialog();
+
+            if (result != true)
+            {
+                // 用户点击了取消
+                return false;
+            }
+
+            // 用户选择了缩放
+            if (warningWindow.ShouldResize && warningWindow.ResizedImage != null)
+            {
+                _currentSource = warningWindow.ResizedImage;
+                PreviewImage.Source = _currentSource;
+            }
+            // 如果用户选择"保存原始分辨率"，则继续使用原始尺寸
+
+            return true;
         }
 
         private void JpgQualitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
