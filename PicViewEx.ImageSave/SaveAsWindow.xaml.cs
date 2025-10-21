@@ -119,8 +119,12 @@ namespace PicViewEx.ImageSave
 
             if (!_nvidiaTools.IsAvailable)
             {
-                MessageBox.Show("NVIDIA Texture Tools 不可用！\n\n请确保 NVIDIA Texture Tools 文件夹存在于程序根目录。",
-                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                CustomMessageBox.Show(
+                    "NVIDIA Texture Tools 不可用！\n\n请确保 NVIDIA Texture Tools 文件夹存在于程序根目录。",
+                    "错误",
+                    CustomMessageBox.MessageBoxButtons.OK,
+                    CustomMessageBox.MessageBoxType.Error,
+                    this);
                 return;
             }
 
@@ -167,8 +171,12 @@ namespace PicViewEx.ImageSave
                 if (launched)
                 {
                     // UI模式:只通知已启动,不等待完成
-                    MessageBox.Show("已启动 NVIDIA Texture Tools 界面。\n\n请在界面中完成DDS保存操作。",
-                        "信息", MessageBoxButton.OK, MessageBoxImage.Information);
+                    CustomMessageBox.Show(
+                        "已启动 NVIDIA Texture Tools 界面。\n\n请在界面中完成DDS保存操作。",
+                        "信息",
+                        CustomMessageBox.MessageBoxButtons.OK,
+                        CustomMessageBox.MessageBoxType.Information,
+                        this);
 
                     // 关闭另存为窗口,但不算"成功"(因为用户还没保存)
                     DialogResult = false;
@@ -176,14 +184,22 @@ namespace PicViewEx.ImageSave
                 }
                 else
                 {
-                    MessageBox.Show("启动 NVIDIA Texture Tools 失败！",
-                        "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    CustomMessageBox.Show(
+                        "启动 NVIDIA Texture Tools 失败！",
+                        "错误",
+                        CustomMessageBox.MessageBoxButtons.OK,
+                        CustomMessageBox.MessageBoxType.Error,
+                        this);
                 }
             }
             else
             {
-                MessageBox.Show("创建临时PNG文件失败！",
-                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                CustomMessageBox.Show(
+                    "创建临时PNG文件失败！",
+                    "错误",
+                    CustomMessageBox.MessageBoxButtons.OK,
+                    CustomMessageBox.MessageBoxType.Error,
+                    this);
             }
         }
 
@@ -193,24 +209,35 @@ namespace PicViewEx.ImageSave
             // 检查原始文件是否存在且为DDS格式
             if (string.IsNullOrEmpty(_originalFilePath))
             {
-                MessageBox.Show("无法复用参数：未找到原始文件路径。",
-                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                CustomMessageBox.Show(
+                    "无法复用参数：未找到原始文件路径。",
+                    "错误",
+                    CustomMessageBox.MessageBoxButtons.OK,
+                    CustomMessageBox.MessageBoxType.Error,
+                    this);
                 return;
             }
 
             if (!File.Exists(_originalFilePath))
             {
-                MessageBox.Show("无法复用参数：原始文件不存在。",
-                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                CustomMessageBox.Show(
+                    "无法复用参数：原始文件不存在。",
+                    "错误",
+                    CustomMessageBox.MessageBoxButtons.OK,
+                    CustomMessageBox.MessageBoxType.Error,
+                    this);
                 return;
             }
 
             string extension = Path.GetExtension(_originalFilePath).ToLower();
             if (extension != ".dds")
             {
-                MessageBox.Show($"无法复用参数：原始文件不是DDS格式（当前格式：{extension}）。\n\n" +
-                              "此功能仅适用于DDS格式的图片。",
-                    "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+                CustomMessageBox.Show(
+                    $"无法复用参数：原始文件不是DDS格式（当前格式：{extension}）。\n\n此功能仅适用于DDS格式的图片。",
+                    "错误",
+                    CustomMessageBox.MessageBoxButtons.OK,
+                    CustomMessageBox.MessageBoxType.Warning,
+                    this);
                 return;
             }
 
@@ -218,12 +245,12 @@ namespace PicViewEx.ImageSave
             var ddsInfo = _nvidiaTools.GetDdsInfo(_originalFilePath);
             if (ddsInfo == null)
             {
-                MessageBox.Show("无法读取原始DDS文件的参数信息。\n\n" +
-                              "可能原因：\n" +
-                              "• DDS文件损坏\n" +
-                              "• 不支持的DDS格式\n" +
-                              "• NVIDIA Texture Tools 无法解析",
-                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                CustomMessageBox.Show(
+                    "无法读取原始DDS文件的参数信息。\n\n可能原因：\n• DDS文件损坏\n• 不支持的DDS格式\n• NVIDIA Texture Tools 无法解析",
+                    "错误",
+                    CustomMessageBox.MessageBoxButtons.OK,
+                    CustomMessageBox.MessageBoxType.Error,
+                    this);
                 return;
             }
 
@@ -433,16 +460,22 @@ namespace PicViewEx.ImageSave
                     if (result.Success)
                     {
                         SavedFilePath = result.SavedPath;
-                        MessageBox.Show($"保存成功！\n\n文件路径: {result.SavedPath}",
-                            "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                        
+                        // 使用自定义成功对话框，带定位路径功能
+                        SuccessDialog.Show(result.SavedPath, this);
+                        
                         DialogResult = true;
                         Close();
                     }
                     else if (!result.IsCancelled)
                     {
                         // 只有在非取消的情况下才显示错误对话框
-                        MessageBox.Show($"保存失败！\n\n{result.Message}\n{result.ErrorDetails}",
-                            "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                        CustomMessageBox.Show(
+                            $"保存失败！\n\n{result.Message}\n{result.ErrorDetails}",
+                            "错误",
+                            CustomMessageBox.MessageBoxButtons.OK,
+                            CustomMessageBox.MessageBoxType.Error,
+                            this);
                     }
                     // 如果是取消操作（IsCancelled=true），则静默处理，不显示错误对话框
                 }

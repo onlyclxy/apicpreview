@@ -376,7 +376,12 @@ namespace PicViewEx.ImageSave
         {
             if (ResolutionListBox.SelectedItem == null)
             {
-                MessageBox.Show("请选择目标分辨率！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                CustomMessageBox.Show(
+                    "请选择目标分辨率！",
+                    "提示",
+                    CustomMessageBox.MessageBoxButtons.OK,
+                    CustomMessageBox.MessageBoxType.Information,
+                    this);
                 return;
             }
 
@@ -389,7 +394,12 @@ namespace PicViewEx.ImageSave
                 ResizedImage = ResizeImage(_sourceImage, TargetWidth, TargetHeight);
                 if (ResizedImage == null)
                 {
-                    MessageBox.Show("图像缩放失败！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    CustomMessageBox.Show(
+                        "图像缩放失败！",
+                        "错误",
+                        CustomMessageBox.MessageBoxButtons.OK,
+                        CustomMessageBox.MessageBoxType.Error,
+                        this);
                     return;
                 }
 
@@ -430,9 +440,9 @@ namespace PicViewEx.ImageSave
                 PreviewImage.Source = _sourceImage;
 
                 // 根据目标分辨率的宽高比动态调整预览框大小
-                // 最大120×120，按比例缩放
+                // 最大100×100，按比例缩放
                 double targetRatio = (double)info.Width / info.Height;
-                double maxSize = 120;
+                double maxSize = 100;
 
                 double previewWidth, previewHeight;
                 if (targetRatio > 1)
@@ -484,8 +494,8 @@ namespace PicViewEx.ImageSave
             {
                 // 没有选中项
                 PreviewImage.Source = null;
-                PreviewBorder.Width = 120;
-                PreviewBorder.Height = 120;
+                PreviewBorder.Width = 100;
+                PreviewBorder.Height = 100;
                 TxtSelectedResolution.Text = "-";
                 TxtScaleInfo.Text = "-";
             }
@@ -498,7 +508,7 @@ namespace PicViewEx.ImageSave
         {
             // 根据原图分辨率的宽高比设置参考框大小
             double originalRatio = (double)_currentWidth / _currentHeight;
-            double maxSize = 120;
+            double maxSize = 100;
 
             double originalWidth, originalHeight;
             if (originalRatio > 1)

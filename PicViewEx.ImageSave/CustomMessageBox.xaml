@@ -1,0 +1,91 @@
+<Window x:Class="PicViewEx.ImageSave.CustomMessageBox"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="提示" Width="500"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#FF2D2D30"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        BorderBrush="#FF007ACC"
+        BorderThickness="1">
+
+    <Window.Resources>
+        <!-- 按钮样式 -->
+        <Style x:Key="DialogButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="100"/>
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Background" Value="#FF3E3E42"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF555555"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#FF007ACC"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 标题栏 -->
+        <Border Grid.Row="0" Background="#FF1E1E1E" Padding="15,10" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- 图标 -->
+                <TextBlock x:Name="IconText" Grid.Column="0" 
+                           FontSize="20" FontWeight="Bold" 
+                           VerticalAlignment="Center" Margin="0,0,10,0"/>
+                
+                <!-- 标题 -->
+                <TextBlock x:Name="TitleText" Grid.Column="1" 
+                           Text="提示" FontSize="14" FontWeight="Bold"
+                           Foreground="White" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- 内容区域 -->
+        <Border Grid.Row="1" Padding="20">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="400">
+                <TextBlock x:Name="MessageText" 
+                           Text="消息内容" 
+                           FontSize="14" 
+                           Foreground="White" 
+                           TextWrapping="Wrap"
+                           LineHeight="22"/>
+            </ScrollViewer>
+        </Border>
+
+        <!-- 按钮区域 -->
+        <Border Grid.Row="2" Background="#FF252526" Padding="15" BorderBrush="#FF3E3E42" BorderThickness="0,1,0,0">
+            <StackPanel x:Name="ButtonPanel" Orientation="Horizontal" HorizontalAlignment="Center"/>
+        </Border>
+    </Grid>
+</Window>
+
