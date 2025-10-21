@@ -124,6 +124,34 @@ namespace PicViewEx.ImageSave
                 return;
             }
 
+            // 先检查图像尺寸是否为2的幂次方，如果不是，立即弹出警告窗口
+            if (!IsPowerOfTwo(_currentSource.PixelWidth) || !IsPowerOfTwo(_currentSource.PixelHeight))
+            {
+                var warningWindow = new DdsResizeWarningWindow(
+                    _currentSource,
+                    _currentSource.PixelWidth,
+                    _currentSource.PixelHeight)
+                {
+                    Owner = this
+                };
+
+                bool? result = warningWindow.ShowDialog();
+                
+                if (result != true)
+                {
+                    // 用户点击了取消，直接返回
+                    return;
+                }
+
+                // 用户选择了缩放
+                if (warningWindow.ShouldResize && warningWindow.ResizedImage != null)
+                {
+                    _currentSource = warningWindow.ResizedImage;
+                    PreviewImage.Source = _currentSource;
+                }
+                // 如果用户选择"保存原始分辨率"，则继续使用原始尺寸
+            }
+
             OptionsPanel.Visibility = Visibility.Visible;
             JpgQualityPanel.Visibility = Visibility.Collapsed;
             DdsPresetPanel.Visibility = Visibility.Visible;
@@ -153,34 +181,6 @@ namespace PicViewEx.ImageSave
         // DDS自定义按钮点击事件
         private void BtnDdsCustom_Click(object sender, RoutedEventArgs e)
         {
-            // 检查图像尺寸是否为2的幂次方
-            if (!IsPowerOfTwo(_currentSource.PixelWidth) || !IsPowerOfTwo(_currentSource.PixelHeight))
-            {
-                var warningWindow = new DdsResizeWarningWindow(
-                    _currentSource,
-                    _currentSource.PixelWidth,
-                    _currentSource.PixelHeight)
-                {
-                    Owner = this
-                };
-
-                bool? result = warningWindow.ShowDialog();
-                
-                if (result != true)
-                {
-                    // 用户点击了取消，直接返回，不弹出错误对话框
-                    return;
-                }
-
-                // 用户选择了缩放
-                if (warningWindow.ShouldResize && warningWindow.ResizedImage != null)
-                {
-                    _currentSource = warningWindow.ResizedImage;
-                    PreviewImage.Source = _currentSource;
-                }
-                // 如果用户选择"直接继续"，则继续使用原始尺寸
-            }
-
             // 使用NVIDIA UI - 不等待,不提示成功,使用旋转后的图像
             string tempPng = _nvidiaTools.CreateTempPngForDds(_currentSource);
             if (!string.IsNullOrEmpty(tempPng))
@@ -482,40 +482,7 @@ namespace PicViewEx.ImageSave
         {
             try
             {
-                // 检查图像尺寸是否为2的幂次方
-                if (!IsPowerOfTwo(_currentSource.PixelWidth) || !IsPowerOfTwo(_currentSource.PixelHeight))
-                {
-                    var warningWindow = new DdsResizeWarningWindow(
-                        _currentSource,
-                        _currentSource.PixelWidth,
-                        _currentSource.PixelHeight)
-                    {
-                        Owner = this
-                    };
-
-                    bool? result = warningWindow.ShowDialog();
-                    
-                    if (result != true)
-                    {
-                        // 用户点击了取消，返回取消状态，但不显示为错误
-                        return new SaveResult
-                        {
-                            Success = false,
-                            Message = "用户取消保存",
-                            IsCancelled = true  // 标记为取消而非错误
-                        };
-                    }
-
-                    // 用户选择了缩放
-                    if (warningWindow.ShouldResize && warningWindow.ResizedImage != null)
-                    {
-                        _currentSource = warningWindow.ResizedImage;
-                        PreviewImage.Source = _currentSource;
-                    }
-                    // 如果用户选择"直接继续"，则继续使用原始尺寸
-                }
-
-                // 使用旋转后的图像源
+                // 使用旋转后的图像源（尺寸检查已在点击DDS按钮时完成）
                 string tempPng = _nvidiaTools.CreateTempPngForDds(_currentSource);
                 if (string.IsNullOrEmpty(tempPng))
                 {

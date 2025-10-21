@@ -79,9 +79,6 @@ namespace PicViewEx.ImageSave
 
         private void InitializeUI()
         {
-            // 显示当前尺寸
-            TxtCurrentSize.Text = $"当前图像尺寸：{_currentWidth} × {_currentHeight}";
-
             // 计算推荐的分辨率（正方形和非正方形各一个）
             var squareRecommended = CalculateRecommendedSquareResolution(_currentWidth, _currentHeight);
             var rectangleRecommended = CalculateRecommendedRectangleResolution(_currentWidth, _currentHeight);
@@ -98,6 +95,9 @@ namespace PicViewEx.ImageSave
             {
                 ResolutionListBox.SelectedIndex = 0;
             }
+
+            // 初始化预览
+            UpdatePreview();
         }
 
         /// <summary>
@@ -334,6 +334,9 @@ namespace PicViewEx.ImageSave
                 TargetWidth = info.Width;
                 TargetHeight = info.Height;
             }
+
+            // 更新预览
+            UpdatePreview();
         }
 
         private void BtnResize_Click(object sender, RoutedEventArgs e)
@@ -378,6 +381,58 @@ namespace PicViewEx.ImageSave
             ContinueAnyway = false;
             DialogResult = false;
             Close();
+        }
+
+        /// <summary>
+        /// 更新预览图和信息
+        /// </summary>
+        private void UpdatePreview()
+        {
+            if (ResolutionListBox.SelectedItem is ListBoxItem item && item.Tag is ResolutionInfo info)
+            {
+                // 更新预览图（按目标分辨率缩放以显示形变效果）
+                var previewImage = ResizeImage(_sourceImage, info.Width, info.Height);
+                if (previewImage != null)
+                {
+                    PreviewImage.Source = previewImage;
+                }
+
+                // 更新选中的分辨率信息
+                TxtSelectedResolution.Text = $"当前选中：{info.Width} × {info.Height}";
+
+                // 计算并显示缩放信息
+                double widthScale = (double)info.Width / _currentWidth;
+                double heightScale = (double)info.Height / _currentHeight;
+                double maxScale = Math.Max(widthScale, heightScale);
+
+                string scaleText;
+                if (Math.Abs(widthScale - heightScale) < 0.01)
+                {
+                    // 等比缩放
+                    scaleText = $"缩放比例：{widthScale:F2}x（等比缩放）";
+                }
+                else
+                {
+                    // 非等比缩放
+                    scaleText = $"缩放比例：宽 {widthScale:F2}x，高 {heightScale:F2}x";
+                    
+                    // 计算形变程度
+                    double distortion = Math.Abs(widthScale - heightScale) / Math.Max(widthScale, heightScale) * 100;
+                    if (distortion > 5)
+                    {
+                        scaleText += $"\n⚠ 形变：约 {distortion:F1}%";
+                    }
+                }
+
+                TxtScaleInfo.Text = scaleText;
+            }
+            else
+            {
+                // 没有选中项
+                PreviewImage.Source = null;
+                TxtSelectedResolution.Text = "当前选中：未选择";
+                TxtScaleInfo.Text = "缩放比例：-";
+            }
         }
 
         /// <summary>
