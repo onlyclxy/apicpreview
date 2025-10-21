@@ -55,53 +55,63 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 警告标题 -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,15">
-            <TextBlock Text="⚠ DDS尺寸警告" FontSize="22" FontWeight="Bold"
-                       Foreground="#FFFFB74D" Margin="0,0,0,10"/>
-            <TextBlock Text="DDS格式建议使用2的幂次方尺寸。非标准尺寸可能导致："
-                       FontSize="12" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,5,0,5"/>
-            <StackPanel Margin="15,0,0,0">
-                <TextBlock Text="• 在某些游戏引擎中无法正确显示" FontSize="11" Foreground="#FFAAAAAA"/>
-                <TextBlock Text="• 无法生成完整的mipmap链" FontSize="11" Foreground="#FFAAAAAA"/>
-                <TextBlock Text="• 在某些硬件上加载失败" FontSize="11" Foreground="#FFAAAAAA"/>
-            </StackPanel>
-        </StackPanel>
+        <!-- 警告标题和预览 -->
+        <Grid Grid.Row="0" Margin="0,0,0,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
 
-        <!-- 预览区域 -->
-        <Border Grid.Row="1" Background="#FF252526" BorderBrush="#FF3E3E42"
-                BorderThickness="1" Padding="10" CornerRadius="5" Margin="0,0,0,15">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- 预览图 -->
-                <Border Grid.Column="0" Width="120" Height="120" Background="#FF1E1E1E"
-                        BorderBrush="#FF555555" BorderThickness="1" Margin="0,0,15,0">
-                    <Image x:Name="PreviewImage" Stretch="Fill"/>
-                </Border>
-
-                <!-- 预览信息 -->
-                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="预览" FontSize="14" FontWeight="Bold"
-                               Foreground="#FF00D1B2" Margin="0,0,0,8"/>
-                    <TextBlock x:Name="TxtSelectedResolution" FontSize="13" Foreground="White"
-                               Text="当前选中：未选择" Margin="0,0,0,5"/>
-                    <TextBlock x:Name="TxtScaleInfo" FontSize="11" Foreground="#FFAAAAAA"
-                               Text="缩放比例：-" TextWrapping="Wrap"/>
+            <!-- 左侧：警告信息 -->
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="⚠ DDS尺寸警告" FontSize="22" FontWeight="Bold"
+                           Foreground="#FFFFB74D" Margin="0,0,0,10"/>
+                <TextBlock x:Name="TxtCurrentSize" FontSize="14" Foreground="White" 
+                           Text="当前图像尺寸：0 × 0" Margin="0,0,0,10"/>
+                <TextBlock Text="DDS格式建议使用2的幂次方尺寸。非标准尺寸可能导致："
+                           FontSize="12" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,0,0,5"/>
+                <StackPanel Margin="15,0,0,0">
+                    <TextBlock Text="• 在某些游戏引擎中无法正确显示" FontSize="11" Foreground="#FFAAAAAA"/>
+                    <TextBlock Text="• 无法生成完整的mipmap链" FontSize="11" Foreground="#FFAAAAAA"/>
+                    <TextBlock Text="• 在某些硬件上加载失败" FontSize="11" Foreground="#FFAAAAAA"/>
                 </StackPanel>
-            </Grid>
-        </Border>
+            </StackPanel>
+
+            <!-- 右侧：预览区域 -->
+            <Border Grid.Column="1" Background="#FF252526" BorderBrush="#FF3E3E42"
+                    BorderThickness="1" Padding="10" CornerRadius="5" Margin="15,0,0,0">
+                <StackPanel Width="140">
+                    <TextBlock Text="预览长宽比" FontSize="13" FontWeight="Bold"
+                               Foreground="#FF00D1B2" Margin="0,0,0,8" HorizontalAlignment="Center"/>
+                    
+                    <!-- 预览容器 - 固定最大尺寸为120×120 -->
+                    <Grid Width="120" Height="120" Margin="0,0,0,10">
+                        <!-- 预览图 - 动态宽高 -->
+                        <Border x:Name="PreviewBorder" 
+                                Background="#FF1E1E1E"
+                                BorderBrush="#FF555555" 
+                                BorderThickness="1"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                            <Image x:Name="PreviewImage" Stretch="Fill"/>
+                        </Border>
+                    </Grid>
+
+                    <!-- 预览信息 -->
+                    <TextBlock x:Name="TxtSelectedResolution" FontSize="11" Foreground="White"
+                               Text="-" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,5"/>
+                    <TextBlock x:Name="TxtScaleInfo" FontSize="10" Foreground="#FFAAAAAA"
+                               Text="-" TextWrapping="Wrap" TextAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
 
         <!-- 选择分辨率 -->
-        <Border Grid.Row="2" Background="#FF252526" BorderBrush="#FF3E3E42"
+        <Border Grid.Row="1" Background="#FF252526" BorderBrush="#FF3E3E42"
                 BorderThickness="1" Padding="12" CornerRadius="5" Margin="0,0,0,15">
             <StackPanel>
                 <TextBlock Text="选择目标分辨率" FontSize="14" FontWeight="Bold"
@@ -112,7 +122,7 @@
         </Border>
 
         <!-- 分辨率列表 -->
-        <Border Grid.Row="3" Background="#FF252526" BorderBrush="#FF3E3E42"
+        <Border Grid.Row="2" Background="#FF252526" BorderBrush="#FF3E3E42"
                 BorderThickness="1" CornerRadius="5" Padding="10">
             <ListBox x:Name="ResolutionListBox" 
                      Background="Transparent" 
@@ -126,7 +136,7 @@
         </Border>
 
         <!-- 操作按钮 -->
-        <Grid Grid.Row="4" Margin="0,15,0,0">
+        <Grid Grid.Row="3" Margin="0,15,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
