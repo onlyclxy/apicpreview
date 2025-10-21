@@ -82,11 +82,9 @@ namespace PicViewEx.ImageSave
             // 显示当前尺寸
             TxtCurrentSize.Text = $"当前图像尺寸：{_currentWidth} × {_currentHeight}";
 
-            // 计算并显示长宽比
-            int gcd = GCD(_currentWidth, _currentHeight);
-            int ratioW = _currentWidth / gcd;
-            int ratioH = _currentHeight / gcd;
-            TxtAspectRatio.Text = $"长宽比：{ratioW}:{ratioH}";
+            // 计算并显示长宽比（以1为基准）
+            string aspectRatio = CalculateAspectRatioString(_currentWidth, _currentHeight);
+            TxtAspectRatio.Text = $"长宽比：{aspectRatio}";
 
             // 计算推荐的分辨率（正方形和非正方形各一个）
             var squareRecommended = CalculateRecommendedSquareResolution(_currentWidth, _currentHeight);
@@ -110,17 +108,29 @@ namespace PicViewEx.ImageSave
         }
 
         /// <summary>
-        /// 计算最大公约数（用于简化长宽比）
+        /// 计算长宽比字符串（以1为基准）
+        /// 例如：1920×1080 → "1.78:1"（横向）
+        ///       1080×1920 → "1:1.78"（纵向）
+        ///       2048×2048 → "1:1"（正方形）
         /// </summary>
-        private int GCD(int a, int b)
+        private string CalculateAspectRatioString(int width, int height)
         {
-            while (b != 0)
+            if (width == height)
             {
-                int temp = b;
-                b = a % b;
-                a = temp;
+                return "1:1";
             }
-            return a;
+            else if (width > height)
+            {
+                // 横向：x:1
+                double ratio = (double)width / height;
+                return $"{ratio:F2}:1";
+            }
+            else
+            {
+                // 纵向：1:x
+                double ratio = (double)height / width;
+                return $"1:{ratio:F2}";
+            }
         }
 
         /// <summary>
