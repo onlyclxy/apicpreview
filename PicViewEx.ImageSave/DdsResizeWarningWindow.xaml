@@ -90,14 +90,23 @@
                     
                     <!-- 预览容器 - 固定最大尺寸为120×120 -->
                     <Grid Width="120" Height="120" Margin="0,0,0,10">
-                        <!-- 预览图 - 动态宽高 -->
+                        <!-- 目标分辨率预览图（底层，无边框） -->
                         <Border x:Name="PreviewBorder" 
                                 Background="#FF1E1E1E"
-                                BorderBrush="#FF555555" 
-                                BorderThickness="1"
+                                BorderBrush="Transparent" 
+                                BorderThickness="0"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center">
                             <Image x:Name="PreviewImage" Stretch="Fill"/>
+                        </Border>
+                        
+                        <!-- 原图分辨率参考框（上层，青色实线，背景透明） -->
+                        <Border x:Name="OriginalBorder" 
+                                Background="Transparent"
+                                BorderBrush="#FF00D1B2" 
+                                BorderThickness="2"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
                         </Border>
                     </Grid>
 

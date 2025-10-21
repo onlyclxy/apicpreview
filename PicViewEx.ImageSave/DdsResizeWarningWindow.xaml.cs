@@ -391,6 +391,9 @@ namespace PicViewEx.ImageSave
         /// </summary>
         private void UpdatePreview()
         {
+            // 首先设置原图参考框（始终显示）
+            SetOriginalReferenceBox();
+
             if (ResolutionListBox.SelectedItem is ListBoxItem item && item.Tag is ResolutionInfo info)
             {
                 // 设置预览图源
@@ -456,6 +459,34 @@ namespace PicViewEx.ImageSave
                 TxtSelectedResolution.Text = "-";
                 TxtScaleInfo.Text = "-";
             }
+        }
+
+        /// <summary>
+        /// 设置原图分辨率参考框
+        /// </summary>
+        private void SetOriginalReferenceBox()
+        {
+            // 根据原图分辨率的宽高比设置参考框大小
+            double originalRatio = (double)_currentWidth / _currentHeight;
+            double maxSize = 120;
+
+            double originalWidth, originalHeight;
+            if (originalRatio > 1)
+            {
+                // 横向图片：宽度优先
+                originalWidth = maxSize;
+                originalHeight = maxSize / originalRatio;
+            }
+            else
+            {
+                // 纵向或正方形：高度优先
+                originalHeight = maxSize;
+                originalWidth = maxSize * originalRatio;
+            }
+
+            // 应用计算出的宽高
+            OriginalBorder.Width = originalWidth;
+            OriginalBorder.Height = originalHeight;
         }
 
         /// <summary>
