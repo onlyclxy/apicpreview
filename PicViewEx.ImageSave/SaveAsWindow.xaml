@@ -146,6 +146,40 @@
                                      VerticalContentAlignment="Center" TextAlignment="Center"/>
                         </Border>
                     </Grid>
+                    
+                    <!-- 确认保存按钮 -->
+                    <Button x:Name="BtnJpgSave" Content="确认保存" 
+                            Height="45" Margin="0,20,0,0" FontSize="15" FontWeight="Bold"
+                            Background="#FF28A745" Foreground="White"
+                            BorderBrush="#FF1E7E34" BorderThickness="1" Cursor="Hand"
+                            Click="BtnSave_Click">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="#FF28A745"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="border" 
+                                                    Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                    CornerRadius="6">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="border" Property="Background" Value="#FF218838"/>
+                                                </Trigger>
+                                                <Trigger Property="IsPressed" Value="True">
+                                                    <Setter TargetName="border" Property="Background" Value="#FF1E7E34"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                 </StackPanel>
 
                 <!-- DDS预设设置 -->
@@ -235,7 +269,7 @@
                         <StackPanel Grid.Column="0" Margin="0,0,8,0">
                             <TextBlock Text="全部预设" Foreground="#FF00D1B2"
                                        FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
-                            <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto"
+                            <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto"
                                          HorizontalScrollBarVisibility="Disabled">
                                 <ItemsControl x:Name="AllPresetsList"/>
                             </ScrollViewer>
