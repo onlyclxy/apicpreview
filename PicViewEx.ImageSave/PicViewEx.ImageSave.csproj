@@ -82,6 +82,7 @@
     </Compile>
     <Compile Include="IImageSaver.cs" />
     <Compile Include="ImageSaver.cs" />
+    <Compile Include="ImageSaverExtensions.cs" />
     <Compile Include="JpegQualityAnalyzer.cs" />
     <Compile Include="NvidiaTextureTools.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

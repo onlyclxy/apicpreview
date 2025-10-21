@@ -129,8 +129,12 @@ namespace PicViewEx.ImageSave
             catch (Exception ex)
             {
                 Log($"加载图片失败: {ex.Message}");
-                MessageBox.Show($"加载图片失败！\n\n{ex.Message}",
-                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                CustomMessageBox.Show(
+                    $"加载图片失败！\n\n{ex.Message}",
+                    "错误",
+                    CustomMessageBox.MessageBoxButtons.OK,
+                    CustomMessageBox.MessageBoxType.Error,
+                    this);
             }
         }
 
@@ -138,8 +142,12 @@ namespace PicViewEx.ImageSave
         {
             if (_currentImage == null || string.IsNullOrEmpty(_currentFilePath))
             {
-                MessageBox.Show("请先打开一张图片", "提示",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                CustomMessageBox.Show(
+                    "请先打开一张图片",
+                    "提示",
+                    CustomMessageBox.MessageBoxButtons.OK,
+                    CustomMessageBox.MessageBoxType.Information,
+                    this);
                 return;
             }
 
@@ -148,13 +156,12 @@ namespace PicViewEx.ImageSave
                 Log("执行保存操作...");
                 Log($"目标文件: {_currentFilePath}");
 
-                var result = await _imageSaver.Save(_currentImage, _currentFilePath);
+                // 使用 SaveWithDialog 扩展方法，自动显示成功/失败对话框
+                var result = await _imageSaver.SaveWithDialog(_currentImage, _currentFilePath, this);
 
                 if (result.Success)
                 {
-                    Log($"✓ 保存成功: {result.Message}");
-                    MessageBox.Show("保存成功！", "成功",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    Log($"✓ 保存成功: {result.SavedPath}");
                 }
                 else
                 {
@@ -163,16 +170,17 @@ namespace PicViewEx.ImageSave
                     {
                         Log($"  错误详情: {result.ErrorDetails}");
                     }
-
-                    MessageBox.Show($"保存失败！\n\n{result.Message}",
-                        "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
             {
                 Log($"✗ 保存异常: {ex.Message}");
-                MessageBox.Show($"保存过程中发生异常！\n\n{ex.Message}",
-                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                CustomMessageBox.Show(
+                    $"保存过程中发生异常！\n\n{ex.Message}",
+                    "错误",
+                    CustomMessageBox.MessageBoxButtons.OK,
+                    CustomMessageBox.MessageBoxType.Error,
+                    this);
             }
         }
 
@@ -180,8 +188,12 @@ namespace PicViewEx.ImageSave
         {
             if (_currentImage == null || string.IsNullOrEmpty(_currentFilePath))
             {
-                MessageBox.Show("请先打开一张图片", "提示",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                CustomMessageBox.Show(
+                    "请先打开一张图片",
+                    "提示",
+                    CustomMessageBox.MessageBoxButtons.OK,
+                    CustomMessageBox.MessageBoxType.Information,
+                    this);
                 return;
             }
 
@@ -221,8 +233,12 @@ namespace PicViewEx.ImageSave
             catch (Exception ex)
             {
                 Log($"✗ 另存为异常: {ex.Message}");
-                MessageBox.Show($"另存为过程中发生异常！\n\n{ex.Message}",
-                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                CustomMessageBox.Show(
+                    $"另存为过程中发生异常！\n\n{ex.Message}",
+                    "错误",
+                    CustomMessageBox.MessageBoxButtons.OK,
+                    CustomMessageBox.MessageBoxType.Error,
+                    this);
             }
         }
 
