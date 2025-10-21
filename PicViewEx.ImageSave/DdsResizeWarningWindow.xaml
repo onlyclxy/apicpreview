@@ -71,9 +71,17 @@
                 <TextBlock Text="⚠ DDS尺寸警告" FontSize="22" FontWeight="Bold"
                            Foreground="#FFFFB74D" Margin="0,0,0,10"/>
                 <TextBlock x:Name="TxtCurrentSize" FontSize="14" Foreground="White" 
-                           Text="当前图像尺寸：0 × 0" Margin="0,0,0,10"/>
-                <TextBlock Text="DDS格式建议使用2的幂次方尺寸。非标准尺寸可能导致："
-                           FontSize="12" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,0,0,5"/>
+                           Text="当前图像尺寸：0 × 0" Margin="0,0,0,5"/>
+                <TextBlock x:Name="TxtAspectRatio" FontSize="13" Foreground="#FFAAAAAA" 
+                           Text="长宽比：0:0" Margin="0,0,0,10"/>
+                <TextBlock FontSize="12" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,0,0,5">
+                    <Run Text="DDS格式建议使用2的幂次方尺寸。"/>
+                </TextBlock>
+                <TextBlock FontSize="13" FontWeight="Bold" Foreground="#FFFF6B6B" 
+                           TextWrapping="Wrap" Margin="0,0,0,8">
+                    <Run Text="⚠ 当前尺寸不是2的幂次方！"/>
+                </TextBlock>
+                <TextBlock Text="非标准尺寸可能导致：" FontSize="12" Foreground="#FFCCCCCC" Margin="0,0,0,5"/>
                 <StackPanel Margin="15,0,0,0">
                     <TextBlock Text="• 在某些游戏引擎中无法正确显示" FontSize="11" Foreground="#FFAAAAAA"/>
                     <TextBlock Text="• 无法生成完整的mipmap链" FontSize="11" Foreground="#FFAAAAAA"/>

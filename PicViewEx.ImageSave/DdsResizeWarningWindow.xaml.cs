@@ -25,42 +25,42 @@ namespace PicViewEx.ImageSave
         // 游戏行业常用的正方形纹理尺寸（推荐用）
         private static readonly int[] GameTextureSizes = { 16, 32, 64, 128, 256, 512, 1024, 2048 };
 
-        // 所有可用的分辨率（包括非正方形，最大4096）
+        // 所有可用的分辨率（包括非正方形，最大4096）- 从大到小排序
         private static readonly List<(int width, int height, string description)> AllResolutions = new List<(int, int, string)>
         {
-            // 正方形分辨率
-            (16, 16, "16 × 16 (极小)"),
-            (32, 32, "32 × 32 (极小)"),
-            (64, 64, "64 × 64 (小)"),
-            (128, 128, "128 × 128 (小)"),
-            (256, 256, "256 × 256 (中)"),
-            (512, 512, "512 × 512 (中)"),
-            (1024, 1024, "1024 × 1024 (大)"),
-            (2048, 2048, "2048 × 2048 (很大)"),
+            // 正方形分辨率（从大到小）
             (4096, 4096, "4096 × 4096 (超大)"),
+            (2048, 2048, "2048 × 2048 (很大)"),
+            (1024, 1024, "1024 × 1024 (大)"),
+            (512, 512, "512 × 512 (中)"),
+            (256, 256, "256 × 256 (中)"),
+            (128, 128, "128 × 128 (小)"),
+            (64, 64, "64 × 64 (小)"),
+            (32, 32, "32 × 32 (极小)"),
+            (16, 16, "16 × 16 (极小)"),
             
-            // 常用非正方形分辨率
-            (256, 128, "256 × 128 (宽)"),
-            (512, 256, "512 × 256 (宽)"),
-            (1024, 512, "1024 × 512 (宽)"),
-            (2048, 1024, "2048 × 1024 (宽)"),
+            // 常用非正方形分辨率（从大到小）
             (4096, 2048, "4096 × 2048 (宽)"),
+            (2048, 1024, "2048 × 1024 (宽)"),
+            (1024, 512, "1024 × 512 (宽)"),
+            (512, 256, "512 × 256 (宽)"),
+            (256, 128, "256 × 128 (宽)"),
             
-            (128, 256, "128 × 256 (高)"),
-            (256, 512, "256 × 512 (高)"),
-            (512, 1024, "512 × 1024 (高)"),
-            (1024, 2048, "1024 × 2048 (高)"),
             (2048, 4096, "2048 × 4096 (高)"),
+            (1024, 2048, "1024 × 2048 (高)"),
+            (512, 1024, "512 × 1024 (高)"),
+            (256, 512, "256 × 512 (高)"),
+            (128, 256, "128 × 256 (高)"),
             
-            (512, 128, "512 × 128 (超宽)"),
-            (1024, 256, "1024 × 256 (超宽)"),
-            (2048, 512, "2048 × 512 (超宽)"),
             (4096, 1024, "4096 × 1024 (超宽)"),
+            (2048, 512, "2048 × 512 (超宽)"),
+            (1024, 256, "1024 × 256 (超宽)"),
+            (512, 128, "512 × 128 (超宽)"),
             
-            (128, 512, "128 × 512 (超高)"),
-            (256, 1024, "256 × 1024 (超高)"),
+            (1024, 4096, "1024 × 4096 (超高)"),
             (512, 2048, "512 × 2048 (超高)"),
-            (1024, 4096, "1024 × 4096 (超高)")
+            (256, 1024, "256 × 1024 (超高)"),
+            (128, 512, "128 × 512 (超高)")
         };
 
         public DdsResizeWarningWindow(BitmapSource source, int currentWidth, int currentHeight)
@@ -82,6 +82,12 @@ namespace PicViewEx.ImageSave
             // 显示当前尺寸
             TxtCurrentSize.Text = $"当前图像尺寸：{_currentWidth} × {_currentHeight}";
 
+            // 计算并显示长宽比
+            int gcd = GCD(_currentWidth, _currentHeight);
+            int ratioW = _currentWidth / gcd;
+            int ratioH = _currentHeight / gcd;
+            TxtAspectRatio.Text = $"长宽比：{ratioW}:{ratioH}";
+
             // 计算推荐的分辨率（正方形和非正方形各一个）
             var squareRecommended = CalculateRecommendedSquareResolution(_currentWidth, _currentHeight);
             var rectangleRecommended = CalculateRecommendedRectangleResolution(_currentWidth, _currentHeight);
@@ -101,6 +107,20 @@ namespace PicViewEx.ImageSave
 
             // 初始化预览
             UpdatePreview();
+        }
+
+        /// <summary>
+        /// 计算最大公约数（用于简化长宽比）
+        /// </summary>
+        private int GCD(int a, int b)
+        {
+            while (b != 0)
+            {
+                int temp = b;
+                b = a % b;
+                a = temp;
+            }
+            return a;
         }
 
         /// <summary>
@@ -292,15 +312,15 @@ namespace PicViewEx.ImageSave
             string scaleInfo = "";
             if (scaleRatio > 1.0)
             {
-                scaleInfo = $"↑ {scaleRatio:F2}x";
+                scaleInfo = $"放大 ↑{scaleRatio:F2}x";
             }
             else if (scaleRatio < 1.0)
             {
-                scaleInfo = $"↓ {scaleRatio:F2}x";
+                scaleInfo = $"缩小 ↓{scaleRatio:F2}x";
             }
             else
             {
-                scaleInfo = "= 1.00x";
+                scaleInfo = "原尺寸 1.00x";
             }
 
             var scaleText = new TextBlock
@@ -433,18 +453,18 @@ namespace PicViewEx.ImageSave
                 if (Math.Abs(widthScale - heightScale) < 0.01)
                 {
                     // 等比缩放
-                    scaleText = $"{widthScale:F2}x";
+                    scaleText = $"缩放：{widthScale:F2}x";
                 }
                 else
                 {
                     // 非等比缩放
-                    scaleText = $"W:{widthScale:F2}x H:{heightScale:F2}x";
+                    scaleText = $"缩放：W{widthScale:F2}x H{heightScale:F2}x";
                     
                     // 计算形变程度
                     double distortion = Math.Abs(widthScale - heightScale) / Math.Max(widthScale, heightScale) * 100;
                     if (distortion > 5)
                     {
-                        scaleText += $"\n⚠{distortion:F0}%";
+                        scaleText += $"\n形变：{distortion:F0}%";
                     }
                 }
 
